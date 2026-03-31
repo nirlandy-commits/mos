@@ -1476,6 +1476,14 @@ function App() {
       setAuthBusy(false);
 
       if (!result.ok) {
+        if (result.duplicateAccount) {
+          setLoginForm({ email, password: "" });
+          showAuthNotice(
+            "Já existe uma conta cadastrada com este e-mail. Se você já criou a conta antes, tente entrar ou redefinir sua senha.",
+            { tone: "info", title: "Conta já cadastrada" },
+          );
+          return;
+        }
         showAuthNotice(result.error?.message || "Não foi possível criar sua conta agora.");
         return;
       }

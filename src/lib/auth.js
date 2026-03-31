@@ -177,6 +177,21 @@ export async function signUpWithEmail({ name, email, password, age = 0, weight =
 
   if (error) return { ok: false, error };
 
+  const looksLikeExistingAccount = Boolean(
+    data?.user &&
+      !data?.session &&
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0,
+  );
+
+  if (looksLikeExistingAccount) {
+    return {
+      ok: false,
+      duplicateAccount: true,
+      error: new Error("User already registered"),
+    };
+  }
+
   if (data?.user) {
     await upsertProfile({
       id: data.user.id,
