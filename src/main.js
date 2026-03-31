@@ -1673,13 +1673,6 @@ OLD = nil
     setScreen("login");
   }
 
-  function handleSocialLogin(provider) {
-    showAuthNotice(`Login com ${provider} estará disponível em breve. Use e-mail e senha para entrar no MOS por enquanto.`, {
-      tone: "info",
-      title: "Em breve",
-    });
-  }
-
   function openFoodDetailItem(food, back) {
     setSelectedFood({ ...food, back });
     setScreen("ingredient-detail");
@@ -2428,24 +2421,6 @@ OLD = nil
             >
               ${authBusy ? "Entrando..." : "Entrar"}
             </button>
-          </div>
-
-          <div className="pt-8 border-t border-black/10 space-y-5">
-            <div className="flex items-center gap-4 text-[#8a8a8a] text-sm">
-              <div className="h-px flex-1 bg-black/10"></div>
-              <span>Ou acesse com</span>
-              <div className="h-px flex-1 bg-black/10"></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" className="h-14 border border-[#111]/15 rounded-[10px] font-bold text-[#111] bg-[#fafafa] active:scale-95 transition-transform flex items-center justify-center gap-2" onClick=${() => handleSocialLogin("Google")}>
-                <span>Google</span>
-                <span className="text-[0.68rem] font-medium text-[#8a8a8a]">Em breve</span>
-              </button>
-              <button type="button" className="h-14 border border-[#111]/15 rounded-[10px] font-bold text-[#111] bg-[#fafafa] active:scale-95 transition-transform flex items-center justify-center gap-2" onClick=${() => handleSocialLogin("Apple")}>
-                <span>Apple</span>
-                <span className="text-[0.68rem] font-medium text-[#8a8a8a]">Em breve</span>
-              </button>
-            </div>
           </div>
 
           <div className="pt-8 border-t border-black/10 text-center">
