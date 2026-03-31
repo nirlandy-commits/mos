@@ -882,9 +882,10 @@ function App() {
   const [resetPasswordForm, setResetPasswordForm] = useState({ password: "", confirmPassword: "" });
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showResetPasswordConfirm, setShowResetPasswordConfirm] = useState(false);
-  const [authReady, setAuthReady] = useState(() => !isSupabaseConfigured());
+  const [authReady, setAuthReady] = useState(false);
   const authConfigured = isSupabaseConfigured();
   const recoveryFlowRef = useRef(isRecoveryRedirect());
+  const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(recoveryFlowRef.current);
 
   function markDraftDirty(key) {
     setDraftGuard({ key, dirty: true });
@@ -1023,71 +1024,8 @@ function App() {
 
   const todayKey = getTodayKey();
   const date = todayKey;
-  const consumedMeals = state.consumedMeals[todayKey] || [
-    {
-      id: "c1",
-      name: "Café da Manhã",
-      title: "Café da Manhã",
-      description: "Ovos mexidos, torrada integral, café preto",
-      time: "08:30",
-      icon: "light_mode",
-      cardClass: "bg-[#DFF37D] text-[#292B2D]",
-      foods: [
-        { id: "cf1", name: "Ovos mexidos", quantity: "2 ovos", calories: 180, protein: 14, carbs: 2, fat: 12, benefit: "Ajuda a manter saciedade pela manhã." },
-        { id: "cf2", name: "Torrada integral", quantity: "2 fatias", calories: 120, protein: 4, carbs: 22, fat: 2, benefit: "Entrega energia rápida para começar o dia." },
-        { id: "cf3", name: "Café preto", quantity: "1 xícara", calories: 40, protein: 0, carbs: 0, fat: 0, benefit: "Apoia a rotina matinal com simplicidade." },
-      ],
-    },
-    {
-      id: "c2",
-      name: "Almoço",
-      title: "Almoço",
-      description: "Frango grelhado, arroz castanho, brócolos, salada",
-      time: "12:15",
-      icon: "sunny",
-      cardClass: "bg-[#4558C8] text-white",
-      foods: [
-        { id: "cf4", name: "Arroz Integral", quantity: "150g", calories: 165, protein: 4, carbs: 33, fat: 1, benefit: "Entrega energia para a tarde." },
-        { id: "cf5", name: "Frango grelhado", quantity: "120g", calories: 198, protein: 36, carbs: 0, fat: 5, benefit: "Ajuda a bater proteína no almoço." },
-        { id: "cf6", name: "Salada", quantity: "100g", calories: 34, protein: 2, carbs: 6, fat: 0, benefit: "Contribui para digestão e volume da refeição." },
-      ],
-    },
-    {
-      id: "c3",
-      name: "Lanche",
-      title: "Lanche",
-      description: "Iogurte grego, punhado de amêndoas",
-      time: "16:00",
-      icon: "eco",
-      cardClass: "bg-white text-[#292B2D] border-2 border-[#D9B8F3]",
-      foods: [
-        { id: "cf7", name: "Iogurte grego", quantity: "1 pote", calories: 130, protein: 11, carbs: 6, fat: 6, benefit: "Ajuda na saciedade entre refeições." },
-        { id: "cf8", name: "Amêndoas", quantity: "20g", calories: 80, protein: 3, carbs: 3, fat: 7, benefit: "Complementa com gordura boa e textura." },
-      ],
-    },
-    {
-      id: "c4",
-      name: "Jantar",
-      title: "Jantar",
-      description: "Salmão ao forno, aspargos, quinoa",
-      time: "20:00",
-      icon: "dark_mode",
-      cardClass: "bg-[#292B2D] text-white",
-      foods: [
-        { id: "cf9", name: "Salmão", quantity: "160g", calories: 290, protein: 30, carbs: 0, fat: 18, benefit: "Boa proteína com gordura boa para o jantar." },
-        { id: "cf10", name: "Quinoa", quantity: "100g", calories: 140, protein: 5, carbs: 24, fat: 2, benefit: "Equilibra carboidrato e fibra." },
-        { id: "cf11", name: "Aspargos", quantity: "80g", calories: 60, protein: 3, carbs: 6, fat: 0, benefit: "Ajuda a completar o prato com leveza." },
-      ],
-    },
-  ];
+  const consumedMeals = state.consumedMeals[todayKey] || [];
 
-  const demoDataEnabled = !authConfigured;
-
-  useEffect(() => {
-    if (demoDataEnabled && !state.consumedMeals[todayKey]) {
-      setState((current) => ({ ...current, consumedMeals: { ...current.consumedMeals, [todayKey]: consumedMeals } }));
-    }
-  }, [demoDataEnabled, state.consumedMeals, todayKey]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1115,6 +1053,7 @@ function App() {
       if (result.session && result.user) {
         applyHydratedAuthState(result);
         setScreen(recoveryFlowRef.current ? "reset-password" : "home");
+        if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
       } else {
         setState((current) => ({
           ...structuredClone(defaultState),
@@ -1127,6 +1066,7 @@ function App() {
           },
         }));
         setScreen(recoveryFlowRef.current ? "reset-password" : "welcome");
+        if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
       }
 
       setAuthReady(true);
@@ -1150,6 +1090,7 @@ function App() {
         setResetPasswordForm({ password: "", confirmPassword: "" });
         setShowResetPassword(false);
         setShowResetPasswordConfirm(false);
+        setPasswordRecoveryReady(true);
         setScreen("reset-password");
         showAuthNotice(
           "Seu link de recuperação foi validado. Agora defina uma nova senha para voltar a entrar no MOS.",
@@ -1161,24 +1102,18 @@ function App() {
     return unsubscribe;
   }, [authConfigured]);
 
-  const foodMeals = state.consumedMeals[foodDate] || (demoDataEnabled && foodDate === todayKey ? consumedMeals : []);
+  const foodMeals = state.consumedMeals[foodDate] || [];
 
-  const allConsumedFoods = (state.consumedMeals[date] || (demoDataEnabled ? consumedMeals : [])).flatMap((meal) => meal.foods);
+  const allConsumedFoods = (state.consumedMeals[date] || []).flatMap((meal) => meal.foods);
   const summary = summarizeFoods(allConsumedFoods);
-  const water = state.water[waterHistoryDate] ?? (demoDataEnabled && waterHistoryDate === todayKey ? 1800 : 0);
+  const water = state.water[waterHistoryDate] ?? 0;
   const waterGoal = Number(state.profile.waterTargetMl) || 3000;
   const measureEntries = [...(state.measureEntries || [])].sort((a, b) => a.date.localeCompare(b.date));
   const latestMeasure = measureEntries[measureEntries.length - 1] || defaultState.measureEntries[defaultState.measureEntries.length - 1];
   const previousMeasure = measureEntries[measureEntries.length - 2] || latestMeasure;
   const latestBmi = computeBmi(latestMeasure.weight, latestMeasure.height);
   const previousBmi = computeBmi(previousMeasure.weight, previousMeasure.height);
-  const waterEntries = state.waterHistory?.[waterHistoryDate] || (demoDataEnabled && waterHistoryDate === todayKey
-    ? [
-        { id: "w1", label: "Copo de água", time: "14:20", amount: 250 },
-        { id: "w2", label: "Copo de água", time: "11:05", amount: 250 },
-        { id: "w3", label: "Garrafa Esportiva", time: "08:30", amount: 500 },
-      ]
-    : []);
+  const waterEntries = state.waterHistory?.[waterHistoryDate] || [];
   const remaining = state.profile.calorieTarget - summary.calories;
   const progress = Math.min(100, Math.max(0, (summary.calories / Math.max(1, state.profile.calorieTarget)) * 100));
   const planTotals = summarizeFoods(state.planMeals.flatMap((meal) => meal.foods));
@@ -1217,7 +1152,7 @@ function App() {
       action: () => setScreen("app-news"),
     },
     ].filter(Boolean);
-  const currentDayMeals = state.consumedMeals[date] || (demoDataEnabled ? consumedMeals : []);
+  const currentDayMeals = state.consumedMeals[date] || [];
   const recentActivities = [
     ...currentDayMeals.slice(0, 3).map((meal) => ({
       id: `recent-meal-${meal.id}`,
@@ -1567,31 +1502,11 @@ function App() {
       return;
     }
 
-    mutate((draft) => {
-      draft.auth = {
-        registered: true,
-        signedIn: true,
-        email,
-        password,
-      };
-      draft.profile.name = name;
-      draft.profile.email = email;
-      draft.profile.age = age;
-      draft.profile.weight = weight;
-      draft.profile.height = height;
-      draft.profile.targetWeight = goal === "lose" ? Math.max(0, weight - 5) : goal === "gain" ? weight + 3 : weight;
-      draft.profile.calorieTarget = calorieTarget || draft.profile.calorieTarget;
-      draft.profile.activeGoal = goalMeta.label;
-      draft.profile.planFocus = goalMeta.focus;
+    showAuthNotice(getSupabaseSetupMessage(), {
+      tone: "error",
+      title: "Autenticação indisponível",
     });
-
-    showAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, o cadastro continua em modo de demonstração.`, {
-      tone: "info",
-      title: "Modo de demonstração",
-    });
-    setLoginForm({ email, password: "" });
-    setSignupForm({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
-    setScreen("home");
+    return;
   }
 
   async function handleLoginSubmit() {
@@ -1633,21 +1548,12 @@ function App() {
       return;
     }
 
-    mutate((draft) => {
-      draft.auth = {
-        ...draft.auth,
-        registered: draft.auth?.registered ?? true,
-        email,
-        password,
-        signedIn: true,
-      };
-      if (!draft.profile.email) draft.profile.email = email;
+    showAuthNotice(getSupabaseSetupMessage(), {
+      tone: "error",
+      title: "Autenticação indisponível",
     });
-    showAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, o login continua em modo de demonstração.`, {
-      tone: "info",
-      title: "Modo de demonstração",
-    });
-    setScreen("home");
+    return;
+OLD = nil
   }
 
   async function handleRecoverSubmit(event) {
@@ -1671,9 +1577,9 @@ function App() {
         },
       );
     } else {
-      showAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, este fluxo segue em modo de demonstração.`, {
-        tone: "info",
-        title: "Modo de demonstração",
+      showAuthNotice(getSupabaseSetupMessage(), {
+        tone: "error",
+        title: "Autenticação indisponível",
       });
     }
 
@@ -1699,9 +1605,9 @@ function App() {
     }
 
     if (!authConfigured) {
-      showAuthNotice("A redefinição real depende do Supabase configurado.", {
-        tone: "info",
-        title: "Modo de demonstração",
+      showAuthNotice(getSupabaseSetupMessage(), {
+        tone: "error",
+        title: "Autenticação indisponível",
       });
       return;
     }
@@ -1716,6 +1622,7 @@ function App() {
     }
 
     recoveryFlowRef.current = false;
+    setPasswordRecoveryReady(false);
     if (globalThis.history?.replaceState) {
       globalThis.history.replaceState(null, "", globalThis.location?.pathname || "/");
     }
@@ -2140,7 +2047,7 @@ function App() {
   }
 
   function renderHome() {
-    const currentMeals = state.consumedMeals[date] || (demoDataEnabled ? consumedMeals : []);
+    const currentMeals = state.consumedMeals[date] || [];
     const recentMeal = currentMeals[1] || currentMeals[0];
     const recentWaterEntry = waterEntries[0] || null;
     const formattedConsumed = Math.round(summary.calories).toLocaleString("pt-BR");
@@ -2279,9 +2186,7 @@ function App() {
           </div>
 
           <div className="space-y-4 pb-5">
-            ${authConfigured
-              ? html`<div className="rounded-[10px] bg-[#eef6ff] border border-[#dbe7ff] p-4 text-sm text-[#111]">Bem-vinda ao MOS. Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>`
-              : html`<div className="rounded-[10px] bg-[#fff6f2] border border-[#f5ddd5] p-4 text-sm text-[#111]">${getSupabaseSetupMessage()}</div>`}
+            <div className="rounded-[10px] bg-[#eef6ff] border border-[#dbe7ff] p-4 text-sm text-[#111]">Bem-vinda ao MOS. Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>
             <button className="w-full h-16 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2" onClick=${() => openAuthScreen("signup")}>
               <span>Começar</span>
               <${Icon} name="arrow_forward" className="text-white" />
@@ -2565,7 +2470,11 @@ function App() {
         <header className="border-b border-black/10">
           <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
             <${AuthWordmark} />
-            <button onClick=${() => openAuthScreen("login")}>
+            <button onClick=${() => {
+              recoveryFlowRef.current = false;
+              setPasswordRecoveryReady(false);
+              openAuthScreen("login");
+            }}>
               <${Icon} name="close" className="text-[#111]" />
             </button>
           </div>
@@ -2672,7 +2581,7 @@ function App() {
             <h1 className="text-[2.6rem] leading-[0.94] font-black text-[#111]">Termos e condições</h1>
             <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">O MOS funciona como um organizador pessoal de alimentação, água, plano e medidas. Os dados ficam salvos localmente neste dispositivo.</p>
             <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">Você pode editar suas informações quando quiser. Ao sair da conta, seus dados continuam guardados localmente até que você escolha apagar manualmente.</p>
-            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">${authConfigured ? "Esta versão já está preparada para autenticação real com Supabase." : "Esta versão já está pronta para autenticação real, faltando apenas configurar as chaves do Supabase."}</p>
+            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">Seus dados ficam vinculados à sua conta e podem ser acessados com segurança sempre que você entrar no MOS.</p>
           </section>
           <button className="w-full h-14 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => openAuthScreen("welcome")}>
             Voltar
@@ -4131,6 +4040,8 @@ function App() {
     `;
   }
 
+  const shouldRenderResetPassword = authReady && passwordRecoveryReady;
+
   return html`
     <div>
       ${!authReady &&
@@ -4142,30 +4053,31 @@ function App() {
           </div>
         </div>
       `}
-      ${authReady && !isSignedIn && screen === "welcome" && renderWelcome()}
-      ${authReady && !isSignedIn && screen === "signup" && renderSignup()}
-      ${authReady && !isSignedIn && screen === "login" && renderLogin()}
-      ${authReady && !isSignedIn && screen === "recover-password" && renderRecoverPassword()}
-      ${authReady && !isSignedIn && screen === "reset-password" && renderResetPassword()}
-      ${authReady && !isSignedIn && screen === "legal" && renderLegal()}
+      ${shouldRenderResetPassword && renderResetPassword()}
+      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "welcome" && renderWelcome()}
+      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "signup" && renderSignup()}
+      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "login" && renderLogin()}
+      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "recover-password" && renderRecoverPassword()}
+      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "reset-password" && renderResetPassword()}
+      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "legal" && renderLegal()}
 
-      ${authReady && isSignedIn && screen === "home" && renderHome()}
-      ${authReady && isSignedIn && screen === "food" && renderFood()}
-      ${authReady && isSignedIn && screen === "food-detail" && renderFoodDetail()}
-      ${authReady && isSignedIn && screen === "ingredient-detail" && renderIngredientDetail()}
-      ${authReady && isSignedIn && screen === "plan" && renderPlan()}
-      ${authReady && isSignedIn && screen === "plan-config" && renderPlanConfig()}
-      ${authReady && isSignedIn && screen === "plan-detail" && renderPlanDetail()}
-      ${authReady && isSignedIn && screen === "supplements" && renderSupplements()}
-      ${authReady && isSignedIn && screen === "register-supplement" && renderRegisterSupplement()}
-      ${authReady && isSignedIn && screen === "supplement-detail" && renderSupplementDetail()}
-      ${authReady && isSignedIn && screen === "water" && renderWater()}
-      ${authReady && isSignedIn && screen === "profile" && renderProfile()}
-      ${authReady && isSignedIn && screen === "measures" && renderMeasures()}
-      ${authReady && isSignedIn && screen === "about-app" && renderAboutApp()}
-      ${authReady && isSignedIn && screen === "app-news" && renderAppNews()}
-      ${authReady && isSignedIn && screen === "history" && renderHistory()}
-      ${authReady && isSignedIn && screen === "search" && renderSearch()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "home" && renderHome()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "food" && renderFood()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "food-detail" && renderFoodDetail()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "ingredient-detail" && renderIngredientDetail()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan" && renderPlan()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan-config" && renderPlanConfig()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan-detail" && renderPlanDetail()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "supplements" && renderSupplements()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "register-supplement" && renderRegisterSupplement()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "supplement-detail" && renderSupplementDetail()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "water" && renderWater()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "profile" && renderProfile()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "measures" && renderMeasures()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "about-app" && renderAboutApp()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "app-news" && renderAppNews()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "history" && renderHistory()}
+      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "search" && renderSearch()}
 
       ${authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} />`}
       ${authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
