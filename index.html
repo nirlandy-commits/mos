@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MOS (Meter o Shape)</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+      window.MOS_SUPABASE_CONFIG = {
+        url: "https://rxuptpugkqwzhmvbfvmf.supabase.co",
+        anonKey: "sb_publishable_ATSLo3fkDv480k6GSNUxEw_jYUGbkw6",
+      };
+
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary-fixed-dim": "#c6c6c9",
+              "surface-bright": "#f9f9f9",
+              "secondary-fixed-dim": "#bbc3ff",
+              "on-surface-variant": "#454653",
+              "tertiary-fixed": "#ffdbd1",
+              "outline-variant": "#c5c5d5",
+              "inverse-surface": "#2f3131",
+              "on-surface": "#1a1c1c",
+              "tertiary": "#902200",
+              "on-primary": "#ffffff",
+              "surface": "#f9f9f9",
+              "on-error": "#ffffff",
+              "on-error-container": "#93000a",
+              "surface-container-low": "#f3f3f4",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "secondary": "#4053c3",
+              "on-tertiary-container": "#ffd8ce",
+              "on-primary-container": "#dfdfe2",
+              "inverse-primary": "#c6c6c9",
+              "on-secondary-fixed-variant": "#2539aa",
+              "surface-variant": "#e2e2e2",
+              "on-tertiary-fixed-variant": "#882000",
+              "primary": "#494b4d",
+              "on-primary-fixed-variant": "#454749",
+              "background": "#f9f9f9",
+              "secondary-container": "#7a8dff",
+              "on-secondary": "#ffffff",
+              "surface-dim": "#dadada",
+              "surface-container-highest": "#e2e2e2",
+              "secondary-fixed": "#dee0ff",
+              "surface-tint": "#5d5e61",
+              "primary-container": "#616365",
+              "on-primary-fixed": "#1a1c1e",
+              "on-tertiary-fixed": "#3b0900",
+              "surface-container-lowest": "#ffffff",
+              "surface-container": "#eeeeee",
+              "tertiary-fixed-dim": "#ffb5a1",
+              "inverse-on-surface": "#f0f1f1",
+              "on-tertiary": "#ffffff",
+              "outline": "#757684",
+              "primary-fixed": "#e2e2e5",
+              "on-background": "#1a1c1c",
+              "surface-container-high": "#e8e8e8",
+              "on-secondary-container": "#001c8e",
+              "tertiary-container": "#b53610",
+              "on-secondary-fixed": "#000f5d",
+              "jet-black": "#292B2D",
+              "royal-blue": "#4558C8",
+              "salmon-orange": "#EF5F37",
+              "purple-recovery": "#D9B8F3",
+              "old-flax": "#DFF37D",
+              "custom-purple": "#D9B8F3",
+              "custom-flax": "#DFF37D",
+              "custom-orange": "#EF5F37",
+              "custom-jet": "#292B2D",
+              "soft-purple": "#D9B8F3"
+            },
+            fontFamily: {
+              headline: ["Sora"],
+              body: ["Sora"],
+              label: ["Sora"]
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "10px",
+              xl: "10px",
+              "2xl": "10px",
+              "3xl": "10px",
+              full: "9999px"
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="./src/styles.css?v=20260330-44" />
+  </head>
+  <body class="bg-background text-on-surface">
+    <div id="app"></div>
+    <script type="module" src="./src/main.js?v=20260330-44"></script>
+  </body>
+</html>
