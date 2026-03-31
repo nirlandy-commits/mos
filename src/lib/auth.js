@@ -41,6 +41,50 @@ export function getSupabaseSetupMessage() {
 
 let supabaseClient = null;
 
+export function normalizeAppMessage(input) {
+  const message = String(input || "").trim();
+  if (!message) return "";
+
+  const exactMap = {
+    "Email not confirmed": "Seu e-mail ainda não foi confirmado. Abra sua caixa de entrada e clique no link de confirmação antes de entrar.",
+    "Invalid login credentials": "E-mail ou senha inválidos.",
+    "User already registered": "Já existe uma conta cadastrada com este e-mail.",
+    "Signup requires a valid password": "Defina uma senha válida para concluir o cadastro.",
+    "Password should be at least 6 characters": "A senha precisa ter pelo menos 6 caracteres.",
+    "Unable to validate email address: invalid format": "Digite um e-mail válido.",
+    "Failed to fetch": "Não foi possível conectar ao servidor agora. Verifique sua internet e tente novamente.",
+    "Email rate limit exceeded": "Você fez muitas tentativas em pouco tempo. Aguarde um pouco antes de tentar novamente.",
+  };
+
+  if (exactMap[message]) return exactMap[message];
+
+  if (message.toLowerCase().includes("email not confirmed")) {
+    return "Seu e-mail ainda não foi confirmado. Abra sua caixa de entrada e clique no link de confirmação antes de entrar.";
+  }
+
+  if (message.toLowerCase().includes("invalid login credentials")) {
+    return "E-mail ou senha inválidos.";
+  }
+
+  if (message.toLowerCase().includes("already registered")) {
+    return "Já existe uma conta cadastrada com este e-mail.";
+  }
+
+  if (message.toLowerCase().includes("password should be at least")) {
+    return "A senha precisa ter pelo menos 6 caracteres.";
+  }
+
+  if (message.toLowerCase().includes("unable to validate email address")) {
+    return "Digite um e-mail válido.";
+  }
+
+  if (message.toLowerCase().includes("rate limit")) {
+    return "Você fez muitas tentativas em pouco tempo. Aguarde um pouco antes de tentar novamente.";
+  }
+
+  return message;
+}
+
 export function getSupabaseClient() {
   if (!isSupabaseConfigured()) return null;
   if (supabaseClient) return supabaseClient;

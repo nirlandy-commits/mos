@@ -17,6 +17,7 @@ import {
   getCurrentAuthState,
   getSupabaseSetupMessage,
   isSupabaseConfigured,
+  normalizeAppMessage,
   saveMeasureEntry,
   saveConsumedFoodItem,
   savePlanFoodItem,
@@ -834,6 +835,8 @@ function App() {
   const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "", confirmPassword: "", acceptedTerms: false });
   const [recoverEmail, setRecoverEmail] = useState("");
   const [authNotice, setAuthNotice] = useState("");
+  const [authNoticeTitle, setAuthNoticeTitle] = useState("");
+  const [authNoticeTone, setAuthNoticeTone] = useState("error");
   const [authBusy, setAuthBusy] = useState(false);
   const [authReady, setAuthReady] = useState(() => !isSupabaseConfigured());
   const authConfigured = isSupabaseConfigured();
@@ -851,6 +854,36 @@ function App() {
 
   function isDraftDirty(key) {
     return draftGuard.key === key && draftGuard.dirty;
+  }
+
+  function clearAuthNotice() {
+    setAuthNotice("");
+    setAuthNoticeTitle("");
+    setAuthNoticeTone("error");
+  }
+
+  function showAuthNotice(message, { tone = "error", title = "" } = {}) {
+    setAuthNotice(normalizeAppMessage(message));
+    setAuthNoticeTitle(title);
+    setAuthNoticeTone(tone);
+  }
+
+  function renderAuthNoticeCard() {
+    if (!authNotice) return null;
+
+    const palette =
+      authNoticeTone === "info"
+        ? "bg-[#eef6ff] border border-[#dbe7ff] text-[#123a72]"
+        : authNoticeTone === "success"
+          ? "bg-[#eefaf2] border border-[#d4eddc] text-[#184f2d]"
+          : "bg-[#fff6f2] border border-[#f5ddd5] text-[#7a2d1b]";
+
+    return html`
+      <div className=${`rounded-[10px] p-4 space-y-2 ${palette}`}>
+        ${authNoticeTitle ? html`<p className="text-sm font-bold">${authNoticeTitle}</p>` : null}
+        <p className="text-sm leading-relaxed">${authNotice}</p>
+      </div>
+    `;
   }
 
   function confirmDiscard(action, message = "Deseja sair da página? As alterações não salvas serão perdidas.") {
@@ -1029,7 +1062,7 @@ function App() {
       if (!active) return;
 
       if (result.error) {
-        setAuthNotice("Não foi possível verificar sua sessão agora. Revise a configuração do Supabase.");
+        showAuthNotice("Não foi possível verificar sua sessão agora. Revise a configuração do Supabase.");
         setAuthReady(true);
         return;
       }
@@ -1351,14 +1384,14 @@ function App() {
           confirmLabel: "Confirmar",
           onConfirm: async () => {
             setDrawerOpen(false);
-            setAuthNotice("");
+            clearAuthNotice();
             setLoginForm({ email: state.auth?.email || state.profile.email || "", password: "" });
             if (authConfigured) {
               setAuthBusy(true);
               const result = await signOutUser();
               setAuthBusy(false);
               if (!result.ok) {
-                setAuthNotice(result.error?.message || "Não foi possível sair da conta agora.");
+                showAuthNotice(result.error?.message || "Não foi possível sair da conta agora.");
                 return;
               }
             }
@@ -1382,7 +1415,7 @@ function App() {
   }
 
   function openAuthScreen(nextScreen) {
-    setAuthNotice("");
+    clearAuthNotice();
     setScreen(nextScreen);
   }
 
@@ -1395,7 +1428,7 @@ function App() {
 
     if (!name || !email || !password || !confirmPassword || !signupForm.acceptedTerms) return;
     if (password !== confirmPassword) {
-      setAuthNotice("As senhas precisam ser iguais para concluir o cadastro.");
+      showAuthNotice("As senhas precisam ser iguais para concluir o cadastro.");
       return;
     }
 
@@ -1405,7 +1438,7 @@ function App() {
       setAuthBusy(false);
 
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível criar sua conta agora.");
+        showAuthNotice(result.error?.message || "Não foi possível criar sua conta agora.");
         return;
       }
 
@@ -1424,14 +1457,17 @@ function App() {
       setSignupForm({ name: "", email: "", password: "", confirmPassword: "", acceptedTerms: false });
 
       if (result.needsEmailConfirmation) {
-        setAuthNotice("Conta criada. Confira seu e-mail para confirmar o cadastro antes de entrar.");
+        showAuthNotice(
+          `Enviamos um link de confirmação para ${email}. Abra seu e-mail e confirme a conta antes de entrar no MOS. Se não encontrar a mensagem, verifique a pasta de spam ou promoções.`,
+          { tone: "info", title: "Confirme seu e-mail" }
+        );
         setScreen("login");
       } else {
         const hydrated = await getCurrentAuthState();
         if (hydrated.session && hydrated.user) {
           applyHydratedAuthState(hydrated, email);
         }
-        setAuthNotice("");
+        clearAuthNotice();
         setScreen("home");
       }
       return;
@@ -1448,7 +1484,10 @@ function App() {
       draft.profile.email = email;
     });
 
-    setAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, o cadastro continua em modo de demonstração.`);
+    showAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, o cadastro continua em modo de demonstração.`, {
+      tone: "info",
+      title: "Modo de demonstração",
+    });
     setLoginForm({ email, password: "" });
     setSignupForm({ name: "", email: "", password: "", confirmPassword: "", acceptedTerms: false });
     setScreen("home");
@@ -1466,7 +1505,7 @@ function App() {
       setAuthBusy(false);
 
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível entrar agora.");
+        showAuthNotice(result.error?.message || "Não foi possível entrar agora.");
         return;
       }
 
@@ -1488,7 +1527,7 @@ function App() {
           draft.profile.birthday = result.profile?.birth_date || draft.profile.birthday;
         });
       }
-      setAuthNotice("");
+      clearAuthNotice();
       setScreen("home");
       return;
     }
@@ -1503,7 +1542,10 @@ function App() {
       };
       if (!draft.profile.email) draft.profile.email = email;
     });
-    setAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, o login continua em modo de demonstração.`);
+    showAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, o login continua em modo de demonstração.`, {
+      tone: "info",
+      title: "Modo de demonstração",
+    });
     setScreen("home");
   }
 
@@ -1517,12 +1559,18 @@ function App() {
       const result = await sendRecoverEmail(email);
       setAuthBusy(false);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível enviar o link agora.");
+        showAuthNotice(result.error?.message || "Não foi possível enviar o link agora.");
         return;
       }
-      setAuthNotice("Se existir uma conta com esse e-mail, o link de recuperação será enviado.");
+      showAuthNotice("Se existir uma conta com esse e-mail, o link de recuperação será enviado.", {
+        tone: "info",
+        title: "Verifique seu e-mail",
+      });
     } else {
-      setAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, este fluxo segue em modo de demonstração.`);
+      showAuthNotice(`${getSupabaseSetupMessage()} Enquanto isso, este fluxo segue em modo de demonstração.`, {
+        tone: "info",
+        title: "Modo de demonstração",
+      });
     }
 
     setScreen("login");
@@ -1531,7 +1579,10 @@ function App() {
   }
 
   function handleSocialLogin(provider) {
-    setAuthNotice(`Login com ${provider} estará disponível em breve. Use e-mail e senha para entrar no MOS por enquanto.`);
+    showAuthNotice(`Login com ${provider} estará disponível em breve. Use e-mail e senha para entrar no MOS por enquanto.`, {
+      tone: "info",
+      title: "Em breve",
+    });
   }
 
   function openFoodDetailItem(food, back) {
@@ -1554,12 +1605,12 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar a refeição.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar a refeição.");
         return;
       }
       const result = await createConsumedMealEntry(user.id, foodDate, meal);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível registrar a refeição agora.");
+        showAuthNotice(result.error?.message || "Não foi possível registrar a refeição agora.");
         return;
       }
       Object.assign(meal, result.meal);
@@ -1595,13 +1646,13 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar suas medidas.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar suas medidas.");
         return;
       }
 
       const result = await saveMeasureEntry(user.id, entry);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível salvar suas medidas agora.");
+        showAuthNotice(result.error?.message || "Não foi possível salvar suas medidas agora.");
         return;
       }
     }
@@ -1637,7 +1688,7 @@ function App() {
       const user = await getAuthenticatedUser();
       const result = await createFeedbackEntry(user?.id || null, { section, message });
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível enviar o feedback agora.");
+        showAuthNotice(result.error?.message || "Não foi possível enviar o feedback agora.");
         return;
       }
       nextFeedback = result.feedback;
@@ -1668,13 +1719,13 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar seu perfil.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar seu perfil.");
         return;
       }
 
       const result = await saveProfileData(user.id, nextProfile);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível salvar seu perfil agora.");
+        showAuthNotice(result.error?.message || "Não foi possível salvar seu perfil agora.");
         return;
       }
     }
@@ -1703,7 +1754,7 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar água.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar água.");
         return;
       }
 
@@ -1715,7 +1766,7 @@ function App() {
       });
 
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível registrar água agora.");
+        showAuthNotice(result.error?.message || "Não foi possível registrar água agora.");
         return;
       }
 
@@ -1744,12 +1795,12 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para criar a refeição do plano.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para criar a refeição do plano.");
         return;
       }
       const result = await createPlanMealEntry(user.id, meal, state.planMeals.length);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível criar a refeição do plano agora.");
+        showAuthNotice(result.error?.message || "Não foi possível criar a refeição do plano agora.");
         return;
       }
       Object.assign(meal, result.meal);
@@ -1776,7 +1827,7 @@ function App() {
           planNotes,
         });
         if (!result?.ok) {
-          setAuthNotice("Não foi possível salvar o plano agora.");
+          showAuthNotice("Não foi possível salvar o plano agora.");
           return;
         }
       }
@@ -1806,13 +1857,13 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar o suplemento.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar o suplemento.");
         return;
       }
 
       const result = await createSupplementEntry(user.id, nextSupplement);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível registrar o suplemento agora.");
+        showAuthNotice(result.error?.message || "Não foi possível registrar o suplemento agora.");
         return;
       }
       Object.assign(nextSupplement, result.supplement);
@@ -1840,13 +1891,13 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para editar o suplemento.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para editar o suplemento.");
         return;
       }
 
       const result = await updateSupplementEntry(user.id, supplementId, updatedSupplement);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível salvar o suplemento agora.");
+        showAuthNotice(result.error?.message || "Não foi possível salvar o suplemento agora.");
         return;
       }
       Object.assign(updatedSupplement, result.supplement);
@@ -1881,7 +1932,7 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar o alimento.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar o alimento.");
         return;
       }
 
@@ -1891,7 +1942,7 @@ function App() {
           : await saveConsumedFoodItem(user.id, editor.mealId, food);
 
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível salvar o alimento agora.");
+        showAuthNotice(result.error?.message || "Não foi possível salvar o alimento agora.");
         return;
       }
 
@@ -1913,12 +1964,12 @@ function App() {
     if (authConfigured) {
       const user = await getAuthenticatedUser();
       if (!user) {
-        setAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o alimento.");
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o alimento.");
         return;
       }
       const result = target === "plan" ? await deletePlanFoodItem(user.id, foodId) : await deleteConsumedFoodItem(user.id, foodId);
       if (!result.ok) {
-        setAuthNotice(result.error?.message || "Não foi possível apagar o alimento agora.");
+        showAuthNotice(result.error?.message || "Não foi possível apagar o alimento agora.");
         return;
       }
     }
@@ -2112,9 +2163,7 @@ function App() {
             <p className="text-[1.2rem] leading-snug text-[#6e7178]">Junte-se à plataforma MOS para acessar sua rotina de forma organizada e visual.</p>
           </section>
 
-          ${authNotice
-            ? html`<div className="rounded-[10px] bg-[#fff6f2] border border-[#f5ddd5] p-4 text-sm text-[#111]">${authNotice}</div>`
-            : null}
+          ${renderAuthNoticeCard()}
 
           <form className="space-y-5" onSubmit=${handleSignupSubmit}>
             <div className="space-y-2">
@@ -2182,9 +2231,7 @@ function App() {
             <h1 className="text-[3.2rem] leading-[0.93] font-black text-[#111]">Acesse sua conta</h1>
           </section>
 
-          ${authNotice
-            ? html`<div className="rounded-[10px] bg-[#fff6f2] border border-[#f5ddd5] p-4 text-sm text-[#111]">${authNotice}</div>`
-            : null}
+          ${renderAuthNoticeCard()}
 
           <div className="space-y-6">
             <div className="space-y-2">
@@ -2260,9 +2307,7 @@ function App() {
             <p className="text-[1.2rem] leading-snug text-[#6e7178]">Digite seu e-mail para enviarmos o link de recuperação.</p>
           </section>
 
-          ${authNotice
-            ? html`<div className="rounded-[10px] bg-[#eef6ff] border border-[#dbe7ff] p-4 text-sm text-[#111]">${authNotice}</div>`
-            : null}
+          ${renderAuthNoticeCard()}
 
           <form className="space-y-6" onSubmit=${handleRecoverSubmit}>
             <div className="space-y-2">
@@ -2402,12 +2447,12 @@ function App() {
                 if (authConfigured) {
                   const user = await getAuthenticatedUser();
                   if (!user) {
-                    setAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar a refeição.");
+                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar a refeição.");
                     return;
                   }
                   const result = await deleteConsumedMealEntry(user.id, selectedConsumed.id);
                   if (!result.ok) {
-                    setAuthNotice(result.error?.message || "Não foi possível apagar a refeição agora.");
+                    showAuthNotice(result.error?.message || "Não foi possível apagar a refeição agora.");
                     return;
                   }
                 }
@@ -2668,12 +2713,12 @@ function App() {
                                 if (authConfigured) {
                                   const user = await getAuthenticatedUser();
                                   if (!user) {
-                                    setAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar a refeição do plano.");
+                                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar a refeição do plano.");
                                     return;
                                   }
                                   const result = await deletePlanMealEntry(user.id, meal.id);
                                   if (!result.ok) {
-                                    setAuthNotice(result.error?.message || "Não foi possível apagar a refeição do plano agora.");
+                                    showAuthNotice(result.error?.message || "Não foi possível apagar a refeição do plano agora.");
                                     return;
                                   }
                                 }
@@ -3042,12 +3087,12 @@ function App() {
                                 if (authConfigured) {
                                   const user = await getAuthenticatedUser();
                                   if (!user) {
-                                    setAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o registro.");
+                                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o registro.");
                                     return;
                                   }
                                   const result = await deleteWaterEntry(user.id, entry.id);
                                   if (!result.ok) {
-                                    setAuthNotice(result.error?.message || "Não foi possível apagar o registro agora.");
+                                    showAuthNotice(result.error?.message || "Não foi possível apagar o registro agora.");
                                     return;
                                   }
                                 }
@@ -3734,12 +3779,12 @@ function App() {
                 if (authConfigured) {
                   const user = await getAuthenticatedUser();
                   if (!user) {
-                    setAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
+                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
                     return;
                   }
                   const result = await deleteSupplementEntry(user.id, supplement.id);
                   if (!result.ok) {
-                    setAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
+                    showAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
                     return;
                   }
                 }
@@ -3807,7 +3852,7 @@ function App() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm leading-relaxed text-[#292B2D]">${authNotice}</p>
               </div>
-              <button className="shrink-0 active:scale-95 transition-transform" onClick=${() => setAuthNotice("")}>
+              <button className="shrink-0 active:scale-95 transition-transform" onClick=${clearAuthNotice}>
                 <${Icon} name="close" className="text-[#292B2D]/60 text-[1.15rem]" />
               </button>
             </div>
