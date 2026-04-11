@@ -97,9 +97,9 @@ const defaultState = {
   profile: {
     calorieTarget: 2400,
     waterTargetMl: 3000,
-    activeGoal: "Plano atual: Perder 5kg",
-    planFocus: "Déficit calórico com mais constância",
-    planNotes: "Monte refeições simples, sustentáveis e fáceis de repetir ao longo da semana.",
+    activeGoal: "",
+    planFocus: "",
+    planNotes: "",
     name: "Nirlandy Leitão Pinheiro",
     email: "",
     city: "",
@@ -3611,10 +3611,11 @@ OLD = nil
   }
 
   function renderPlanConfig() {
-    const planFocus = state.profile.planFocus || "Déficit calórico com mais constância";
-    const planNotes = state.profile.planNotes || "Defina o foco do plano, ajuste o objetivo principal e use a navegação abaixo para criar refeições ou revisar o histórico.";
+    const planFocus = state.profile.planFocus || "";
+    const planNotes = state.profile.planNotes || "";
     const planMealCount = state.planMeals.length;
     const averageCalories = planMealCount ? Math.round(planTotals.calories / planMealCount) : 0;
+    const hasPlanConfigured = Boolean(state.profile.activeGoal?.trim()) || planMealCount > 0;
     const planConfigDirty = isDraftDirty("plan-config");
     const guardPlanConfigNavigation = (action) =>
       confirmDiscard(action, "Deseja sair da página? As alterações do plano ainda não foram salvas.");
@@ -3633,8 +3634,8 @@ OLD = nil
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <span className="text-sm text-white/65">Painel do plano</span>
-                <h1 className="text-[1.8rem] font-bold leading-tight">${state.profile.activeGoal}</h1>
-                <p className="text-sm leading-relaxed text-white/72">${planFocus}</p>
+                <h1 className="text-[1.8rem] font-bold leading-tight">${hasPlanConfigured ? state.profile.activeGoal : "Nenhum plano configurado"}</h1>
+                <p className="text-sm leading-relaxed text-white/72">${hasPlanConfigured ? planFocus : "Crie seu primeiro plano para começar a organizar suas refeições."}</p>
               </div>
               <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center shrink-0">
                 <${Icon} name="dashboard" className="text-white text-[1.65rem]" />
@@ -3717,7 +3718,12 @@ OLD = nil
                       </div>
                     `,
                   )
-                : html`<p className="py-2 text-sm text-on-surface-variant">Nenhuma refeição cadastrada no plano ainda.</p>`}
+                : html`
+                  <div className="py-3 px-4 bg-white">
+                    <p className="text-sm text-on-surface-variant">Nenhuma refeição cadastrada no plano ainda.</p>
+                    <p className="text-[0.78rem] text-on-surface-variant mt-1">Use o botão abaixo para adicionar sua primeira refeição.</p>
+                  </div>
+                `}
             </div>
           </section>
 
