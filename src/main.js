@@ -2881,32 +2881,49 @@ OLD = nil
           <section className="space-y-4" style=${{ marginTop: "14px" }}>
             <h3 className="text-lg font-bold text-jet-black">Atividade Recente</h3>
             <div className="bg-white rounded-xl overflow-hidden shadow-[0_12px_24px_rgba(41,43,45,0.04)] border border-white/80">
-              <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer text-left" onClick=${() => setScreen("food")}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
-                    <${Icon} name="lunch_dining" className="text-jet-black" />
+              ${recentMeal || recentWaterEntry
+                ? html`
+                  ${recentMeal
+                    ? html`
+                      <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer text-left" onClick=${() => setScreen("food")}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
+                            <${Icon} name="lunch_dining" className="text-jet-black" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-jet-black">${recentMeal.title || recentMeal.name}</p>
+                            <p className="text-[0.6875rem] font-medium text-on-surface-variant">Hoje, ${recentMeal.time} • ${Math.round(summarizeFoods(recentMeal.foods || []).calories || 0)} kcal</p>
+                          </div>
+                        </div>
+                        <${Icon} name="chevron_right" className="text-on-surface-variant" />
+                      </button>
+                    `
+                    : null}
+                  ${recentWaterEntry
+                    ? html`
+                      <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer ${recentMeal ? "border-t border-surface-container-low" : ""} text-left" onClick=${() => setScreen("water")}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-lg bg-royal-blue/10 flex items-center justify-center">
+                            <${Icon} name="water_full" className="text-royal-blue" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-jet-black">${recentWaterEntry.label}</p>
+                            <p className="text-[0.6875rem] font-medium text-on-surface-variant">
+                              Hoje, ${recentWaterEntry.time} • ${recentWaterEntry.amount} ml
+                            </p>
+                          </div>
+                        </div>
+                        <${Icon} name="chevron_right" className="text-on-surface-variant" />
+                      </button>
+                    `
+                    : null}
+                `
+                : html`
+                  <div className="p-4 text-left">
+                    <p className="font-bold text-jet-black">Nenhuma atividade registrada ainda.</p>
+                    <p className="text-[0.8125rem] text-on-surface-variant mt-1">Assim que você registrar uma refeição ou hidratação, ela aparecerá aqui.</p>
                   </div>
-                  <div>
-                    <p className="font-bold text-jet-black">${recentMeal?.title || "Almoço Executivo"}</p>
-                    <p className="text-[0.6875rem] font-medium text-on-surface-variant">Hoje, ${recentMeal?.time || "13:05"} • ${Math.round(summarizeFoods(recentMeal?.foods || []).calories || 640)} kcal</p>
-                  </div>
-                </div>
-                <${Icon} name="chevron_right" className="text-on-surface-variant" />
-              </button>
-              <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer border-t border-surface-container-low text-left" onClick=${() => setScreen("water")}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-royal-blue/10 flex items-center justify-center">
-                    <${Icon} name="water_full" className="text-royal-blue" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-jet-black">${recentWaterEntry?.label || "Água registrada"}</p>
-                    <p className="text-[0.6875rem] font-medium text-on-surface-variant">
-                      ${recentWaterEntry ? `Hoje, ${recentWaterEntry.time} • ${recentWaterEntry.amount} ml` : "Registre sua hidratação do dia."}
-                    </p>
-                  </div>
-                </div>
-                <${Icon} name="chevron_right" className="text-on-surface-variant" />
-              </button>
+                `}
             </div>
           </section>
         </main>
