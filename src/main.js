@@ -3879,36 +3879,43 @@ OLD = nil
           </section>
 
           <section className="space-y-3">
-            ${trainingPlans.map((plan) => {
-              const completedToday = trainingHistory.some((entry) => entry.planId === plan.id && entry.date === todayKey);
-              return html`
-                <button
-                  className="${TRAINING_THEME.surface} p-5 rounded-xl w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-4"
-                  onClick=${() => openTrainingDetail(plan.id)}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <span className="text-[0.6875rem] ${TRAINING_THEME.accentText}">Treino</span>
-                      <h3 className="text-[1.25rem] font-bold text-jet-black">${plan.name}</h3>
-                    </div>
-                    ${
-                      completedToday
-                        ? html`<div className="w-11 h-11 rounded-full ${TRAINING_THEME.accentSurface} flex items-center justify-center shrink-0"><${Icon} name="check" className="text-[#101846]" /></div>`
-                        : html`<${Icon} name="arrow_forward" className="${TRAINING_THEME.accentText} text-[1.75rem] shrink-0" />`
-                    }
-                  </div>
-                  <div className="flex items-center gap-4 text-sm ${TRAINING_THEME.mutedText}">
-                    <span>${plan.estimatedMinutes} min</span>
-                    <span>${plan.exercises.length} exercícios</span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[0.75rem] font-semibold ${TRAINING_THEME.accentText}">Exercícios do treino</p>
-                    <p className="text-sm ${TRAINING_THEME.mutedText}">${summarizeExerciseNames(plan)}</p>
-                  </div>
-                  ${completedToday ? html`<p className="text-sm ${TRAINING_THEME.accentText} font-bold">Treino concluído hoje</p>` : null}
-                </button>
-              `;
-            })}
+            ${trainingPlans.length
+              ? trainingPlans.map((plan) => {
+                  const completedToday = trainingHistory.some((entry) => entry.planId === plan.id && entry.date === todayKey);
+                  return html`
+                    <button
+                      className="${TRAINING_THEME.surface} p-5 rounded-xl w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-4"
+                      onClick=${() => openTrainingDetail(plan.id)}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <span className="text-[0.6875rem] ${TRAINING_THEME.accentText}">Treino</span>
+                          <h3 className="text-[1.25rem] font-bold text-jet-black">${plan.name}</h3>
+                        </div>
+                        ${
+                          completedToday
+                            ? html`<div className="w-11 h-11 rounded-full ${TRAINING_THEME.accentSurface} flex items-center justify-center shrink-0"><${Icon} name="check" className="text-[#101846]" /></div>`
+                            : html`<${Icon} name="arrow_forward" className="${TRAINING_THEME.accentText} text-[1.75rem] shrink-0" />`
+                        }
+                      </div>
+                      <div className="flex items-center gap-4 text-sm ${TRAINING_THEME.mutedText}">
+                        <span>${plan.estimatedMinutes} min</span>
+                        <span>${plan.exercises.length} exercícios</span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[0.75rem] font-semibold ${TRAINING_THEME.accentText}">Exercícios do treino</p>
+                        <p className="text-sm ${TRAINING_THEME.mutedText}">${summarizeExerciseNames(plan)}</p>
+                      </div>
+                      ${completedToday ? html`<p className="text-sm ${TRAINING_THEME.accentText} font-bold">Treino concluído hoje</p>` : null}
+                    </button>
+                  `;
+                })
+              : html`
+                <div className="bg-white border border-outline-variant rounded-xl p-5 text-jet-black">
+                  <p className="font-bold text-base">Você ainda não criou um treino.</p>
+                  <p className="text-sm text-on-surface-variant mt-1">Crie seu primeiro treino para começar a acompanhar suas sessões e evoluções.</p>
+                </div>
+              `}
           </section>
 
           <button className=${getPrimaryActionClass(false)} onClick=${openTrainingCreate}>
