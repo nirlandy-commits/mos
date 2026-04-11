@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>MOS (Meter o Shape)</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -10,6 +10,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <script>
+      window.MOS_SUPABASE_CONFIG = {
+        url: "https://rxuptpugkqwzhmvbfvmf.supabase.co",
+        anonKey: "sb_publishable_ATSLo3fkDv480k6GSNUxEw_jYUGbkw6",
+        redirectUrl: "https://nirlandy-commits.github.io/mos-valendo/",
+      };
+
       tailwind.config = {
         darkMode: "class",
         theme: {
@@ -62,7 +68,7 @@
               "on-secondary-container": "#001c8e",
               "tertiary-container": "#b53610",
               "on-secondary-fixed": "#000f5d",
-              "jet-black": "#101846",
+              "jet-black": "#292B2D",
               "royal-blue": "#4558C8",
               "salmon-orange": "#EF5F37",
               "purple-recovery": "#D9B8F3",
@@ -70,7 +76,7 @@
               "custom-purple": "#D9B8F3",
               "custom-flax": "#DFF37D",
               "custom-orange": "#EF5F37",
-              "custom-jet": "#101846",
+              "custom-jet": "#292B2D",
               "soft-purple": "#D9B8F3"
             },
             fontFamily: {
@@ -90,10 +96,10 @@
         }
       };
     </script>
-    <link rel="stylesheet" href="./src/styles.css?v=20260410-49" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260331-57" />
   </head>
   <body class="bg-background text-on-surface">
     <div id="app"></div>
-    <script type="module" src="./src/main.js?v=20260410-49"></script>
+    <script type="module" src="./src/main.js?v=20260331-57"></script>
   </body>
 </html>
