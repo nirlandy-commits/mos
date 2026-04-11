@@ -1,51 +1,41 @@
-import React, { useEffect, useMemo, useRef, useState } from "https://esm.sh/react@18";
+import React, { useEffect, useMemo, useState } from "https://esm.sh/react@18";
 import { createRoot } from "https://esm.sh/react-dom@18/client";
 import htm from "https://esm.sh/htm@3";
-import {
-  createConsumedMealEntry,
-  createFeedbackEntry,
-  createPlanMealEntry,
-  createSupplementEntry,
-  createWaterEntry,
-  deleteConsumedFoodItem,
-  deleteConsumedMealEntry,
-  deletePlanFoodItem,
-  deletePlanMealEntry,
-  deleteSupplementEntry,
-  deleteWaterEntry,
-  getAuthenticatedUser,
-  getCurrentAuthState,
-  getSupabaseSetupMessage,
-  isSupabaseConfigured,
-  normalizeAppMessage,
-  saveMeasureEntry,
-  saveConsumedFoodItem,
-  savePlanFoodItem,
-  saveProfileData,
-  sendRecoverEmail,
-  signInWithEmail,
-  signOutUser,
-  signUpWithEmail,
-  subscribeToAuthChanges,
-  updatePassword,
-  updateSupplementEntry,
-} from "./lib/auth.js";
 
 const html = htm.bind(React.createElement);
 
-function isRecoveryRedirect() {
-  try {
-    const hash = globalThis.location?.hash?.replace(/^#/, "") || "";
-    if (!hash) return false;
-    const params = new URLSearchParams(hash);
-    return params.get("type") === "recovery";
-  } catch {
-    return false;
-  }
-}
-
 const STORAGE_KEY = "mos-stitch-faithful";
-const FORCE_LOGIN_KEY = "mos-force-login";
+
+const TRAINING_MUSCLE_GROUPS = [
+  {
+    label: "SUPERIOR",
+    options: ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Antebraço"],
+  },
+  {
+    label: "CORE",
+    options: ["Abdômen"],
+  },
+  {
+    label: "INFERIOR",
+    options: ["Glúteos", "Quadríceps", "Posterior de coxa", "Panturrilha"],
+  },
+  {
+    label: "GERAL",
+    options: ["Corpo inteiro", "Cardio", "Outro"],
+  },
+];
+
+const TRAINING_MUSCLE_OPTIONS = TRAINING_MUSCLE_GROUPS.flatMap((group) => group.options);
+
+const TRAINING_THEME = {
+  surface: "bg-white border border-[#e6e8ef] text-[#0F172A] shadow-[0_12px_22px_rgba(15,23,42,0.08)]",
+  surfaceSoft: "bg-surface-container-low border border-[#e6e8ef] text-[#0F172A]",
+  surfaceMuted: "bg-[#f2f3f5] border border-[#e6e8ef] text-[#0F172A]",
+  accentText: "text-[#0F172A]",
+  accentSurface: "bg-surface-container-low text-[#0F172A]",
+  mutedText: "text-[#0F172A]/70",
+  mutedBorder: "border-[#e6e8ef]",
+};
 
 const planImages = {
   breakfast:
@@ -59,24 +49,17 @@ const planImages = {
 const defaultState = {
   auth: {
     registered: false,
-    signedIn: false,
+    signedIn: true,
     email: "",
     password: "",
   },
   profile: {
     calorieTarget: 2400,
-    waterTargetMl: 3000,
     activeGoal: "Plano atual: Perder 5kg",
-    planFocus: "Déficit calórico com mais constância",
-    planNotes: "Monte refeições simples, sustentáveis e fáceis de repetir ao longo da semana.",
     name: "Nirlandy Leitão Pinheiro",
     email: "",
     city: "",
     birthday: "",
-    weight: 0,
-    height: 0,
-    age: 0,
-    targetWeight: 0,
   },
   feedbackEntries: [],
   measureEntries: [
@@ -153,11 +136,35 @@ const defaultState = {
     },
   ],
   supplements: [
-    { id: "s1", period: "Pós-treino", category: "Performance", time: "18:00", name: "Creatina", dosage: "5 gramas", instruction: "Usar 1x por dia para consistência no treino.", card: "bg-old-flax text-custom-jet" },
-    { id: "s2", period: "Manhã", category: "Proteína", time: "08:00", name: "Whey Protein", dosage: "30 gramas", instruction: "Boa opção para subir proteína no café da manhã.", card: "bg-secondary text-white" },
-    { id: "s3", period: "Almoço", category: "Saúde", time: "12:30", name: "Ômega 3", dosage: "2 caps", instruction: "Consumir junto com refeição principal.", card: "bg-[#D9B8F3] text-custom-jet" },
-    { id: "s4", period: "Pré-treino", category: "Energia", time: "16:30", name: "Cafeína", dosage: "210 mg", instruction: "Usar somente quando fizer sentido na rotina.", card: "bg-[#EF5F37] text-white" },
+    { id: "s1", period: "Pós-treino", category: "Performance", time: "18:00", name: "Creatina", dosage: "5 gramas", instruction: "Usar 1x por dia para consistência no treino.", card: "bg-white text-[#0F172A] border border-[#e3e8ef]" },
+    { id: "s2", period: "Manhã", category: "Proteína", time: "08:00", name: "Whey Protein", dosage: "30 gramas", instruction: "Boa opção para subir proteína no café da manhã.", card: "bg-white text-[#0F172A] border border-[#e3e8ef]" },
+    { id: "s3", period: "Almoço", category: "Saúde", time: "12:30", name: "Ômega 3", dosage: "2 caps", instruction: "Consumir junto com refeição principal.", card: "bg-white text-[#0F172A] border border-[#e3e8ef]" },
+    { id: "s4", period: "Pré-treino", category: "Energia", time: "16:30", name: "Cafeína", dosage: "210 mg", instruction: "Usar somente quando fizer sentido na rotina.", card: "bg-white text-[#0F172A] border border-[#e3e8ef]" },
   ],
+  trainingPlans: [
+    {
+      id: "training-a",
+      name: "Peito + Ombro",
+      estimatedMinutes: 50,
+      exercises: [
+        { id: "training-a-1", name: "Supino reto", focus: "Peito", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 40, loadDelta: "+2kg" },
+        { id: "training-a-2", name: "Supino inclinado", focus: "Peito", sets: 4, reps: "8-10", targetReps: 10, restSeconds: 75, suggestedLoadKg: 36, loadDelta: "+2kg" },
+        { id: "training-a-3", name: "Crucifixo", focus: "Peito", sets: 3, reps: "12-15", targetReps: 15, restSeconds: 60, suggestedLoadKg: 12, loadDelta: "+1kg" },
+        { id: "training-a-4", name: "Desenvolvimento", focus: "Ombros", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 18, loadDelta: "+2kg" },
+      ],
+    },
+    {
+      id: "training-b",
+      name: "Costas + Bíceps",
+      estimatedMinutes: 55,
+      exercises: [
+        { id: "training-b-1", name: "Puxada frontal", focus: "Costas", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 75, suggestedLoadKg: 45, loadDelta: "+5kg" },
+        { id: "training-b-2", name: "Remada baixa", focus: "Costas", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 75, suggestedLoadKg: 40, loadDelta: "+2kg" },
+        { id: "training-b-3", name: "Rosca direta", focus: "Bíceps", sets: 3, reps: "8-10", targetReps: 10, restSeconds: 60, suggestedLoadKg: 20, loadDelta: "+2kg" },
+      ],
+    },
+  ],
+  trainingHistory: [],
   water: {},
   waterHistory: {},
 };
@@ -190,23 +197,6 @@ function formatMonthLabel(value) {
 
 function round(value) {
   return Math.round((Number(value) || 0) * 10) / 10;
-}
-
-function calculateSuggestedCalories({ weight, height, age, goal }) {
-  const safeWeight = Number(weight) || 0;
-  const safeHeight = Number(height) || 0;
-  const safeAge = Number(age) || 0;
-  if (!safeWeight || !safeHeight || !safeAge) return 0;
-  const maintenance = safeWeight * 24 + safeHeight * 4 - safeAge * 3;
-  const offset = goal === "gain" ? 250 : goal == "maintain" ? 0 : -400;
-  const suggested = maintenance + offset;
-  return Math.max(1200, Math.min(4000, Math.round(suggested / 10) * 10));
-}
-
-function getGoalMeta(goal) {
-  if (goal === "maintain") return { label: "Plano atual: Manter peso", focus: "Manutenção com rotina estável" };
-  if (goal === "gain") return { label: "Plano atual: Ganhar massa", focus: "Superávit leve com consistência" };
-  return { label: "Plano atual: Perder peso", focus: "Déficit calórico com mais constância" };
 }
 
 function computeBmi(weight, heightCm) {
@@ -303,19 +293,17 @@ function normalizeFood(food = {}) {
   };
 }
 
-function getSectionBackground(section = "home") {
-  if (["food", "food-detail"].includes(section)) return "bg-[#faf3f2]";
-  if (["plan", "plan-detail", "plan-config", "supplements", "supplement-detail", "register-supplement", "history"].includes(section)) return "bg-[#e9ecfa]";
-  if (section === "water") return "bg-surface";
-  return "bg-surface";
+function getSectionBackground() {
+  return "bg-[#f4f7ff]";
 }
 
 function getFoodAccent(name = "") {
   const n = name.toLowerCase();
-  if (n.includes("frango") || n.includes("ovo")) return { icon: "egg_alt", dot: "#4558C8", soft: "rgba(69, 88, 200, 0.12)" };
-  if (n.includes("arroz") || n.includes("cuscuz") || n.includes("pão")) return { icon: "grain", dot: "#EF5F37", soft: "rgba(239, 95, 55, 0.12)" };
-  if (n.includes("salada") || n.includes("brócol") || n.includes("maçã") || n.includes("abacate")) return { icon: "nutrition", dot: "#D9B8F3", soft: "rgba(217, 184, 243, 0.2)" };
-  return { icon: "restaurant", dot: "#DFF37D", soft: "rgba(223, 243, 125, 0.28)" };
+  const soft = "rgba(15, 23, 42, 0.08)";
+  if (n.includes("frango") || n.includes("ovo")) return { icon: "egg_alt", dot: "#4558C8", soft };
+  if (n.includes("arroz") || n.includes("cuscuz") || n.includes("pão")) return { icon: "grain", dot: "#EF5F37", soft };
+  if (n.includes("salada") || n.includes("brócol") || n.includes("maçã") || n.includes("abacate")) return { icon: "nutrition", dot: "#D9B8F3", soft };
+  return { icon: "restaurant", dot: "#DFF37D", soft };
 }
 
 function getEquivalentFoods(food = {}) {
@@ -355,7 +343,264 @@ function normalizeSupplement(item = {}, index = 0) {
     name: item.name || "Suplemento",
     dosage: item.dosage || "",
     instruction: item.instruction || "",
-    card: item.card || "bg-old-flax text-custom-jet",
+    card: item.card || "bg-white text-[#0F172A] border border-[#e3e8ef]",
+  };
+}
+
+function normalizeTrainingMuscleGroup(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+
+  const aliasMap = {
+    peito: "Peito",
+    peitoral: "Peito",
+    "peitoral superior": "Peito",
+    costas: "Costas",
+    dorsal: "Costas",
+    "grande dorsal": "Costas",
+    "costas médias": "Costas",
+    "costas medias": "Costas",
+    ombros: "Ombros",
+    deltoides: "Ombros",
+    bíceps: "Bíceps",
+    biceps: "Bíceps",
+    tríceps: "Tríceps",
+    triceps: "Tríceps",
+    antebraço: "Antebraço",
+    antebraco: "Antebraço",
+    abdômen: "Abdômen",
+    abdomen: "Abdômen",
+    core: "Abdômen",
+    glúteos: "Glúteos",
+    gluteos: "Glúteos",
+    quadríceps: "Quadríceps",
+    quadriceps: "Quadríceps",
+    "posterior de coxa": "Posterior de coxa",
+    posterior: "Posterior de coxa",
+    panturrilha: "Panturrilha",
+    "corpo inteiro": "Corpo inteiro",
+    "full body": "Corpo inteiro",
+    cardio: "Cardio",
+    outro: "Outro",
+  };
+
+  const directMatch = aliasMap[normalized];
+  if (directMatch) return directMatch;
+
+  return TRAINING_MUSCLE_OPTIONS.find((option) => option.toLowerCase() === normalized) || "";
+}
+
+function normalizeTrainingExercise(exercise = {}, index = 0) {
+  const sets = Math.min(12, Math.max(1, Number(exercise.sets) || 3));
+  const reps = sanitizeTrainingReps(exercise.reps || `${exercise.targetReps || 10}`) || "10-12";
+  const targetReps = Math.max(1, Number(exercise.targetReps) || Number(String(reps).split("-").pop()) || 10);
+  return {
+    id: exercise.id || `training-exercise-${index + 1}`,
+    name: exercise.name || `Exercício ${index + 1}`,
+    focus: normalizeTrainingMuscleGroup(exercise.focus),
+    sets,
+    reps,
+    targetReps,
+    restSeconds: Math.min(600, Math.max(15, Number(exercise.restSeconds) || 60)),
+    suggestedLoadKg: Math.min(500, Math.max(0, Number(exercise.suggestedLoadKg) || 0)),
+    loadDelta: exercise.loadDelta || "",
+  };
+}
+
+function normalizeTrainingPlan(plan = {}, index = 0, options = {}) {
+  const { allowEmptyExercises = false } = options;
+  const normalizedExercises = Array.isArray(plan.exercises) && plan.exercises.length
+    ? plan.exercises.map((exercise, exerciseIndex) => normalizeTrainingExercise(exercise, exerciseIndex))
+    : [];
+  return {
+    id: plan.id || `training-plan-${index + 1}`,
+    name: plan.name || `Treino ${index + 1}`,
+    estimatedMinutes: Math.max(15, Number(plan.estimatedMinutes) || 45),
+    exercises: normalizedExercises.length || allowEmptyExercises
+      ? normalizedExercises
+      : [normalizeTrainingExercise({}, 0)],
+  };
+}
+
+function summarizeExerciseNames(plan = {}) {
+  const names = (plan.exercises || []).map((exercise) => exercise.name).filter(Boolean);
+  if (!names.length) return "Monte os exercícios deste treino para começar.";
+  if (names.length <= 3) return names.join(", ");
+  return `${names.slice(0, 3).join(", ")} +${names.length - 3}`;
+}
+
+function formatClock(totalSeconds = 0) {
+  const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  if (hours > 0) return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getAverageReps(value = "") {
+  const parts = String(value)
+    .split("-")
+    .map((part) => Number(part.trim()))
+    .filter(Boolean);
+  if (!parts.length) return 0;
+  if (parts.length === 1) return parts[0];
+  return Math.round(parts.reduce((acc, part) => acc + part, 0) / parts.length);
+}
+
+function normalizeTrainingLookup(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function sanitizeTrainingReps(value = "") {
+  const raw = String(value || "").replace(/\s+/g, "").replace(/,+/g, "-");
+  if (!raw) return "";
+  const matches = raw.match(/\d+/g);
+  if (!matches?.length) return "";
+  const numbers = matches.map((item) => Math.min(50, Math.max(1, Number(item) || 0))).filter(Boolean);
+  if (!numbers.length) return "";
+  if (raw.includes("-") && numbers.length >= 2) {
+    const first = Math.min(numbers[0], numbers[1]);
+    const second = Math.max(numbers[0], numbers[1]);
+    return `${first}-${second}`;
+  }
+  return `${numbers[0]}`;
+}
+
+function parseTrainingLoadDelta(value = "") {
+  const match = String(value || "").match(/-?\d+(?:[.,]\d+)?/);
+  if (!match) return 0;
+  return Number(match[0].replace(",", ".")) || 0;
+}
+
+function formatTrainingLoad(value = 0) {
+  return `${round(Number(value) || 0)}kg`;
+}
+
+function buildTrainingExerciseLibrary(trainingPlans = []) {
+  const seen = new Map();
+  (trainingPlans || []).forEach((plan) => {
+    (plan.exercises || []).forEach((exercise) => {
+      const key = normalizeTrainingLookup(exercise.name);
+      if (!key || seen.has(key)) return;
+      seen.set(key, {
+        name: exercise.name,
+        focus: normalizeTrainingMuscleGroup(exercise.focus),
+        sets: Number(exercise.sets) || 3,
+        reps: sanitizeTrainingReps(exercise.reps) || "10-12",
+        restSeconds: Number(exercise.restSeconds) || 60,
+        suggestedLoadKg: Number(exercise.suggestedLoadKg) || 0,
+        loadDelta: exercise.loadDelta || "",
+      });
+    });
+  });
+  return Array.from(seen.values());
+}
+
+const TRAINING_EXERCISE_LIBRARY = buildTrainingExerciseLibrary(defaultState.trainingPlans);
+
+function getTrainingExerciseMatch(name = "", trainingPlans = [], trainingHistory = []) {
+  const lookup = normalizeTrainingLookup(name);
+  if (lookup.length < 2) return null;
+
+  const historyMatches = [];
+  (trainingHistory || []).forEach((entry) => {
+    (entry.exercises || []).forEach((exercise) => {
+      historyMatches.push({
+        ...exercise,
+        source: "history",
+        completedAt: entry.completedAt,
+      });
+    });
+  });
+
+  historyMatches.sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime());
+
+  const exactHistory = historyMatches.find((exercise) => normalizeTrainingLookup(exercise.name) === lookup);
+  if (exactHistory) return exactHistory;
+
+  const library = [
+    ...buildTrainingExerciseLibrary(trainingPlans),
+    ...TRAINING_EXERCISE_LIBRARY,
+  ];
+  const dedupedLibrary = Array.from(
+    library.reduce((acc, exercise) => {
+      const key = normalizeTrainingLookup(exercise.name);
+      if (!key || acc.has(key)) return acc;
+      acc.set(key, exercise);
+      return acc;
+    }, new Map()).values(),
+  );
+
+  const exactLibrary = dedupedLibrary.find((exercise) => normalizeTrainingLookup(exercise.name) === lookup);
+  if (exactLibrary) return { ...exactLibrary, source: "library" };
+
+  const partialMatches = dedupedLibrary.filter((exercise) => {
+    const exerciseLookup = normalizeTrainingLookup(exercise.name);
+    return exerciseLookup.includes(lookup) || lookup.includes(exerciseLookup);
+  });
+  if (partialMatches.length === 1) return { ...partialMatches[0], source: "library" };
+
+  return null;
+}
+
+function applyTrainingExerciseSuggestion(exercise, match, nextName) {
+  if (!match) return normalizeTrainingExercise({ ...exercise, name: nextName });
+  const nextExercise = { ...exercise, name: nextName };
+  const isDefaultExercise =
+    !exercise.focus
+    && (Number(exercise.sets) || 3) === 3
+    && sanitizeTrainingReps(exercise.reps) === "10-12"
+    && (Number(exercise.restSeconds) || 60) === 60
+    && !(Number(exercise.suggestedLoadKg) || 0);
+
+  nextExercise.focus = normalizeTrainingMuscleGroup(match.focus) || nextExercise.focus;
+
+  if (match.source === "history" || isDefaultExercise) {
+    nextExercise.sets = Number(match.sets) || nextExercise.sets;
+    nextExercise.reps = sanitizeTrainingReps(match.reps) || nextExercise.reps;
+    nextExercise.restSeconds = Number(match.restSeconds) || nextExercise.restSeconds;
+    nextExercise.suggestedLoadKg = Number(match.suggestedLoadKg) || 0;
+    nextExercise.loadDelta = match.loadDelta || nextExercise.loadDelta;
+  }
+
+  return normalizeTrainingExercise(nextExercise);
+}
+
+function getTrainingProgressionSuggestion(exercise, trainingHistory = [], trainingPlans = []) {
+  const historyMatch = getTrainingExerciseMatch(exercise.name, trainingPlans, trainingHistory);
+  if (!historyMatch || historyMatch.source !== "history") return null;
+
+  const lastLoad = Number(historyMatch.suggestedLoadKg) || 0;
+  const loadDelta = parseTrainingLoadDelta(exercise.loadDelta || historyMatch.loadDelta);
+  const suggestedLoad = Math.max(lastLoad, Number(exercise.suggestedLoadKg) || 0) + Math.max(0, loadDelta);
+
+  return {
+    lastLoad,
+    suggestedLoad,
+    reps: sanitizeTrainingReps(historyMatch.reps) || sanitizeTrainingReps(exercise.reps),
+    sets: Number(historyMatch.sets) || Number(exercise.sets) || 0,
+    restSeconds: Number(historyMatch.restSeconds) || Number(exercise.restSeconds) || 0,
+    source: historyMatch,
+  };
+}
+
+function summarizeTrainingPlan(plan = {}) {
+  const exercises = Array.isArray(plan.exercises) ? plan.exercises : [];
+  const sets = exercises.reduce((acc, exercise) => acc + (Number(exercise.sets) || 0), 0);
+  const volumeTotal = exercises.reduce(
+    (acc, exercise) => acc + ((Number(exercise.suggestedLoadKg) || 0) * (Number(exercise.sets) || 0) * getAverageReps(exercise.reps)),
+    0,
+  );
+  return {
+    exercises: exercises.length,
+    sets,
+    volumeTotal,
   };
 }
 
@@ -369,18 +614,11 @@ function migrate(raw) {
     },
     profile: {
       calorieTarget: Number(raw.profile?.calorieTarget) || 2400,
-      waterTargetMl: Number(raw.profile?.waterTargetMl) || 3000,
       activeGoal: raw.profile?.activeGoal || "Plano atual: Perder 5kg",
-      planFocus: raw.profile?.planFocus || defaultState.profile.planFocus,
-      planNotes: raw.profile?.planNotes || defaultState.profile.planNotes,
       name: raw.profile?.name || defaultState.profile.name,
       email: raw.profile?.email || defaultState.profile.email,
       city: raw.profile?.city || defaultState.profile.city,
       birthday: raw.profile?.birthday || defaultState.profile.birthday,
-      weight: Number(raw.profile?.weight) || 0,
-      height: Number(raw.profile?.height) || 0,
-      age: Number(raw.profile?.age) || 0,
-      targetWeight: Number(raw.profile?.targetWeight || raw.profile?.target_weight) || 0,
     },
     feedbackEntries: Array.isArray(raw.feedbackEntries) ? raw.feedbackEntries : [],
     measureEntries: Array.isArray(raw.measureEntries)
@@ -389,6 +627,8 @@ function migrate(raw) {
     consumedMeals: raw.consumedMeals || raw.foodLog || {},
     planMeals: Array.isArray(raw.planMeals || raw.mealPlan) ? (raw.planMeals || raw.mealPlan).map((meal, index) => normalizeMeal(meal, index)) : defaultState.planMeals,
     supplements: Array.isArray(raw.supplements) ? raw.supplements.map((item, index) => normalizeSupplement(item, index)) : defaultState.supplements,
+    trainingPlans: Array.isArray(raw.trainingPlans) ? raw.trainingPlans.map((plan, index) => normalizeTrainingPlan(plan, index)) : defaultState.trainingPlans,
+    trainingHistory: Array.isArray(raw.trainingHistory) ? raw.trainingHistory : [],
     water: raw.water || {},
     waterHistory: raw.waterHistory || {},
   };
@@ -402,18 +642,6 @@ function loadState() {
     console.error(error);
   }
   return structuredClone(defaultState);
-}
-
-function shouldOpenLoginAfterReload() {
-  try {
-    if (sessionStorage.getItem(FORCE_LOGIN_KEY) === "1") {
-      sessionStorage.removeItem(FORCE_LOGIN_KEY);
-      return true;
-    }
-  } catch (error) {
-    console.error(error);
-  }
-  return false;
 }
 
 function summarizeFoods(foods = []) {
@@ -437,18 +665,18 @@ function TopBar({ title = "MOS", leftIcon = "menu", onLeft, onSearch, onRight, c
   return html`
     <header className="fixed top-0 w-full z-50 bg-white">
       <div className="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto">
-        <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onLeft}>
-          <${Icon} name=${leftIcon} className="text-[#292B2D]" />
+        <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onLeft}>
+          <${Icon} name=${leftIcon} className="text-[#101846]" />
         </button>
-        <h1 className=${centerBold ? "text-xl font-black text-[#292B2D]" : "font-bold text-base text-[#292B2D]"}>${title}</h1>
+        <h1 className=${centerBold ? "text-xl font-black text-[#101846]" : "font-bold text-base text-[#101846]"}>${title}</h1>
         ${
           rightSlot ||
           html`<div className="flex items-center gap-4">
-            <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onSearch}>
-              <${Icon} name="search" className="text-[#292B2D]" />
+            <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onSearch}>
+              <${Icon} name="search" className="text-[#101846]" />
             </button>
-            <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onRight}>
-              <${Icon} name="notifications" className="text-[#292B2D]" />
+            <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onRight}>
+              <${Icon} name="notifications" className="text-[#101846]" />
             </button>
           </div>`
         }
@@ -467,11 +695,11 @@ function NotificationsPanel({ items, onClose, onOpen, onClear }) {
             <h2 className="text-[1.5rem] font-bold text-jet-black">Notificações</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95" onClick=${onClear} title="Limpar notificações">
-              <${Icon} name="cleaning_services" className="text-[#292B2D]" />
+            <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95" onClick=${onClear} title="Limpar notificações">
+              <${Icon} name="cleaning_services" className="text-[#101846]" />
             </button>
-            <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95" onClick=${onClose}>
-              <${Icon} name="close" className="text-[#292B2D]" />
+            <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95" onClick=${onClose}>
+              <${Icon} name="close" className="text-[#101846]" />
             </button>
           </div>
         </div>
@@ -482,9 +710,9 @@ function NotificationsPanel({ items, onClose, onOpen, onClear }) {
                 <div className="flex flex-col gap-3">
                   ${items.map(
                     (item) => html`
-                      <button type="button" className="w-full bg-surface-container-low rounded-xl p-4 text-left flex items-start gap-4 active:scale-[0.98] transition-transform" onClick=${() => onOpen(item)}>
+                      <button className="w-full bg-surface-container-low rounded-xl p-4 text-left flex items-start gap-4 active:scale-[0.98] transition-transform" onClick=${() => onOpen(item)}>
                         <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center shrink-0">
-                          <${Icon} name=${item.icon} className="text-[#292B2D]" />
+                          <${Icon} name=${item.icon} className="text-[#101846]" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-4">
@@ -531,24 +759,24 @@ function FoodCalendarPanel({ selectedDate, monthDate, markedDates, todayKey, onC
             <span className="text-[0.6875rem] font-medium text-royal-blue">Comida</span>
             <h2 className="text-[1.35rem] font-bold text-jet-black">Escolher data</h2>
           </div>
-          <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onClose}>
-            <${Icon} name="close" className="text-[#292B2D]" />
+          <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onClose}>
+            <${Icon} name="close" className="text-[#101846]" />
           </button>
         </div>
 
         <div className="flex items-center justify-between">
-          <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onPrevMonth}>
-            <${Icon} name="chevron_left" className="text-[#292B2D]" />
+          <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onPrevMonth}>
+            <${Icon} name="chevron_left" className="text-[#101846]" />
           </button>
           <span className="font-bold text-jet-black capitalize">${formatMonthLabel(`${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}-01`)}</span>
-          <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onNextMonth}>
-            <${Icon} name="chevron_right" className="text-[#292B2D]" />
+          <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onNextMonth}>
+            <${Icon} name="chevron_right" className="text-[#101846]" />
           </button>
         </div>
 
         ${selectedDate !== todayKey
           ? html`
-              <button type="button" className="w-full min-h-11 rounded-[10px] bg-[#fff4ef] border border-[#ffd8ce] text-[#EF5F37] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform" onClick=${onGoToday}>
+              <button className="w-full min-h-11 rounded-[10px] bg-[#fff4ef] border border-[#ffd8ce] text-[#EF5F37] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform" onClick=${onGoToday}>
                 <${Icon} name="today" className="text-[#EF5F37]" />
                 <span>Ver hoje</span>
               </button>
@@ -564,7 +792,7 @@ function FoodCalendarPanel({ selectedDate, monthDate, markedDates, todayKey, onC
             const isSelected = key === selectedDate;
             const isMarked = markedDates.has(key);
             return html`
-              <button type="button" className=${`h-12 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform ${isSelected ? "bg-[#DFF37D] text-jet-black" : "bg-surface-container-low text-jet-black"}`} onClick=${() => onPickDate(key)}>
+              <button className=${`h-12 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform ${isSelected ? "bg-[#DFF37D] text-jet-black" : "bg-surface-container-low text-jet-black"}`} onClick=${() => onPickDate(key)}>
                 <span className="font-bold">${Number(key.slice(-2))}</span>
                 <span className=${`w-1.5 h-1.5 rounded-full ${isMarked ? "bg-[#EF5F37]" : "bg-transparent"}`}></span>
               </button>
@@ -607,24 +835,24 @@ function WaterHistoryPanel({
             <span className="text-sm text-[#4558C8]">Água</span>
             <h2 className="text-[1.35rem] font-bold text-jet-black">Histórico de hidratação</h2>
           </div>
-          <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onClose}>
-            <${Icon} name="close" className="text-[#292B2D]" />
+          <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onClose}>
+            <${Icon} name="close" className="text-[#101846]" />
           </button>
         </div>
 
         <div className="flex items-center justify-between shrink-0">
-          <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onPrevMonth}>
-            <${Icon} name="chevron_left" className="text-[#292B2D]" />
+          <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onPrevMonth}>
+            <${Icon} name="chevron_left" className="text-[#101846]" />
           </button>
           <span className="font-bold text-jet-black capitalize">${formatMonthLabel(`${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}-01`)}</span>
-          <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onNextMonth}>
-            <${Icon} name="chevron_right" className="text-[#292B2D]" />
+          <button className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center active:scale-95" onClick=${onNextMonth}>
+            <${Icon} name="chevron_right" className="text-[#101846]" />
           </button>
         </div>
 
         ${selectedDate !== todayKey
           ? html`
-              <button type="button" className="w-full min-h-11 rounded-[10px] bg-[#fff4ef] border border-[#ffd8ce] text-[#EF5F37] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shrink-0" onClick=${onGoToday}>
+              <button className="w-full min-h-11 rounded-[10px] bg-[#fff4ef] border border-[#ffd8ce] text-[#EF5F37] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shrink-0" onClick=${onGoToday}>
                 <${Icon} name="today" className="text-[#EF5F37]" />
                 <span>Ver hoje</span>
               </button>
@@ -640,7 +868,7 @@ function WaterHistoryPanel({
             const isSelected = key === selectedDate;
             const isMarked = markedDates.has(key);
             return html`
-              <button type="button" className=${`h-12 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform ${isSelected ? "bg-[#4558C8] text-white" : "bg-surface-container-low text-jet-black"}`} onClick=${() => onPickDate(key)}>
+              <button className=${`h-12 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform ${isSelected ? "bg-[#4558C8] text-white" : "bg-surface-container-low text-jet-black"}`} onClick=${() => onPickDate(key)}>
                 <span className="font-bold">${Number(key.slice(-2))}</span>
                 <span className=${`w-1.5 h-1.5 rounded-full ${isMarked ? "bg-[#EF5F37]" : isSelected ? "bg-white/70" : "bg-transparent"}`}></span>
               </button>
@@ -662,7 +890,7 @@ function ContextNav({ items }) {
     <nav className="flex flex-wrap gap-2">
       ${items.map(
         (item) => html`
-          <button type="button" className=${`px-4 py-2 rounded-xl text-sm font-bold transition-transform active:scale-95 ${item.primary ? "bg-[#EF5F37] text-white" : "bg-surface-container-low text-jet-black"}`} onClick=${item.onClick}>
+          <button className=${`px-4 py-2 rounded-xl text-sm font-bold transition-transform active:scale-95 ${item.primary ? "bg-[#EF5F37] text-white" : "bg-surface-container-low text-jet-black"}`} onClick=${item.onClick}>
             ${item.label}
           </button>
         `,
@@ -688,16 +916,16 @@ function MenuDrawer({ onClose, onSelect }) {
             <span className="text-[0.6875rem] font-medium text-royal-blue">MOS</span>
             <h2 className="text-[1.75rem] font-bold text-jet-black">Menu</h2>
           </div>
-          <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onClose}>
-            <${Icon} name="close" className="text-[#292B2D]" />
+          <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onClose}>
+            <${Icon} name="close" className="text-[#101846]" />
           </button>
         </div>
         <div className="flex flex-col gap-1">
           ${items.map(
             (item) => html`
-              <button type="button" className="w-full rounded-xl px-4 py-3 text-left font-medium text-jet-black active:scale-[0.98] transition-transform flex items-center gap-4 hover:bg-surface-container-low" onClick=${() => onSelect(item.label)}>
+              <button className="w-full rounded-xl px-4 py-3 text-left font-medium text-jet-black active:scale-[0.98] transition-transform flex items-center gap-4 hover:bg-surface-container-low" onClick=${() => onSelect(item.label)}>
                 <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
-                  <${Icon} name=${item.icon} className="text-[#292B2D]" />
+                  <${Icon} name=${item.icon} className="text-[#101846]" />
                 </div>
                 <span>${item.label}</span>
               </button>
@@ -715,16 +943,17 @@ function BottomNav({ active, onChange }) {
     { key: "food", label: "Comida", icon: "restaurant" },
     { key: "plan", label: "Plano", icon: "description" },
     { key: "water", label: "Água", icon: "water_drop" },
+    { key: "training", label: "Treino", icon: "fitness_center" },
   ];
 
   return html`
-    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-white/96 backdrop-blur-sm z-50">
-      <div className="max-w-md mx-auto w-full h-20 flex justify-around items-center">
+    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-white z-50">
+      <div className="max-w-md mx-auto w-full h-20 flex justify-around items-center gap-1">
         ${items.map((item) => {
           const isActive = active === item.key;
           return html`
             <button
-              className=${`flex flex-col items-center justify-center ${isActive ? "bg-[#DFF37D] text-[#292B2D] rounded-full px-5 py-2 shadow-[0_8px_18px_rgba(223,243,125,0.35)]" : "text-[#292B2D] px-5 py-2 hover:bg-slate-100 rounded-full"} transition-all active:scale-98`}
+              className=${`flex flex-col items-center justify-center ${isActive ? "bottom-nav-active bg-[#DFF37D] text-[#0F172A] rounded-full px-4 py-2 shadow-[0_8px_18px_rgba(223,243,125,0.35)]" : "text-[#101846] px-4 py-2 hover:bg-slate-100 rounded-full"} transition-all active:scale-98`}
               onClick=${() => onChange(item.key)}
             >
               <${Icon} name=${item.icon} filled=${isActive} />
@@ -751,7 +980,7 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
         ${items.map(
           (item) => html`
             <button
-              className=${`min-h-[76px] rounded-[10px] flex flex-col items-center justify-center gap-2 text-center active:scale-95 transition-transform ${item.active ? "bg-[#EF5F37] text-white" : "bg-surface-container-low text-[#292B2D]"}`}
+              className=${`min-h-[76px] rounded-[10px] flex flex-col items-center justify-center gap-2 text-center active:scale-95 transition-transform ${item.active ? "bg-[#EF5F37] text-white" : "bg-surface-container-low text-[#101846]"}`}
               onClick=${item.onClick}
             >
               <${Icon} name=${item.icon} className="text-[1.2rem]" />
@@ -800,22 +1029,22 @@ function MacroBarDark({ proteinWidth = "45%", carbWidth = "65%", fatWidth = "30%
 
 function FoodItem({ food, onEdit, onDelete, onOpen, dark = false }) {
   return html`
-    <button className=${`${dark ? "bg-surface-container-low" : "bg-surface-container-low"} w-full p-5 rounded-xl flex items-center justify-between group active:scale-[0.98] transition-transform cursor-pointer text-left`} onClick=${onOpen}>
+    <button className=${`${dark ? "bg-surface-container-low" : "bg-surface-container-low"} w-full p-5 rounded-xl flex items-center justify-between group active:scale-[0.98] transition-transform cursor-pointer text-left border border-[#e3e8ef] shadow-[0_8px_18px_rgba(15,23,42,0.08)]`} onClick=${onOpen}>
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-surface-container-high rounded-full flex items-center justify-center">
-          <${Icon} name="restaurant" className="text-[#292B2D]" />
+        <div className="w-12 h-12 bg-white border border-[#e3e8ef] rounded-full flex items-center justify-center">
+          <${Icon} name="restaurant" className="text-[#0F172A]" />
         </div>
         <div>
-          <p className="font-bold text-[#292B2D]">${food.name}</p>
+          <p className="font-bold text-[#0F172A]">${food.name}</p>
           <p className="text-[0.6875rem] font-medium text-primary">${food.quantity} • ${food.calories} kcal</p>
-          <p className="text-[0.75rem] text-on-surface-variant mt-1">${food.benefit}</p>
+          <p className="text-[0.75rem] text-[#0F172A]/70 mt-1">${food.benefit}</p>
           <div className="flex gap-3 mt-2">
-            <button type="button" className="text-[0.6875rem] font-bold text-[#4558C8]" onClick=${(e) => { e.stopPropagation(); onEdit(); }}>Editar</button>
-            <button type="button" className="text-[0.6875rem] font-bold text-error" onClick=${(e) => { e.stopPropagation(); onDelete(); }}>Excluir</button>
+            <button className="text-[0.6875rem] font-bold text-[#4558C8]" onClick=${(e) => { e.stopPropagation(); onEdit(); }}>Editar</button>
+            <button className="text-[0.6875rem] font-bold text-error" onClick=${(e) => { e.stopPropagation(); onDelete(); }}>Excluir</button>
           </div>
         </div>
       </div>
-      <${Icon} name="chevron_right" className="text-outline" />
+      <${Icon} name="chevron_right" className="text-[#0F172A]/55" />
     </button>
   `;
 }
@@ -826,10 +1055,10 @@ function Modal({ title, children, onClose }) {
       <div className="relative z-10 w-full max-w-lg bg-white rounded-xl overflow-hidden flex flex-col gap-8 p-8 border-0 shadow-none" onClick=${(e) => e.stopPropagation()}>
         <div className="space-y-1">
           <span className="text-[0.6875rem] font-medium text-royal-blue">Nutrição</span>
-          <h2 className="text-[1.75rem] font-bold text-jet-black leading-tight">${title}</h2>
+          <h2 className="text-[1.75rem] font-bold text-[#0F172A] leading-tight">${title}</h2>
         </div>
         ${children}
-        <button type="button" className="w-full h-14 bg-surface-container-low text-jet-black rounded-lg font-bold text-base hover:bg-surface-container-highest active:scale-[0.98] transition-all" onClick=${onClose}>Cancelar</button>
+        <button className="w-full h-14 bg-surface-container-low text-[#0F172A] rounded-lg font-bold text-base hover:bg-surface-container-highest active:scale-[0.98] transition-all" onClick=${onClose}>Cancelar</button>
       </div>
     </div>
   `;
@@ -841,7 +1070,7 @@ function AuthWordmark() {
 
 function App() {
   const [state, setState] = useState(loadState);
-  const [screen, setScreen] = useState(() => (shouldOpenLoginAfterReload() ? "login" : loadState().auth?.signedIn ? "home" : "welcome"));
+  const [screen, setScreen] = useState("home");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
@@ -858,6 +1087,12 @@ function App() {
   const [selectedConsumedId, setSelectedConsumedId] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
   const [selectedSupplementId, setSelectedSupplementId] = useState(null);
+  const [selectedTrainingId, setSelectedTrainingId] = useState(null);
+  const [activeTraining, setActiveTraining] = useState(null);
+  const [completedTraining, setCompletedTraining] = useState(null);
+  const [trainingDraft, setTrainingDraft] = useState(null);
+  const [trainingClock, setTrainingClock] = useState(Date.now());
+  const [newTrainingExerciseId, setNewTrainingExerciseId] = useState(null);
   const [appNewsEntries] = useState([
     {
       id: "news-2026-03-30",
@@ -883,22 +1118,9 @@ function App() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [draftGuard, setDraftGuard] = useState({ key: null, dirty: false });
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
+  const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "", confirmPassword: "", acceptedTerms: false });
   const [recoverEmail, setRecoverEmail] = useState("");
   const [authNotice, setAuthNotice] = useState("");
-  const [authNoticeTitle, setAuthNoticeTitle] = useState("");
-  const [authNoticeTone, setAuthNoticeTone] = useState("error");
-  const [authBusy, setAuthBusy] = useState(false);
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
-  const [resetPasswordForm, setResetPasswordForm] = useState({ password: "", confirmPassword: "" });
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showResetPasswordConfirm, setShowResetPasswordConfirm] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
-  const authConfigured = isSupabaseConfigured();
-  const recoveryFlowRef = useRef(isRecoveryRedirect());
-  const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(recoveryFlowRef.current);
 
   function markDraftDirty(key) {
     setDraftGuard({ key, dirty: true });
@@ -913,36 +1135,6 @@ function App() {
 
   function isDraftDirty(key) {
     return draftGuard.key === key && draftGuard.dirty;
-  }
-
-  function clearAuthNotice() {
-    setAuthNotice("");
-    setAuthNoticeTitle("");
-    setAuthNoticeTone("error");
-  }
-
-  function showAuthNotice(message, { tone = "error", title = "" } = {}) {
-    setAuthNotice(normalizeAppMessage(message));
-    setAuthNoticeTitle(title);
-    setAuthNoticeTone(tone);
-  }
-
-  function renderAuthNoticeCard() {
-    if (!authNotice) return null;
-
-    const palette =
-      authNoticeTone === "info"
-        ? "bg-[#eef6ff] border border-[#dbe7ff] text-[#123a72]"
-        : authNoticeTone === "success"
-          ? "bg-[#eefaf2] border border-[#d4eddc] text-[#184f2d]"
-          : "bg-[#fff6f2] border border-[#f5ddd5] text-[#7a2d1b]";
-
-    return html`
-      <div className=${`rounded-[10px] p-4 space-y-2 ${palette}`}>
-        ${authNoticeTitle ? html`<p className="text-sm font-bold">${authNoticeTitle}</p>` : null}
-        <p className="text-sm leading-relaxed">${authNotice}</p>
-      </div>
-    `;
   }
 
   function confirmDiscard(action, message = "Deseja sair da página? As alterações não salvas serão perdidas.") {
@@ -1035,108 +1227,140 @@ function App() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [draftGuard.dirty]);
 
+  useEffect(() => {
+    if (!selectedTrainingId && state.trainingPlans?.length) {
+      setSelectedTrainingId(state.trainingPlans[0].id);
+    }
+  }, [selectedTrainingId, state.trainingPlans]);
+
+  useEffect(() => {
+    if (!activeTraining) return undefined;
+    const interval = window.setInterval(() => setTrainingClock(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [activeTraining]);
+
   const todayKey = getTodayKey();
   const date = todayKey;
-  const consumedMeals = state.consumedMeals[todayKey] || [];
+  const consumedMeals = state.consumedMeals[todayKey] || [
+    {
+      id: "c1",
+      name: "Café da Manhã",
+      title: "Café da Manhã",
+      description: "Ovos mexidos, torrada integral, café preto",
+      time: "08:30",
+      icon: "light_mode",
+      cardClass: "bg-white text-[#0F172A] border border-[#e3e8ef]",
+      foods: [
+        { id: "cf1", name: "Ovos mexidos", quantity: "2 ovos", calories: 180, protein: 14, carbs: 2, fat: 12, benefit: "Ajuda a manter saciedade pela manhã." },
+        { id: "cf2", name: "Torrada integral", quantity: "2 fatias", calories: 120, protein: 4, carbs: 22, fat: 2, benefit: "Entrega energia rápida para começar o dia." },
+        { id: "cf3", name: "Café preto", quantity: "1 xícara", calories: 40, protein: 0, carbs: 0, fat: 0, benefit: "Apoia a rotina matinal com simplicidade." },
+      ],
+    },
+    {
+      id: "c2",
+      name: "Almoço",
+      title: "Almoço",
+      description: "Frango grelhado, arroz castanho, brócolos, salada",
+      time: "12:15",
+      icon: "sunny",
+      cardClass: "bg-white text-[#0F172A] border border-[#e3e8ef]",
+      foods: [
+        { id: "cf4", name: "Arroz Integral", quantity: "150g", calories: 165, protein: 4, carbs: 33, fat: 1, benefit: "Entrega energia para a tarde." },
+        { id: "cf5", name: "Frango grelhado", quantity: "120g", calories: 198, protein: 36, carbs: 0, fat: 5, benefit: "Ajuda a bater proteína no almoço." },
+        { id: "cf6", name: "Salada", quantity: "100g", calories: 34, protein: 2, carbs: 6, fat: 0, benefit: "Contribui para digestão e volume da refeição." },
+      ],
+    },
+    {
+      id: "c3",
+      name: "Lanche",
+      title: "Lanche",
+      description: "Iogurte grego, punhado de amêndoas",
+      time: "16:00",
+      icon: "eco",
+      cardClass: "bg-white text-[#0F172A] border border-[#e3e8ef]",
+      foods: [
+        { id: "cf7", name: "Iogurte grego", quantity: "1 pote", calories: 130, protein: 11, carbs: 6, fat: 6, benefit: "Ajuda na saciedade entre refeições." },
+        { id: "cf8", name: "Amêndoas", quantity: "20g", calories: 80, protein: 3, carbs: 3, fat: 7, benefit: "Complementa com gordura boa e textura." },
+      ],
+    },
+    {
+      id: "c4",
+      name: "Jantar",
+      title: "Jantar",
+      description: "Salmão ao forno, aspargos, quinoa",
+      time: "20:00",
+      icon: "dark_mode",
+      cardClass: "bg-white text-[#0F172A] border border-[#e3e8ef]",
+      foods: [
+        { id: "cf9", name: "Salmão", quantity: "160g", calories: 290, protein: 30, carbs: 0, fat: 18, benefit: "Boa proteína com gordura boa para o jantar." },
+        { id: "cf10", name: "Quinoa", quantity: "100g", calories: 140, protein: 5, carbs: 24, fat: 2, benefit: "Equilibra carboidrato e fibra." },
+        { id: "cf11", name: "Aspargos", quantity: "80g", calories: 60, protein: 3, carbs: 6, fat: 0, benefit: "Ajuda a completar o prato com leveza." },
+      ],
+    },
+  ];
 
+  useEffect(() => {
+    if (!state.consumedMeals[todayKey]) {
+      setState((current) => ({ ...current, consumedMeals: { ...current.consumedMeals, [todayKey]: consumedMeals } }));
+    }
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  useEffect(() => {
-    let active = true;
-    if (!authConfigured) {
-      setAuthReady(true);
-      return () => {
-        active = false;
-      };
-    }
+  const foodMeals = state.consumedMeals[foodDate] || (foodDate === todayKey ? consumedMeals : []);
 
-    (async () => {
-      const result = await getCurrentAuthState();
-      if (!active) return;
-
-      if (result.error) {
-        showAuthNotice("Não foi possível verificar sua sessão agora. Revise a configuração do Supabase.");
-        setAuthReady(true);
-        return;
-      }
-
-      if (result.session && result.user) {
-        applyHydratedAuthState(result);
-        setScreen(recoveryFlowRef.current ? "reset-password" : "home");
-        if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
-      } else {
-        setState((current) => ({
-          ...structuredClone(defaultState),
-          auth: {
-            ...structuredClone(defaultState).auth,
-            registered: current.auth?.registered ?? false,
-            signedIn: false,
-            email: current.auth?.email || current.profile?.email || "",
-            password: "",
-          },
-        }));
-        setScreen(recoveryFlowRef.current ? "reset-password" : "welcome");
-        if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
-      }
-
-      setAuthReady(true);
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [authConfigured]);
-
-  useEffect(() => {
-    if (!authConfigured) return undefined;
-
-    const unsubscribe = subscribeToAuthChanges((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        recoveryFlowRef.current = true;
-        if (globalThis.history?.replaceState) {
-          globalThis.history.replaceState(null, "", `${globalThis.location?.pathname || "/"}${globalThis.location?.hash || ""}`);
-        }
-        clearAuthNotice();
-        setResetPasswordForm({ password: "", confirmPassword: "" });
-        setShowResetPassword(false);
-        setShowResetPasswordConfirm(false);
-        setPasswordRecoveryReady(true);
-        setScreen("reset-password");
-        showAuthNotice(
-          "Seu link de recuperação foi validado. Agora defina uma nova senha para voltar a entrar no MOS.",
-          { tone: "info", title: "Criar nova senha" },
-        );
-      }
-    });
-
-    return unsubscribe;
-  }, [authConfigured]);
-
-  const foodMeals = state.consumedMeals[foodDate] || [];
-
-  const allConsumedFoods = (state.consumedMeals[date] || []).flatMap((meal) => meal.foods);
+  const allConsumedFoods = (state.consumedMeals[date] || consumedMeals).flatMap((meal) => meal.foods);
   const summary = summarizeFoods(allConsumedFoods);
-  const water = state.water[waterHistoryDate] ?? 0;
-  const waterGoal = Number(state.profile.waterTargetMl) || 3000;
+  const water = state.water[waterHistoryDate] || (waterHistoryDate === todayKey ? 1800 : 0);
+  const waterGoal = 3000;
   const measureEntries = [...(state.measureEntries || [])].sort((a, b) => a.date.localeCompare(b.date));
   const latestMeasure = measureEntries[measureEntries.length - 1] || defaultState.measureEntries[defaultState.measureEntries.length - 1];
   const previousMeasure = measureEntries[measureEntries.length - 2] || latestMeasure;
   const latestBmi = computeBmi(latestMeasure.weight, latestMeasure.height);
   const previousBmi = computeBmi(previousMeasure.weight, previousMeasure.height);
-  const waterEntries = state.waterHistory?.[waterHistoryDate] || [];
+  const waterEntries = state.waterHistory?.[waterHistoryDate] || (waterHistoryDate === todayKey
+    ? [
+        { id: "w1", label: "Copo de água", time: "14:20", amount: 250 },
+        { id: "w2", label: "Copo de água", time: "11:05", amount: 250 },
+        { id: "w3", label: "Garrafa Esportiva", time: "08:30", amount: 500 },
+      ]
+    : []);
   const remaining = state.profile.calorieTarget - summary.calories;
   const progress = Math.min(100, Math.max(0, (summary.calories / Math.max(1, state.profile.calorieTarget)) * 100));
   const planTotals = summarizeFoods(state.planMeals.flatMap((meal) => meal.foods));
   const selectedPlan = state.planMeals.find((meal) => meal.id === selectedPlanId);
   const selectedConsumed = foodMeals.find((meal) => meal.id === selectedConsumedId);
+  const trainingPlans = Array.isArray(state.trainingPlans) ? state.trainingPlans : [];
+  const selectedTraining = trainingPlans.find((plan) => plan.id === selectedTrainingId) || trainingPlans[0] || null;
+  const activeTrainingPlan = activeTraining ? trainingPlans.find((plan) => plan.id === activeTraining.planId) || null : null;
+  const trainingHistory = Array.isArray(state.trainingHistory) ? state.trainingHistory : [];
+  const latestTrainingEntry = trainingHistory[0] || null;
+  const currentTrainingExerciseIndex = Math.max(0, activeTraining?.currentExerciseIndex ?? 0);
+  const currentTrainingExercise = activeTrainingPlan?.exercises?.[Math.min(currentTrainingExerciseIndex, Math.max(0, (activeTrainingPlan?.exercises?.length || 1) - 1))] || null;
+  const completedTrainingExerciseIds = activeTraining?.completedExerciseIds || [];
+  const completedTrainingExercises = activeTrainingPlan
+    ? activeTrainingPlan.exercises.filter((exercise) => completedTrainingExerciseIds.includes(exercise.id)).length
+    : 0;
+  const activeTrainingElapsedSeconds = activeTraining?.startedAt
+    ? Math.max(
+        0,
+        Math.floor(
+          (
+            ((activeTraining?.pausedAt || trainingClock) ?? trainingClock) -
+            activeTraining.startedAt -
+            (activeTraining.pausedTotalMs || 0)
+          ) / 1000,
+        ),
+      )
+    : 0;
+  const pausedTrainingSeconds = activeTraining?.pausedAt ? Math.max(0, Math.floor((trainingClock - activeTraining.pausedAt) / 1000)) : 0;
   const foodDateLabel = foodDate === todayKey ? "Hoje" : formatDateLabel(foodDate);
   const markedFoodDates = new Set(Object.entries(state.consumedMeals).filter(([, meals]) => Array.isArray(meals) && meals.length).map(([key]) => key));
   const markedWaterDates = new Set(Object.entries(state.waterHistory || {}).filter(([, entries]) => Array.isArray(entries) && entries.length).map(([key]) => key));
   const waterViewDateLabel = waterHistoryDate === todayKey ? "Hoje" : formatDateLabel(waterHistoryDate);
-  const isSignedIn = !["welcome", "signup", "login", "recover-password", "reset-password", "legal"].includes(screen);
+  const isSignedIn = !["welcome", "signup", "login", "recover-password", "legal"].includes(screen);
   const notifications = notificationsCleared
     ? []
     : [
@@ -1165,9 +1389,8 @@ function App() {
       action: () => setScreen("app-news"),
     },
     ].filter(Boolean);
-  const currentDayMeals = state.consumedMeals[date] || [];
   const recentActivities = [
-    ...currentDayMeals.slice(0, 3).map((meal) => ({
+    ...(state.consumedMeals[date] || consumedMeals).slice(0, 3).map((meal) => ({
       id: `recent-meal-${meal.id}`,
       icon: "restaurant",
       title: meal.title || meal.name,
@@ -1186,6 +1409,21 @@ function App() {
       meta: "Água",
       action: () => setScreen("water"),
     })),
+    ...(latestTrainingEntry
+      ? [
+          {
+            id: `recent-training-${latestTrainingEntry.id}`,
+            icon: "fitness_center",
+            title: latestTrainingEntry.planName,
+            body: `${latestTrainingEntry.seriesCompleted} séries concluídas em ${Math.max(1, Math.round(latestTrainingEntry.durationSeconds / 60))} min.`,
+            meta: "Treino",
+            action: () => {
+              setSelectedTrainingId(latestTrainingEntry.planId);
+              setScreen("training-summary");
+            },
+          },
+        ]
+      : []),
     ...state.supplements.slice(0, 2).map((supplement) => ({
       id: `recent-supplement-${supplement.id}`,
       icon: "nutrition",
@@ -1199,7 +1437,7 @@ function App() {
     })),
   ].slice(0, 6);
   const searchableItems = [
-    ...currentDayMeals.map((meal) => ({
+    ...(state.consumedMeals[date] || consumedMeals).map((meal) => ({
       id: `consumed-${meal.id}`,
       icon: "restaurant",
       title: meal.title || meal.name,
@@ -1244,6 +1482,18 @@ function App() {
         setScreen("supplement-detail");
       },
     })),
+    ...trainingPlans.map((plan) => ({
+      id: `training-${plan.id}`,
+      icon: "fitness_center",
+      title: plan.name,
+      subtitle: `${plan.exercises.length} exercícios • ${plan.estimatedMinutes} min`,
+      meta: "Treino",
+      keywords: `${plan.name} ${plan.exercises.map((exercise) => exercise.name).join(" ")}`.toLowerCase(),
+      action: () => {
+        setSelectedTrainingId(plan.id);
+        setScreen("training-detail");
+      },
+    })),
   ];
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const searchResults = normalizedSearch
@@ -1263,41 +1513,6 @@ function App() {
       mutator(draft);
       return draft;
     });
-  }
-
-  function applyHydratedAuthState(result, fallbackEmail = "") {
-    setState((current) => ({
-      ...current,
-      auth: {
-        ...current.auth,
-        registered: true,
-        signedIn: true,
-        email: result.user?.email || fallbackEmail || current.auth?.email || "",
-        password: "",
-      },
-      profile: {
-        ...current.profile,
-        name: result.profile?.name || result.user?.user_metadata?.name || current.profile.name,
-        email: result.profile?.email || result.user?.email || fallbackEmail || current.profile.email,
-        city: result.profile?.city || current.profile.city,
-        birthday: result.profile?.birth_date || current.profile.birthday,
-        waterTargetMl: Number(result.profile?.water_target_ml) || current.profile.waterTargetMl,
-        activeGoal: result.profile?.goal || current.profile.activeGoal,
-        planFocus: result.profile?.plan_focus || current.profile.planFocus,
-        planNotes: result.profile?.plan_notes || current.profile.planNotes,
-        weight: Number(result.profile?.weight) || current.profile.weight,
-        height: Number(result.profile?.height) || current.profile.height,
-        age: Number(result.profile?.age) || current.profile.age,
-        targetWeight: Number(result.profile?.target_weight) || current.profile.targetWeight,
-      },
-      measureEntries: Array.isArray(result.measureEntries) ? result.measureEntries : current.measureEntries,
-      supplements: Array.isArray(result.supplements) ? result.supplements : current.supplements,
-      waterHistory: result.waterHistory || current.waterHistory,
-      water: result.waterTotals || current.water,
-      planMeals: Array.isArray(result.planMeals) ? result.planMeals : current.planMeals,
-      consumedMeals: result.consumedMeals || current.consumedMeals,
-      feedbackEntries: Array.isArray(result.feedbackEntries) ? result.feedbackEntries : current.feedbackEntries,
-    }));
   }
 
   function openNotifications() {
@@ -1403,55 +1618,11 @@ function App() {
           title: "Ir para o login",
           message: "Deseja sair desta área e voltar para a tela de login?",
           confirmLabel: "Confirmar",
-          onConfirm: async () => {
+          onConfirm: () => {
             setDrawerOpen(false);
-            setNotificationsOpen(false);
-            setConfirmAction(null);
-            setModal(null);
-            clearAuthNotice();
-            recoveryFlowRef.current = false;
-            setPasswordRecoveryReady(false);
-            setShowLoginPassword(false);
-            setShowSignupPassword(false);
-            setShowSignupConfirmPassword(false);
-            setShowResetPassword(false);
-            setShowResetPasswordConfirm(false);
-            setRecoverEmail("");
-            setResetPasswordForm({ password: "", confirmPassword: "" });
-            setSignupForm({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
-
-            const nextEmail = state.auth?.email || state.profile?.email || "";
-            if (authConfigured) {
-              setAuthBusy(true);
-              const result = await signOutUser();
-              setAuthBusy(false);
-              if (!result.ok) {
-                showAuthNotice(result.error?.message || "Não foi possível sair da conta agora.");
-                return;
-              }
-            }
-
-            const nextState = {
-              ...structuredClone(defaultState),
-              auth: {
-                ...structuredClone(defaultState).auth,
-                registered: true,
-                signedIn: false,
-                email: nextEmail,
-                password: "",
-              },
-            };
-
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-              sessionStorage.setItem(FORCE_LOGIN_KEY, "1");
-            } catch (error) {
-              console.error(error);
-            }
-
-            setState(nextState);
-            setLoginForm({ email: nextEmail, password: "" });
-            window.location.assign(`${window.location.origin}${window.location.pathname}`);
+            setAuthNotice("");
+            setLoginForm({ email: state.auth?.email || state.profile.email || "", password: "" });
+            setScreen("login");
           },
         });
         return;
@@ -1461,216 +1632,71 @@ function App() {
   }
 
   function openAuthScreen(nextScreen) {
-    clearAuthNotice();
+    setAuthNotice("");
     setScreen(nextScreen);
   }
 
-  async function handleSignupSubmit(event) {
+  function handleSignupSubmit(event) {
     event.preventDefault();
     const name = signupForm.name.trim();
     const email = signupForm.email.trim().toLowerCase();
     const password = signupForm.password;
     const confirmPassword = signupForm.confirmPassword;
-    const age = Number(signupForm.age) || 0;
-    const weight = Number(signupForm.weight) || 0;
-    const height = Number(signupForm.height) || 0;
-    const goal = signupForm.goal || "lose";
-    const calorieTarget = calculateSuggestedCalories({ weight, height, age, goal });
-    const goalMeta = getGoalMeta(goal);
 
-    if (!name || !email || !password || !confirmPassword || !signupForm.acceptedTerms || !age || !weight || !height) return;
+    if (!name || !email || !password || !confirmPassword || !signupForm.acceptedTerms) return;
     if (password !== confirmPassword) {
-      showAuthNotice("As senhas precisam ser iguais para concluir o cadastro.");
+      setAuthNotice("As senhas precisam ser iguais para concluir o cadastro.");
       return;
     }
 
-    if (authConfigured) {
-      setAuthBusy(true);
-      const result = await signUpWithEmail({ name, email, password, age, weight, height, calorieTarget, goal: goalMeta.label, planFocus: goalMeta.focus });
-      setAuthBusy(false);
-
-      if (!result.ok) {
-        if (result.duplicateAccount) {
-          setLoginForm({ email, password: "" });
-          showAuthNotice(
-            "Já existe uma conta cadastrada com este e-mail. Se você já criou a conta antes, tente entrar ou redefinir sua senha.",
-            { tone: "info", title: "Conta já cadastrada" },
-          );
-          return;
-        }
-        showAuthNotice(result.error?.message || "Não foi possível criar sua conta agora.");
-        return;
-      }
-
-      mutate((draft) => {
-        draft.auth = {
-          registered: true,
-          signedIn: Boolean(result.session),
-          email,
-          password: "",
-        };
-        draft.profile.name = name;
-        draft.profile.email = email;
-        draft.profile.age = age;
-        draft.profile.weight = weight;
-        draft.profile.height = height;
-        draft.profile.targetWeight = goal === "lose" ? Math.max(0, weight - 5) : goal === "gain" ? weight + 3 : weight;
-        draft.profile.calorieTarget = calorieTarget || draft.profile.calorieTarget;
-        draft.profile.activeGoal = goalMeta.label;
-        draft.profile.planFocus = goalMeta.focus;
-      });
-
-      setLoginForm({ email, password: "" });
-      setSignupForm({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
-
-      if (result.needsEmailConfirmation) {
-        showAuthNotice(
-          `Enviamos um link de confirmação para ${email}. Abra seu e-mail e confirme a conta antes de entrar no MOS. Se não encontrar a mensagem, verifique a pasta de spam ou promoções.`,
-          { tone: "info", title: "Confirme seu e-mail" }
-        );
-        setScreen("login");
-      } else {
-        const hydrated = await getCurrentAuthState();
-        if (hydrated.session && hydrated.user) {
-          applyHydratedAuthState(hydrated, email);
-        }
-        clearAuthNotice();
-        setScreen("home");
-      }
-      return;
-    }
-
-    showAuthNotice(getSupabaseSetupMessage(), {
-      tone: "error",
-      title: "Autenticação indisponível",
+    mutate((draft) => {
+      draft.auth = {
+        registered: true,
+        signedIn: true,
+        email,
+        password,
+      };
+      draft.profile.name = name;
+      draft.profile.email = email;
     });
-    return;
+
+    setAuthNotice("");
+    setLoginForm({ email, password: "" });
+    setSignupForm({ name: "", email: "", password: "", confirmPassword: "", acceptedTerms: false });
+    setScreen("home");
   }
 
-  async function handleLoginSubmit() {
+  function handleLoginSubmit() {
     const email = loginForm.email.trim().toLowerCase();
     const password = loginForm.password;
 
     if (!email || !password) return;
 
-    if (authConfigured) {
-      setAuthBusy(true);
-      const result = await signInWithEmail({ email, password });
-      setAuthBusy(false);
-
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível entrar agora.");
-        return;
-      }
-
-      const hydrated = await getCurrentAuthState();
-      if (hydrated.session && hydrated.user) {
-        applyHydratedAuthState(hydrated, email);
-      } else {
-        mutate((draft) => {
-          draft.auth = {
-            ...draft.auth,
-            registered: true,
-            email,
-            password: "",
-            signedIn: true,
-          };
-          draft.profile.name = result.profile?.name || draft.profile.name;
-          draft.profile.email = result.profile?.email || email;
-          draft.profile.city = result.profile?.city || draft.profile.city;
-          draft.profile.birthday = result.profile?.birth_date || draft.profile.birthday;
-        });
-      }
-      clearAuthNotice();
-      setScreen("home");
-      return;
-    }
-
-    showAuthNotice(getSupabaseSetupMessage(), {
-      tone: "error",
-      title: "Autenticação indisponível",
+    mutate((draft) => {
+      draft.auth = {
+        ...draft.auth,
+        registered: draft.auth?.registered ?? true,
+        email,
+        password,
+        signedIn: true,
+      };
+      if (!draft.profile.email) draft.profile.email = email;
     });
-    return;
-OLD = nil
+    setAuthNotice("");
+    setScreen("home");
   }
 
-  async function handleRecoverSubmit(event) {
+  function handleRecoverSubmit(event) {
     event.preventDefault();
     if (!recoverEmail.trim()) return;
-
-    const email = recoverEmail.trim().toLowerCase();
-    if (authConfigured) {
-      setAuthBusy(true);
-      const result = await sendRecoverEmail(email);
-      setAuthBusy(false);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível enviar o link agora.");
-        return;
-      }
-      showAuthNotice(
-        "Se existir uma conta com esse e-mail, enviaremos um link para redefinir a senha. Verifique sua caixa de entrada, spam e promoções.",
-        {
-          tone: "info",
-          title: "Verifique seu e-mail",
-        },
-      );
-    } else {
-      showAuthNotice(getSupabaseSetupMessage(), {
-        tone: "error",
-        title: "Autenticação indisponível",
-      });
-    }
-
+    setAuthNotice("Se existir uma conta com esse e-mail, o link de recuperação será enviado.");
     setScreen("login");
-    setLoginForm((current) => ({ ...current, email }));
+    setLoginForm((current) => ({ ...current, email: recoverEmail.trim().toLowerCase() }));
     setRecoverEmail("");
   }
 
-  async function handleResetPasswordSubmit(event) {
-    event.preventDefault();
-
-    const password = resetPasswordForm.password;
-    const confirmPassword = resetPasswordForm.confirmPassword;
-
-    if (!password || !confirmPassword) return;
-    if (password.length < 6) {
-      showAuthNotice("A senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      showAuthNotice("As senhas precisam ser iguais para continuar.");
-      return;
-    }
-
-    if (!authConfigured) {
-      showAuthNotice(getSupabaseSetupMessage(), {
-        tone: "error",
-        title: "Autenticação indisponível",
-      });
-      return;
-    }
-
-    setAuthBusy(true);
-    const result = await updatePassword(password);
-    setAuthBusy(false);
-
-    if (!result.ok) {
-      showAuthNotice(result.error?.message || "Não foi possível redefinir a senha agora.");
-      return;
-    }
-
-    recoveryFlowRef.current = false;
-    setPasswordRecoveryReady(false);
-    if (globalThis.history?.replaceState) {
-      globalThis.history.replaceState(null, "", globalThis.location?.pathname || "/");
-    }
-    setResetPasswordForm({ password: "", confirmPassword: "" });
-    setLoginForm((current) => ({ ...current, password: "" }));
-    showAuthNotice("Sua senha foi atualizada com sucesso. Agora você já pode entrar com a nova senha.", {
-      tone: "success",
-      title: "Senha redefinida",
-    });
-    setScreen("login");
+  function handleSocialLogin(provider) {
+    setAuthNotice(`Login com ${provider} estará disponível em breve. Use e-mail e senha para entrar no MOS por enquanto.`);
   }
 
   function openFoodDetailItem(food, back) {
@@ -1678,7 +1704,7 @@ OLD = nil
     setScreen("ingredient-detail");
   }
 
-  async function registerMeal(formData) {
+  function registerMeal(formData) {
     const meal = {
       id: uid("meal"),
       name: formData.get("mealName"),
@@ -1686,24 +1712,9 @@ OLD = nil
       description: formData.get("description"),
       time: "Agora",
       icon: "restaurant",
-      cardClass: "bg-[#EF5F37] text-white",
+      cardClass: "bg-white text-[#0F172A] border border-[#e3e8ef]",
       foods: [],
     };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar a refeição.");
-        return;
-      }
-      const result = await createConsumedMealEntry(user.id, foodDate, meal);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível registrar a refeição agora.");
-        return;
-      }
-      Object.assign(meal, result.meal);
-    }
-
     mutate((draft) => {
       draft.consumedMeals[foodDate] = [...(draft.consumedMeals[foodDate] || (foodDate === todayKey ? consumedMeals : [])), meal];
     });
@@ -1711,15 +1722,15 @@ OLD = nil
     setScreen("food");
   }
 
-  async function registerWater(formData) {
+  function registerWater(formData) {
     const amount = Number(formData.get("amount")) || 0;
     if (amount <= 0) return;
-    await appendWaterAmount(amount);
+    appendWaterAmount(amount);
     clearDraft("modal-water");
     setModal(null);
   }
 
-  async function saveMeasures(formData) {
+  function saveMeasures(formData) {
     const entry = normalizeMeasureEntry({
       id: `measure-${formData.get("date") || getTodayKey()}`,
       date: formData.get("date") || getTodayKey(),
@@ -1730,20 +1741,6 @@ OLD = nil
       bodyWater: formData.get("bodyWater"),
       metabolicAge: formData.get("metabolicAge"),
     });
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar suas medidas.");
-        return;
-      }
-
-      const result = await saveMeasureEntry(user.id, entry);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível salvar suas medidas agora.");
-        return;
-      }
-    }
 
     mutate((draft) => {
       const entries = Array.isArray(draft.measureEntries) ? draft.measureEntries : [];
@@ -1760,31 +1757,18 @@ OLD = nil
     setScreen("measures");
   }
 
-  async function saveFeedback(formData) {
+  function saveFeedback(formData) {
     const section = String(formData.get("section") || "Geral");
     const message = String(formData.get("message") || "").trim();
     if (!message) return;
-
-    let nextFeedback = {
-      id: uid("feedback"),
-      section,
-      message,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      const result = await createFeedbackEntry(user?.id || null, { section, message });
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível enviar o feedback agora.");
-        return;
-      }
-      nextFeedback = result.feedback;
-    }
-
     mutate((draft) => {
       draft.feedbackEntries = [
-        nextFeedback,
+        {
+          id: uid("feedback"),
+          section,
+          message,
+          createdAt: new Date().toISOString(),
+        },
         ...(draft.feedbackEntries || []),
       ].slice(0, 10);
     });
@@ -1793,90 +1777,30 @@ OLD = nil
     setScreen("about-app");
   }
 
-  async function saveProfile(formData) {
-    const nextProfile = {
-      ...state.profile,
-      name: String(formData.get("name") || "").trim(),
-      email: String(formData.get("email") || "").trim(),
-      city: String(formData.get("city") || "").trim(),
-      birthday: String(formData.get("birthday") || "").trim(),
-      weight: Number(formData.get("weight")) || state.profile.weight,
-      height: Number(formData.get("height")) || state.profile.height,
-      age: Number(formData.get("age")) || state.profile.age,
-      targetWeight: Number(formData.get("targetWeight")) || state.profile.targetWeight,
-      calorieTarget: Number(formData.get("calorieTarget")) || state.profile.calorieTarget,
-      waterTargetMl: Number(formData.get("waterTargetMl")) || state.profile.waterTargetMl,
-    };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar seu perfil.");
-        return;
-      }
-
-      const result = await saveProfileData(user.id, nextProfile);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível salvar seu perfil agora.");
-        return;
-      }
-    }
-
+  function saveProfile(formData) {
     mutate((draft) => {
-      draft.profile.name = nextProfile.name;
-      draft.profile.email = nextProfile.email;
-      draft.profile.city = nextProfile.city;
-      draft.profile.birthday = nextProfile.birthday;
-      draft.profile.weight = nextProfile.weight;
-      draft.profile.height = nextProfile.height;
-      draft.profile.age = nextProfile.age;
-      draft.profile.targetWeight = nextProfile.targetWeight;
-      draft.profile.calorieTarget = nextProfile.calorieTarget;
-      draft.profile.waterTargetMl = nextProfile.waterTargetMl;
-      draft.auth.email = nextProfile.email || draft.auth.email;
+      draft.profile.name = String(formData.get("name") || "").trim();
+      draft.profile.email = String(formData.get("email") || "").trim();
+      draft.profile.city = String(formData.get("city") || "").trim();
+      draft.profile.birthday = String(formData.get("birthday") || "").trim();
     });
     clearDraft("modal-profile");
     setModal(null);
     setScreen("profile");
   }
 
-  async function appendWaterAmount(amount) {
+  function appendWaterAmount(amount) {
     if (amount <= 0) return;
-    const now = new Date();
-    const time = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const dateKey = waterHistoryDate;
-    const nextEntry = { id: uid("water"), label: "Água registrada", time, amount };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar água.");
-        return;
-      }
-
-      const result = await createWaterEntry(user.id, {
-        date: dateKey,
-        amount,
-        time,
-        label: "Água registrada",
-      });
-
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível registrar água agora.");
-        return;
-      }
-
-      nextEntry.id = result.entry.id;
-      nextEntry.time = result.entry.time;
-    }
-
     mutate((draft) => {
-      draft.water[dateKey] = (draft.water[dateKey] || 0) + amount;
-      draft.waterHistory[dateKey] = [nextEntry, ...(draft.waterHistory[dateKey] || waterEntries)];
+      const now = new Date();
+      const time = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      draft.water[waterHistoryDate] = (draft.water[waterHistoryDate] || 1800) + amount;
+      const nextEntry = { id: uid("water"), label: "Água registrada", time, amount };
+      draft.waterHistory[waterHistoryDate] = [nextEntry, ...(draft.waterHistory[waterHistoryDate] || waterEntries)];
     });
   }
 
-  async function createPlanMeal(formData) {
+  function createPlanMeal(formData) {
     const meal = normalizeMeal({
       id: uid("plan"),
       name: formData.get("mealName"),
@@ -1887,21 +1811,6 @@ OLD = nil
       foods: [],
       image: planImages.breakfast,
     });
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para criar a refeição do plano.");
-        return;
-      }
-      const result = await createPlanMealEntry(user.id, meal, state.planMeals.length);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível criar a refeição do plano agora.");
-        return;
-      }
-      Object.assign(meal, result.meal);
-    }
-
     mutate((draft) => {
       draft.planMeals.push(meal);
     });
@@ -1909,26 +1818,10 @@ OLD = nil
     setModal(null);
   }
 
-  async function savePlanConfig(formData) {
+  function savePlanConfig(formData) {
     const planName = String(formData.get("planName") || "").trim();
     const planFocus = String(formData.get("planFocus") || "").trim();
     const planNotes = String(formData.get("planNotes") || "").trim();
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (user) {
-        const result = await saveProfileData(user.id, {
-          ...state.profile,
-          activeGoal: planName || state.profile.activeGoal,
-          planFocus,
-          planNotes,
-        });
-        if (!result?.ok) {
-          showAuthNotice("Não foi possível salvar o plano agora.");
-          return;
-        }
-      }
-    }
-
     mutate((draft) => {
       draft.profile.activeGoal = planName || draft.profile.activeGoal;
       draft.profile.planFocus = planFocus;
@@ -1938,73 +1831,38 @@ OLD = nil
     setScreen("plan");
   }
 
-  async function createSupplement(formData) {
-    const nextSupplement = {
-      id: uid("supplement"),
-      period: String(formData.get("time") || "").trim() || "Livre",
-      category: String(formData.get("category") || "").trim() || "Geral",
-      time: String(formData.get("time") || "").trim(),
-      name: String(formData.get("name") || "").trim(),
-      dosage: String(formData.get("dosage") || "").trim(),
-      instruction: String(formData.get("instruction") || "").trim(),
-      card: "bg-old-flax text-custom-jet",
-    };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar o suplemento.");
-        return;
-      }
-
-      const result = await createSupplementEntry(user.id, nextSupplement);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível registrar o suplemento agora.");
-        return;
-      }
-      Object.assign(nextSupplement, result.supplement);
-    }
-
+  function createSupplement(formData) {
     mutate((draft) => {
-      draft.supplements.push(nextSupplement);
+      draft.supplements.push({
+        id: uid("supplement"),
+        period: String(formData.get("time") || "").trim() || "Livre",
+        category: String(formData.get("category") || "").trim() || "Geral",
+        time: String(formData.get("time") || "").trim(),
+        name: formData.get("name"),
+        dosage: formData.get("dosage"),
+        instruction: formData.get("instruction"),
+        card: "bg-old-flax text-custom-jet",
+      });
     });
     clearDraft("register-supplement");
+    clearDraft("modal-supplement");
     setModal(null);
     setScreen("supplements");
   }
 
-  async function saveSupplement(formData) {
+  function saveSupplement(formData) {
     const supplementId = String(formData.get("id") || selectedSupplementId || "");
-    const updatedSupplement = {
-      name: String(formData.get("name") || "").trim(),
-      category: String(formData.get("category") || "").trim(),
-      dosage: String(formData.get("dosage") || "").trim(),
-      time: String(formData.get("time") || "").trim(),
-      period: String(formData.get("time") || "").trim() || "Livre",
-      instruction: String(formData.get("instruction") || "").trim(),
-    };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para editar o suplemento.");
-        return;
-      }
-
-      const result = await updateSupplementEntry(user.id, supplementId, updatedSupplement);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível salvar o suplemento agora.");
-        return;
-      }
-      Object.assign(updatedSupplement, result.supplement);
-    }
-
     mutate((draft) => {
       draft.supplements = draft.supplements.map((item) =>
         item.id === supplementId
           ? {
               ...item,
-              ...updatedSupplement,
+              name: String(formData.get("name") || "").trim(),
+              category: String(formData.get("category") || "").trim(),
+              dosage: String(formData.get("dosage") || "").trim(),
+              time: String(formData.get("time") || "").trim(),
+              period: String(formData.get("time") || "").trim() || item.period,
+              instruction: String(formData.get("instruction") || "").trim(),
             }
           : item,
       );
@@ -2013,7 +1871,7 @@ OLD = nil
     setModal(null);
   }
 
-  async function saveFood(formData) {
+  function saveFood(formData) {
     const food = normalizeFood({
       id: editor?.food?.id,
       name: formData.get("name"),
@@ -2024,27 +1882,6 @@ OLD = nil
       fat: formData.get("fat"),
       benefit: formData.get("benefit"),
     });
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar o alimento.");
-        return;
-      }
-
-      const result =
-        editor.target === "plan"
-          ? await savePlanFoodItem(user.id, editor.mealId, food)
-          : await saveConsumedFoodItem(user.id, editor.mealId, food);
-
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível salvar o alimento agora.");
-        return;
-      }
-
-      Object.assign(food, result.food);
-    }
-
     mutate((draft) => {
       const collection = editor.target === "plan" ? draft.planMeals : draft.consumedMeals[foodDate];
       const meal = collection.find((item) => item.id === editor.mealId);
@@ -2056,20 +1893,7 @@ OLD = nil
     setEditor(null);
   }
 
-  async function removeFood(target, mealId, foodId) {
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o alimento.");
-        return;
-      }
-      const result = target === "plan" ? await deletePlanFoodItem(user.id, foodId) : await deleteConsumedFoodItem(user.id, foodId);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível apagar o alimento agora.");
-        return;
-      }
-    }
-
+  function removeFood(target, mealId, foodId) {
     mutate((draft) => {
       const collection = target === "plan" ? draft.planMeals : draft.consumedMeals[foodDate];
       const meal = collection.find((item) => item.id === mealId);
@@ -2077,26 +1901,363 @@ OLD = nil
     });
   }
 
+  function buildBlankTrainingPlan() {
+    return normalizeTrainingPlan({
+      id: uid("training-plan"),
+      name: "Novo treino",
+      estimatedMinutes: 45,
+      exercises: [],
+    }, 0, { allowEmptyExercises: true });
+  }
+
+  function openTrainingDetail(planId) {
+    setSelectedTrainingId(planId);
+    setScreen("training-detail");
+  }
+
+  function openTrainingEdit(planId) {
+    const plan = trainingPlans.find((item) => item.id === planId);
+    setSelectedTrainingId(planId);
+    setTrainingDraft(normalizeTrainingPlan(plan || buildBlankTrainingPlan(), 0, { allowEmptyExercises: true }));
+    setScreen("training-edit");
+  }
+
+  function openTrainingCreate() {
+    const nextPlan = buildBlankTrainingPlan();
+    setSelectedTrainingId(nextPlan.id);
+    setTrainingDraft(nextPlan);
+    setScreen("training-edit");
+  }
+
+  function startTraining(planId) {
+    const plan = trainingPlans.find((item) => item.id === planId);
+    if (!plan) return;
+    const now = Date.now();
+    setSelectedTrainingId(plan.id);
+    setCompletedTraining(null);
+    setActiveTraining({
+      planId: plan.id,
+      startedAt: now,
+      pausedAt: null,
+      pausedTotalMs: 0,
+      currentExerciseIndex: 0,
+      completedExerciseIds: [],
+    });
+    setScreen("training-execution");
+  }
+
+  function openTrainingPause() {
+    setActiveTraining((current) => {
+      if (!current || current.pausedAt) return current;
+      return { ...current, pausedAt: Date.now() };
+    });
+    setModal("training-pause");
+  }
+
+  function resumeTraining() {
+    setActiveTraining((current) => {
+      if (!current?.pausedAt) return current;
+      const now = Date.now();
+      const pauseDuration = now - current.pausedAt;
+      return {
+        ...current,
+        pausedAt: null,
+        pausedTotalMs: current.pausedTotalMs + pauseDuration,
+      };
+    });
+    setModal(null);
+  }
+
+  function completeTrainingSession(session = activeTraining) {
+    const plan = trainingPlans.find((item) => item.id === session?.planId);
+    if (!plan || !session) return;
+    const finishedAt = Date.now();
+    const totalDurationSeconds = Math.max(0, Math.round((finishedAt - session.startedAt - session.pausedTotalMs - (session.pausedAt ? finishedAt - session.pausedAt : 0)) / 1000));
+    const summary = summarizeTrainingPlan(plan);
+    const completedIds = new Set(session.completedExerciseIds || []);
+    const completedExercisesList = plan.exercises.filter((exercise) => completedIds.has(exercise.id));
+    const seriesCompleted = completedExercisesList.reduce((acc, exercise) => acc + (Number(exercise.sets) || 0), 0);
+    const historyEntry = {
+      id: uid("training-history"),
+      date: todayKey,
+      completedAt: new Date(finishedAt).toISOString(),
+      planId: plan.id,
+      planName: plan.name,
+      durationSeconds: totalDurationSeconds,
+      exercisesCompleted: completedExercisesList.length,
+      seriesCompleted,
+      volumeTotal: summary.volumeTotal,
+      exercises: plan.exercises.map((exercise) => ({
+        id: exercise.id,
+        name: exercise.name,
+        focus: exercise.focus,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        restSeconds: exercise.restSeconds,
+        volume: (Number(exercise.suggestedLoadKg) || 0) * (Number(exercise.sets) || 0) * getAverageReps(exercise.reps),
+        suggestedLoadKg: exercise.suggestedLoadKg,
+        loadDelta: exercise.loadDelta,
+      })),
+    };
+
+    mutate((draft) => {
+      draft.trainingHistory = [historyEntry, ...(draft.trainingHistory || [])].slice(0, 20);
+    });
+    setCompletedTraining(historyEntry);
+    setActiveTraining(null);
+    setModal(null);
+    setScreen("training-summary");
+  }
+
+  function abandonTraining() {
+    setActiveTraining(null);
+    setModal(null);
+    setScreen("training-detail");
+  }
+
+  function markTrainingExerciseDone(exerciseId) {
+    if (!activeTrainingPlan) return;
+    setActiveTraining((current) => {
+      if (!current) return current;
+      const completedExerciseIds = Array.from(new Set([...(current.completedExerciseIds || []), exerciseId]));
+      const nextIndex = activeTrainingPlan.exercises.findIndex(
+        (exercise, index) => index > current.currentExerciseIndex && !completedExerciseIds.includes(exercise.id),
+      );
+      return {
+        ...current,
+        completedExerciseIds,
+        currentExerciseIndex: nextIndex >= 0 ? nextIndex : current.currentExerciseIndex,
+      };
+    });
+  }
+
+  function undoTrainingExerciseDone(exerciseId) {
+    if (!activeTrainingPlan) return;
+    setActiveTraining((current) => {
+      if (!current) return current;
+      const completedExerciseIds = (current.completedExerciseIds || []).filter((id) => id !== exerciseId);
+      const resetIndex = activeTrainingPlan.exercises.findIndex((exercise) => exercise.id === exerciseId);
+      return {
+        ...current,
+        completedExerciseIds,
+        currentExerciseIndex: resetIndex >= 0 ? resetIndex : current.currentExerciseIndex,
+      };
+    });
+  }
+
+  function requestTrainingFinish() {
+    setModal("training-finish-confirm");
+  }
+
+  function updateTrainingDraftField(field, value) {
+    setTrainingDraft((current) => (current ? { ...current, [field]: value } : current));
+  }
+
+  function updateTrainingExerciseField(exerciseId, field, value) {
+    setTrainingDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        exercises: current.exercises.map((exercise) =>
+          exercise.id === exerciseId
+            ? (() => {
+              if (field === "name") {
+                const nextName = String(value || "");
+                const match = getTrainingExerciseMatch(nextName, trainingPlans, trainingHistory);
+                return applyTrainingExerciseSuggestion(exercise, match, nextName);
+              }
+
+              if (field === "reps") {
+                return normalizeTrainingExercise({ ...exercise, reps: sanitizeTrainingReps(value) || "" });
+              }
+
+              if (field === "sets") {
+                return normalizeTrainingExercise({ ...exercise, sets: Math.min(12, Math.max(1, Number(value) || 1)) });
+              }
+
+              if (field === "restSeconds") {
+                return normalizeTrainingExercise({ ...exercise, restSeconds: Math.min(600, Math.max(15, Number(value) || 15)) });
+              }
+
+              if (field === "suggestedLoadKg") {
+                return normalizeTrainingExercise({ ...exercise, suggestedLoadKg: Math.min(500, Math.max(0, Number(value) || 0)) });
+              }
+
+              return normalizeTrainingExercise({ ...exercise, [field]: value });
+            })()
+            : exercise,
+        ),
+      };
+    });
+  }
+
+  function updateTrainingExerciseFocus(exerciseId, rawValue) {
+    const value = normalizeTrainingMuscleGroup(rawValue);
+    updateTrainingExerciseField(exerciseId, "focus", value);
+  }
+
+  function handleTrainingExerciseFocusChange(exerciseId, event) {
+    updateTrainingExerciseFocus(exerciseId, event?.target?.value || "");
+  }
+
+  function addTrainingExercise() {
+    markDraftDirty("training-edit");
+    setTrainingDraft((current) => {
+      if (!current) return current;
+      const nextExercise = normalizeTrainingExercise(
+        {
+          id: uid("training-exercise"),
+          name: "Novo exercício",
+          focus: "",
+          sets: 3,
+          reps: "10-12",
+          targetReps: 12,
+          restSeconds: 60,
+          suggestedLoadKg: 0,
+          loadDelta: "",
+        },
+        current.exercises.length,
+      );
+      setNewTrainingExerciseId(nextExercise.id);
+      return {
+        ...current,
+        exercises: [
+          nextExercise,
+          ...current.exercises,
+        ],
+      };
+    });
+  }
+
+  function removeTrainingExercise(exerciseId) {
+    askDeleteConfirm({
+      title: "Remover exercício?",
+      message: "Tem certeza que deseja remover este exercício do treino? Essa ação não poderá ser desfeita.",
+      confirmLabel: "Remover exercício",
+      onConfirm: () => {
+        markDraftDirty("training-edit");
+        setTrainingDraft((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            exercises: current.exercises.filter((exercise) => exercise.id !== exerciseId),
+          };
+        });
+        setNewTrainingExerciseId((current) => (current === exerciseId ? null : current));
+      },
+    });
+  }
+
+  function removeAllTrainingExercises() {
+    askDeleteConfirm({
+      title: "Remover todos os exercícios?",
+      message: "Tem certeza que deseja remover todos os exercícios deste treino? Essa ação não poderá ser desfeita.",
+      confirmLabel: "Remover todos",
+      onConfirm: () => {
+        markDraftDirty("training-edit");
+        setTrainingDraft((current) => (current ? { ...current, exercises: [] } : current));
+        setNewTrainingExerciseId(null);
+      },
+    });
+  }
+
+  function duplicateTrainingExercise(exerciseId) {
+    markDraftDirty("training-edit");
+    setTrainingDraft((current) => {
+      if (!current) return current;
+      const exerciseIndex = current.exercises.findIndex((exercise) => exercise.id === exerciseId);
+      if (exerciseIndex < 0) return current;
+      const sourceExercise = current.exercises[exerciseIndex];
+      const duplicatedExercise = normalizeTrainingExercise(
+        {
+          ...sourceExercise,
+          id: uid("training-exercise"),
+        },
+        exerciseIndex + 1,
+      );
+      duplicatedExercise.loadDelta = sourceExercise.loadDelta || duplicatedExercise.loadDelta;
+      setNewTrainingExerciseId(duplicatedExercise.id);
+      const nextExercises = [...current.exercises];
+      nextExercises.splice(exerciseIndex + 1, 0, duplicatedExercise);
+      return {
+        ...current,
+        exercises: nextExercises,
+      };
+    });
+  }
+
+  function adjustTrainingExerciseSets(exerciseId, delta) {
+    markDraftDirty("training-edit");
+    setTrainingDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        exercises: current.exercises.map((exercise) =>
+          exercise.id === exerciseId
+            ? normalizeTrainingExercise({
+              ...exercise,
+              sets: Math.min(12, Math.max(1, (Number(exercise.sets) || 1) + delta)),
+            })
+            : exercise,
+        ),
+      };
+    });
+  }
+
+  function saveTrainingDraft(event) {
+    event.preventDefault();
+    if (!trainingDraft) return;
+    const normalizedPlan = normalizeTrainingPlan({
+      ...trainingDraft,
+      exercises: trainingDraft.exercises.map((exercise) => normalizeTrainingExercise(exercise)),
+    }, trainingPlans.length, { allowEmptyExercises: true });
+    mutate((draft) => {
+      const existingIndex = draft.trainingPlans.findIndex((item) => item.id === normalizedPlan.id);
+      if (existingIndex >= 0) draft.trainingPlans[existingIndex] = normalizedPlan;
+      else draft.trainingPlans.push(normalizedPlan);
+    });
+    clearDraft("training-edit");
+    setSelectedTrainingId(normalizedPlan.id);
+    setTrainingDraft(null);
+    setScreen("training-detail");
+  }
+
+  useEffect(() => {
+    if (!newTrainingExerciseId) return undefined;
+    const scrollTimer = window.setTimeout(() => {
+      document.getElementById(`training-exercise-${newTrainingExerciseId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+    const focusTimer = window.setTimeout(() => {
+      document.getElementById(`training-exercise-name-${newTrainingExerciseId}`)?.focus();
+    }, 260);
+    const clearTimer = window.setTimeout(() => setNewTrainingExerciseId(null), 2200);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(focusTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [newTrainingExerciseId, trainingDraft]);
+
   function renderHome() {
-    const currentMeals = state.consumedMeals[date] || [];
-    const recentMeal = currentMeals[1] || currentMeals[0];
-    const recentWaterEntry = waterEntries[0] || null;
     const formattedConsumed = Math.round(summary.calories).toLocaleString("pt-BR");
     const formattedRemaining = Math.max(0, Math.round(remaining)).toLocaleString("pt-BR");
     const formattedTarget = Math.round(state.profile.calorieTarget).toLocaleString("pt-BR");
     return html`
-      <div className="min-h-screen pb-32 bg-[#E2F1F5]">
+      <div className="min-h-screen pb-32 ${getSectionBackground()}">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto" style=${{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style=${{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <section className="bg-white rounded-xl p-7 space-y-6 shadow-[0_14px_30px_rgba(41,43,45,0.05)] border border-white/80">
+          <section className="bg-white rounded-xl p-7 space-y-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)] border border-[#e3e8ef]">
               <div className="flex items-center gap-3">
                 <span className="inline-flex w-2.5 h-2.5 rounded-full bg-[#b9ddd3]"></span>
-                <span className="text-[1rem] font-semibold text-jet-black">Resumo calórico</span>
+                <span className="text-[1rem] font-semibold text-[#0F172A]">Resumo calórico</span>
               </div>
               <div className="flex items-end gap-4 text-left pr-2">
-                <span className="text-[3.6rem] font-black leading-none text-jet-black">${formattedRemaining}</span>
-                <span className="text-[1rem] font-[300] leading-none text-[#8d8d8d] pb-2 whitespace-nowrap">Restante</span>
+                <span className="text-[3.6rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</span>
+                <span className="text-[1rem] font-[300] leading-none text-[#0F172A]/75 pb-2 whitespace-nowrap">Restante</span>
               </div>
               <div className="w-full space-y-5">
                 <div className="h-4 w-full bg-[#d8eee7] rounded-full overflow-hidden">
@@ -2104,12 +2265,12 @@ OLD = nil
                 </div>
                 <div className="flex flex-wrap items-center gap-x-10 gap-y-3 w-full">
                   <div className="flex items-baseline gap-3 whitespace-nowrap">
-                    <span className="text-[1.55rem] font-bold text-jet-black">${formattedConsumed}</span>
-                    <span className="text-[1.05rem] font-[300] text-[#8d8d8d]">Comido</span>
+                    <span className="text-[1.55rem] font-bold text-[#0F172A]">${formattedConsumed}</span>
+                    <span className="text-[1.05rem] font-[300] text-[#0F172A]/75">Comido</span>
                   </div>
                   <div className="flex items-baseline gap-3 whitespace-nowrap">
-                    <span className="text-[1.55rem] font-bold text-jet-black">${formattedTarget}</span>
-                    <span className="text-[1.05rem] font-[300] text-[#8d8d8d]">Meta de consumo</span>
+                    <span className="text-[1.55rem] font-bold text-[#0F172A]">${formattedTarget}</span>
+                    <span className="text-[1.05rem] font-[300] text-[#0F172A]/75">Meta de consumo</span>
                   </div>
                 </div>
               </div>
@@ -2122,12 +2283,12 @@ OLD = nil
                 { label: "Água", value: `${round(water / 1000)}`, unit: "l", color: "bg-royal-blue", bar: `${Math.min(100, (water / 2500) * 100)}%` },
               ].map(
                 (item) => html`
-                  <div className="bg-white rounded-xl p-5 flex flex-col items-center justify-between gap-3 min-h-[138px] shadow-[0_10px_24px_rgba(41,43,45,0.04)] border border-white/80">
+                  <div className="bg-white rounded-xl p-5 flex flex-col items-center justify-between gap-3 min-h-[138px] shadow-[0_10px_24px_rgba(15,23,42,0.08)] border border-[#e3e8ef]">
                     <div>
-                      <span className="block text-[1.05rem] font-semibold text-jet-black mb-2 whitespace-nowrap">${item.label === "Proteína" ? "Proteinas" : item.label}</span>
+                      <span className="block text-[1.05rem] font-semibold text-[#0F172A] mb-2 whitespace-nowrap">${item.label === "Proteína" ? "Proteinas" : item.label}</span>
                       <div className="flex items-baseline justify-center gap-1 whitespace-nowrap">
-                        <span className="text-[1.1rem] font-[200] text-jet-black">${item.value}</span>
-                        <span className="text-[1.1rem] font-[200] text-jet-black">${item.unit === "L" ? "litros" : item.unit.toLowerCase()}</span>
+                        <span className="text-[1.1rem] font-[200] text-[#0F172A]">${item.value}</span>
+                        <span className="text-[1.1rem] font-[200] text-[#0F172A]">${item.unit === "L" ? "litros" : item.unit.toLowerCase()}</span>
                       </div>
                     </div>
                     <div className="w-full h-2 bg-surface-container-low rounded-full overflow-hidden">
@@ -2140,58 +2301,83 @@ OLD = nil
           </div>
 
           <section className="grid grid-cols-1" style=${{ gap: "12px" }}>
-            <button className="bg-[#D9B8F3] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_14px_28px_rgba(41,43,45,0.06)]" onClick=${() => setScreen("food")}>
+            <button className="bg-[#e9f7f1] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#d7efe4]" onClick=${() => setScreen("food")}>
               <div className="flex items-center justify-between">
-                <${Icon} name="restaurant" className="text-jet-black text-4xl" />
-                <${Icon} name="arrow_forward" className="text-jet-black text-[2rem]" />
+                <${Icon} name="restaurant" className="text-[#0F172A] text-4xl opacity-90" />
+                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
               </div>
-              <span className="text-jet-black text-[2.2rem] font-[200] leading-none whitespace-nowrap">Comida</span>
+              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Comida</span>
             </button>
-            <button className="bg-[#DFF37D] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_14px_28px_rgba(41,43,45,0.06)]" onClick=${() => setScreen("plan")}>
+            <button className="bg-[#fbeed2] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#f1d9ad]" onClick=${() => setScreen("plan")}>
               <div className="flex items-center justify-between">
-                <${Icon} name="description" className="text-jet-black text-4xl" />
-                <${Icon} name="arrow_forward" className="text-jet-black text-[2rem]" />
+                <${Icon} name="description" className="text-[#0F172A] text-4xl opacity-90" />
+                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
               </div>
-              <span className="text-jet-black text-[2.2rem] font-[200] leading-none whitespace-nowrap">Plano alimentar</span>
+              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Plano alimentar</span>
             </button>
-            <button className="bg-[#4558C8] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_14px_28px_rgba(41,43,45,0.08)]" onClick=${() => setScreen("water")}>
+            <button className="bg-[#e6f0ff] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#cfe0fb]" onClick=${() => setScreen("water")}>
               <div className="flex items-center justify-between">
-                <${Icon} name="water_drop" className="text-white text-4xl" />
-                <${Icon} name="arrow_forward" className="text-white text-[2rem]" />
+                <${Icon} name="water_drop" className="text-[#0F172A] text-4xl opacity-90" />
+                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
               </div>
-              <span className="text-white text-[2.2rem] font-[200] leading-none whitespace-nowrap">Água</span>
+              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Água</span>
+            </button>
+            <button className="bg-[#eee9ff] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#ddd6fb]" onClick=${() => setScreen("training")}>
+              <div className="flex items-center justify-between">
+                <${Icon} name="fitness_center" className="text-[#0F172A] text-4xl opacity-90" />
+                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
+              </div>
+              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Treino</span>
             </button>
           </section>
 
           <section className="space-y-4" style=${{ marginTop: "14px" }}>
             <h3 className="text-lg font-bold text-jet-black">Atividade Recente</h3>
             <div className="bg-white rounded-xl overflow-hidden shadow-[0_12px_24px_rgba(41,43,45,0.04)] border border-white/80">
-              <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer text-left" onClick=${() => setScreen("food")}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
-                    <${Icon} name="lunch_dining" className="text-jet-black" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-jet-black">${recentMeal?.title || "Almoço Executivo"}</p>
-                    <p className="text-[0.6875rem] font-medium text-on-surface-variant">Hoje, ${recentMeal?.time || "13:05"} • ${Math.round(summarizeFoods(recentMeal?.foods || []).calories || 640)} kcal</p>
-                  </div>
-                </div>
-                <${Icon} name="chevron_right" className="text-on-surface-variant" />
-              </button>
-              <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer border-t border-surface-container-low text-left" onClick=${() => setScreen("water")}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-royal-blue/10 flex items-center justify-center">
-                    <${Icon} name="water_full" className="text-royal-blue" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-jet-black">${recentWaterEntry?.label || "Água registrada"}</p>
-                    <p className="text-[0.6875rem] font-medium text-on-surface-variant">
-                      ${recentWaterEntry ? `Hoje, ${recentWaterEntry.time} • ${recentWaterEntry.amount} ml` : "Registre sua hidratação do dia."}
-                    </p>
-                  </div>
-                </div>
-                <${Icon} name="chevron_right" className="text-on-surface-variant" />
-              </button>
+              ${
+                recentActivities.length
+                  ? recentActivities.slice(0, 3).map(
+                      (item, index) => html`
+                        <button
+                          className=${`w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer text-left ${
+                            index > 0 ? "border-t border-surface-container-low" : ""
+                          }`}
+                          onClick=${item.action}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div
+                              className=${`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                item.meta === "Água"
+                                  ? "bg-royal-blue/10"
+                                  : item.meta === "Treino"
+                                    ? "bg-[#faf3f2]"
+                                    : "bg-surface-container-low"
+                              }`}
+                            >
+                              <${Icon}
+                                name=${item.icon}
+                                className=${item.meta === "Água" ? "text-royal-blue" : item.meta === "Treino" ? "text-[#EF5F37]" : "text-jet-black"}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-jet-black">${item.title}</p>
+                              <p className="text-[0.6875rem] font-medium text-on-surface-variant">${item.body}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-[0.6875rem] font-bold text-on-surface-variant">${item.meta}</span>
+                            <${Icon} name="chevron_right" className="text-on-surface-variant" />
+                          </div>
+                        </button>
+                      `,
+                    )
+                  : html`
+                      <div className="p-5 text-center space-y-2">
+                        <p className="font-bold text-jet-black">Nada recente por aqui</p>
+                        <p className="text-sm text-on-surface-variant">Registre comida, água ou treino para acompanhar sua rotina na Home.</p>
+                      </div>
+                    `
+              }
             </div>
           </section>
         </main>
@@ -2202,7 +2388,7 @@ OLD = nil
 
   function renderWelcome() {
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="bg-white text-[#111] min-h-screen">
         <main className="min-h-screen px-7 py-8 max-w-md mx-auto flex flex-col">
           <div className="pt-2">
             <${AuthWordmark} />
@@ -2217,7 +2403,6 @@ OLD = nil
           </div>
 
           <div className="space-y-4 pb-5">
-            <div className="rounded-[10px] bg-[#eef6ff] border border-[#dbe7ff] p-4 text-sm text-[#111]">Bem-vinda ao MOS. Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>
             <button className="w-full h-16 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2" onClick=${() => openAuthScreen("signup")}>
               <span>Começar</span>
               <${Icon} name="arrow_forward" className="text-white" />
@@ -2235,24 +2420,15 @@ OLD = nil
   }
 
   function renderSignup() {
-    const suggestedCalories = calculateSuggestedCalories({
-      weight: signupForm.weight,
-      height: signupForm.height,
-      age: signupForm.age,
-      goal: signupForm.goal,
-    });
     const isReady =
       signupForm.name.trim() &&
       signupForm.email.trim() &&
       signupForm.password &&
       signupForm.confirmPassword &&
-      signupForm.age &&
-      signupForm.weight &&
-      signupForm.height &&
       signupForm.acceptedTerms;
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="bg-white text-[#111] min-h-screen">
         <header className="border-b border-black/10">
           <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
             <${AuthWordmark} />
@@ -2266,99 +2442,33 @@ OLD = nil
             <p className="text-[1.2rem] leading-snug text-[#6e7178]">Junte-se à plataforma MOS para acessar sua rotina de forma organizada e visual.</p>
           </section>
 
-          ${renderAuthNoticeCard()}
+          ${authNotice
+            ? html`<div className="rounded-[10px] bg-[#fff6f2] border border-[#f5ddd5] p-4 text-sm text-[#111]">${authNotice}</div>`
+            : null}
 
           <form className="space-y-5" onSubmit=${handleSignupSubmit}>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">Nome completo</label>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" value=${signupForm.name} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setSignupForm((current) => ({ ...current, name: value }));
-              }} placeholder="Seu nome" />
+              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" value=${signupForm.name} onInput=${(e) => setSignupForm((current) => ({ ...current, name: e.currentTarget.value }))} placeholder="Seu nome" />
             </div>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="email" value=${signupForm.email} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setSignupForm((current) => ({ ...current, email: value }));
-              }} placeholder="exemplo@mos.app" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[0.8rem] font-bold text-[#111]">Idade</label>
-                <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="number" min="10" step="1" value=${signupForm.age} onInput=${(e) => {
-                  const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                  setSignupForm((current) => ({ ...current, age: value }));
-                }} placeholder="30" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[0.8rem] font-bold text-[#111]">Altura (cm)</label>
-                <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="number" min="100" step="1" value=${signupForm.height} onInput=${(e) => {
-                  const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                  setSignupForm((current) => ({ ...current, height: value }));
-                }} placeholder="170" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[0.8rem] font-bold text-[#111]">Peso atual (kg)</label>
-                <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="number" min="20" step="0.1" value=${signupForm.weight} onInput=${(e) => {
-                  const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                  setSignupForm((current) => ({ ...current, weight: value }));
-                }} placeholder="77.7" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[0.8rem] font-bold text-[#111]">Objetivo</label>
-                <select className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111] bg-white" value=${signupForm.goal} onChange=${(e) => {
-                  const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                  setSignupForm((current) => ({ ...current, goal: value }));
-                }}>
-                  <option value="lose">Perder peso</option>
-                  <option value="maintain">Manter peso</option>
-                  <option value="gain">Ganhar massa</option>
-                </select>
-              </div>
-            </div>
-            <div className="rounded-[10px] border border-[#111]/10 bg-[#f7f8fb] p-4 space-y-1">
-              <p className="text-[0.78rem] font-bold text-[#6e7178]">Meta calórica sugerida</p>
-              <p className="text-[1.8rem] font-black text-[#111]">${suggestedCalories ? `${suggestedCalories.toLocaleString("pt-BR")} kcal` : "Preencha seus dados"}</p>
-              <p className="text-sm leading-snug text-[#6e7178]">Você poderá editar essa meta depois em Meu perfil.</p>
+              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="email" value=${signupForm.email} onInput=${(e) => setSignupForm((current) => ({ ...current, email: e.currentTarget.value }))} placeholder="exemplo@mos.app" />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <label className="text-[0.8rem] font-bold text-[#111]">Senha</label>
-                <button type="button" className="inline-flex items-center gap-1 text-[0.8rem] font-bold text-[#8a8a8a]" onClick=${() => setShowSignupPassword((current) => !current)}>
-                  <${Icon} name=${showSignupPassword ? "visibility_off" : "visibility"} className="text-[1rem]" />
-                  <span>${showSignupPassword ? "Ocultar senha" : "Ver senha"}</span>
-                </button>
-              </div>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type=${showSignupPassword ? "text" : "password"} value=${signupForm.password} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setSignupForm((current) => ({ ...current, password: value }));
-              }} placeholder="••••••••" />
+              <label className="text-[0.8rem] font-bold text-[#111]">Senha</label>
+              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="password" value=${signupForm.password} onInput=${(e) => setSignupForm((current) => ({ ...current, password: e.currentTarget.value }))} placeholder="••••••••" />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <label className="text-[0.8rem] font-bold text-[#111]">Confirmar senha</label>
-                <button type="button" className="inline-flex items-center gap-1 text-[0.8rem] font-bold text-[#8a8a8a]" onClick=${() => setShowSignupConfirmPassword((current) => !current)}>
-                  <${Icon} name=${showSignupConfirmPassword ? "visibility_off" : "visibility"} className="text-[1rem]" />
-                  <span>${showSignupConfirmPassword ? "Ocultar senha" : "Ver senha"}</span>
-                </button>
-              </div>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type=${showSignupConfirmPassword ? "text" : "password"} value=${signupForm.confirmPassword} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setSignupForm((current) => ({ ...current, confirmPassword: value }));
-              }} placeholder="••••••••" />
+              <label className="text-[0.8rem] font-bold text-[#111]">Confirmar senha</label>
+              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="password" value=${signupForm.confirmPassword} onInput=${(e) => setSignupForm((current) => ({ ...current, confirmPassword: e.currentTarget.value }))} placeholder="••••••••" />
             </div>
             <label className="flex items-start gap-3 text-sm text-[#555]">
-              <input type="checkbox" className="mt-1" checked=${signupForm.acceptedTerms} onChange=${(e) => {
-                const checked = e.currentTarget.checked;
-                setSignupForm((current) => ({ ...current, acceptedTerms: checked }));
-              }} />
+              <input type="checkbox" className="mt-1" checked=${signupForm.acceptedTerms} onChange=${(e) => setSignupForm((current) => ({ ...current, acceptedTerms: e.currentTarget.checked }))} />
               <span>Eu aceito os Termos de Serviço e a Política de Privacidade.</span>
             </label>
-            <button className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady && !authBusy ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`} disabled=${!isReady || authBusy}>
-              ${authBusy ? "Cadastrando..." : "Cadastrar"}
+            <button className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`} disabled=${!isReady}>
+              Cadastrar
             </button>
           </form>
 
@@ -2379,7 +2489,7 @@ OLD = nil
     const isReady = loginForm.email.trim() && loginForm.password;
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="bg-white text-[#111] min-h-screen">
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <${AuthWordmark} />
 
@@ -2387,40 +2497,42 @@ OLD = nil
             <h1 className="text-[3.2rem] leading-[0.93] font-black text-[#111]">Acesse sua conta</h1>
           </section>
 
-          ${renderAuthNoticeCard()}
+          ${authNotice
+            ? html`<div className="rounded-[10px] bg-[#fff6f2] border border-[#f5ddd5] p-4 text-sm text-[#111]">${authNotice}</div>`
+            : null}
 
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
-              <input className="w-full h-14 px-0 border-0 border-b border-[#111]/35 rounded-none text-[#111] bg-transparent" type="email" value=${loginForm.email} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setLoginForm((current) => ({ ...current, email: value }));
-              }} placeholder="seu@email.com" />
+              <input className="w-full h-14 px-0 border-0 border-b border-[#111]/35 rounded-none text-[#111] bg-transparent" type="email" value=${loginForm.email} onInput=${(e) => setLoginForm((current) => ({ ...current, email: e.currentTarget.value }))} placeholder="seu@email.com" />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center justify-between gap-3">
                 <label className="text-[0.8rem] font-bold text-[#111]">Senha</label>
-                <div className="flex items-center gap-4">
-                  <button type="button" className="inline-flex items-center gap-1 text-[0.8rem] font-bold text-[#8a8a8a]" onClick=${() => setShowLoginPassword((current) => !current)}>
-                    <${Icon} name=${showLoginPassword ? "visibility_off" : "visibility"} className="text-[1rem]" />
-                    <span>${showLoginPassword ? "Ocultar senha" : "Ver senha"}</span>
-                  </button>
-                  <button type="button" className="text-[0.8rem] font-bold text-[#8a8a8a]" onClick=${() => openAuthScreen("recover-password")}>Esqueceu a senha?</button>
-                </div>
+                <button type="button" className="text-[0.8rem] font-bold text-[#8a8a8a]" onClick=${() => openAuthScreen("recover-password")}>Esqueceu a senha?</button>
               </div>
-              <input className="w-full h-14 px-0 border-0 border-b border-[#111]/35 rounded-none text-[#111] bg-transparent" type=${showLoginPassword ? "text" : "password"} value=${loginForm.password} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setLoginForm((current) => ({ ...current, password: value }));
-              }} placeholder="••••••••" />
+              <input className="w-full h-14 px-0 border-0 border-b border-[#111]/35 rounded-none text-[#111] bg-transparent" type="password" value=${loginForm.password} onInput=${(e) => setLoginForm((current) => ({ ...current, password: e.currentTarget.value }))} placeholder="••••••••" />
             </div>
             <button
               type="button"
-              className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady && !authBusy ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`}
-              disabled=${!isReady || authBusy}
+              className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`}
+              disabled=${!isReady}
               onClick=${handleLoginSubmit}
             >
-              ${authBusy ? "Entrando..." : "Entrar"}
+              Entrar
             </button>
+          </div>
+
+          <div className="pt-8 border-t border-black/10 space-y-5">
+            <div className="flex items-center gap-4 text-[#8a8a8a] text-sm">
+              <div className="h-px flex-1 bg-black/10"></div>
+              <span>Ou acesse com</span>
+              <div className="h-px flex-1 bg-black/10"></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" className="h-14 border border-[#111]/25 rounded-[10px] font-bold text-[#111] bg-white active:scale-95 transition-transform" onClick=${() => handleSocialLogin("Google")}>Google</button>
+              <button type="button" className="h-14 border border-[#111]/25 rounded-[10px] font-bold text-[#111] bg-white active:scale-95 transition-transform" onClick=${() => handleSocialLogin("Apple")}>Apple</button>
+            </div>
           </div>
 
           <div className="pt-8 border-t border-black/10 text-center">
@@ -2437,7 +2549,7 @@ OLD = nil
     const isReady = recoverEmail.trim();
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="bg-white text-[#111] min-h-screen">
         <header className="border-b border-black/10">
           <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
             <${AuthWordmark} />
@@ -2451,129 +2563,21 @@ OLD = nil
             <p className="text-[1.2rem] leading-snug text-[#6e7178]">Digite seu e-mail para enviarmos o link de recuperação.</p>
           </section>
 
-          ${renderAuthNoticeCard()}
+          ${authNotice
+            ? html`<div className="rounded-[10px] bg-[#eef6ff] border border-[#dbe7ff] p-4 text-sm text-[#111]">${authNotice}</div>`
+            : null}
 
           <form className="space-y-6" onSubmit=${handleRecoverSubmit}>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="email" value=${recoverEmail} onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setRecoverEmail(value);
-              }} placeholder="seu@email.com" />
+              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="email" value=${recoverEmail} onInput=${(e) => setRecoverEmail(e.currentTarget.value)} placeholder="seu@email.com" />
             </div>
-            <button className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady && !authBusy ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`} disabled=${!isReady || authBusy}>
-              ${authBusy ? "Enviando..." : "Enviar link"}
+            <button className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`} disabled=${!isReady}>
+              Enviar link
             </button>
           </form>
 
           <button className="text-sm font-bold text-[#111] flex items-center gap-2" onClick=${() => openAuthScreen("login")}>
-            <${Icon} name="arrow_back" className="text-[1rem]" />
-            <span>Voltar para o login</span>
-          </button>
-        </main>
-      </div>
-    `;
-  }
-
-  function renderResetPassword() {
-    const isReady = resetPasswordForm.password && resetPasswordForm.confirmPassword;
-
-    return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
-        <header className="border-b border-black/10">
-          <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
-            <${AuthWordmark} />
-            <button onClick=${() => {
-              recoveryFlowRef.current = false;
-              setPasswordRecoveryReady(false);
-              openAuthScreen("login");
-            }}>
-              <${Icon} name="close" className="text-[#111]" />
-            </button>
-          </div>
-        </header>
-
-        <main className="px-6 py-8 max-w-md mx-auto space-y-8">
-          <section className="space-y-4 pt-10">
-            <h1 className="text-[3rem] leading-[0.94] font-black text-[#111]">Criar nova senha</h1>
-            <p className="text-[1.2rem] leading-snug text-[#6e7178]">
-              Defina sua nova senha para voltar a entrar no MOS com segurança.
-            </p>
-          </section>
-
-          ${renderAuthNoticeCard()}
-
-          <form className="space-y-6" onSubmit=${handleResetPasswordSubmit}>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <label className="text-[0.8rem] font-bold text-[#111]">Nova senha</label>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-[0.8rem] font-bold text-[#8a8a8a]"
-                  onClick=${() => setShowResetPassword((current) => !current)}
-                >
-                  <${Icon}
-                    name=${showResetPassword ? "visibility_off" : "visibility"}
-                    className="text-[1rem]"
-                  />
-                  <span>${showResetPassword ? "Ocultar senha" : "Ver senha"}</span>
-                </button>
-              </div>
-              <input
-                className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]"
-                type=${showResetPassword ? "text" : "password"}
-                value=${resetPasswordForm.password}
-                onInput=${(e) => {
-                  const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                  setResetPasswordForm((current) => ({ ...current, password: value }));
-                }}
-                placeholder="Mínimo de 6 caracteres"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <label className="text-[0.8rem] font-bold text-[#111]">Confirmar nova senha</label>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-[0.8rem] font-bold text-[#8a8a8a]"
-                  onClick=${() => setShowResetPasswordConfirm((current) => !current)}
-                >
-                  <${Icon}
-                    name=${showResetPasswordConfirm ? "visibility_off" : "visibility"}
-                    className="text-[1rem]"
-                  />
-                  <span>${showResetPasswordConfirm ? "Ocultar senha" : "Ver senha"}</span>
-                </button>
-              </div>
-              <input
-                className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]"
-                type=${showResetPasswordConfirm ? "text" : "password"}
-                value=${resetPasswordForm.confirmPassword}
-                onInput=${(e) => {
-                  const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                  setResetPasswordForm((current) => ({ ...current, confirmPassword: value }));
-                }}
-                placeholder="Repita sua nova senha"
-              />
-            </div>
-
-            <button
-              className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${
-                isReady && !authBusy
-                  ? "bg-[#111] text-white active:scale-95"
-                  : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"
-              }`}
-              disabled=${!isReady || authBusy}
-            >
-              ${authBusy ? "Salvando..." : "Salvar nova senha"}
-            </button>
-          </form>
-
-          <button
-            className="text-sm font-bold text-[#111] flex items-center gap-2"
-            onClick=${() => openAuthScreen("login")}
-          >
             <${Icon} name="arrow_back" className="text-[1rem]" />
             <span>Voltar para o login</span>
           </button>
@@ -2594,7 +2598,7 @@ OLD = nil
             <h1 className="text-[2.6rem] leading-[0.94] font-black text-[#111]">Termos e condições</h1>
             <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">O MOS funciona como um organizador pessoal de alimentação, água, plano e medidas. Os dados ficam salvos localmente neste dispositivo.</p>
             <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">Você pode editar suas informações quando quiser. Ao sair da conta, seus dados continuam guardados localmente até que você escolha apagar manualmente.</p>
-            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">Seus dados ficam vinculados à sua conta e podem ser acessados com segurança sempre que você entrar no MOS.</p>
+            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">As telas de login, cadastro e recuperação servem para organizar sua experiência dentro do app, sem integração com backend neste momento.</p>
           </section>
           <button className="w-full h-14 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => openAuthScreen("welcome")}>
             Voltar
@@ -2606,17 +2610,17 @@ OLD = nil
 
   function renderFood() {
     return html`
-      <div className="bg-[#faf3f2] text-on-surface min-h-screen pb-40">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-40">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("food")} onRight=${openNotifications} />
         <main className="pt-24 px-4 max-w-screen-xl mx-auto space-y-8">
           <section className="w-full">
-            <button className="w-full bg-[#D9B8F3] rounded-xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
+            <button className="w-full bg-[#e9f7f1] border border-[#d7efe4] rounded-xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
               <div className="space-y-1">
                 <span className="font-label text-[0.6875rem] font-medium text-jet-black/60">Calendário</span>
-                <h2 className="font-headline text-2xl font-bold text-[#292B2D]">${foodDateLabel}</h2>
+                <h2 className="font-headline text-2xl font-bold text-[#101846]">${foodDateLabel}</h2>
               </div>
-              <div className="bg-white/60 p-4 rounded-xl">
-                <${Icon} name="calendar_today" className="text-[#292B2D]" />
+              <div className="bg-white/80 p-4 rounded-xl border border-[#e3e8ef]">
+                <${Icon} name="calendar_today" className="text-[#0F172A]" />
               </div>
             </button>
             ${foodDate !== todayKey
@@ -2639,22 +2643,22 @@ OLD = nil
               (meal) => {
                 const mealTotal = summarizeFoods(meal.foods);
                 return html`
-                  <button className="bg-white rounded-xl p-6 min-h-[150px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-6" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
+            <button className="bg-white rounded-xl p-6 min-h-[150px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-6 shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#e3e8ef]" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
                     <div className="flex items-start justify-between gap-4">
-                      <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
-                        <${Icon} name=${meal.icon || "restaurant"} className="text-jet-black text-[1.65rem]" />
-                      </div>
-                      <${Icon} name="arrow_forward" className="text-jet-black text-[2rem] shrink-0" />
+                    <div className="w-12 h-12 rounded-full bg-white/80 border border-[#e3e8ef] flex items-center justify-center shrink-0">
+                      <${Icon} name=${meal.icon || "restaurant"} className="text-[#0F172A] text-[1.65rem]" />
                     </div>
-                    <div>
-                      <h3 className="font-headline text-[1.9rem] font-[300] leading-none mb-3 text-jet-black">${meal.name}</h3>
-                      <p className="text-sm text-on-surface-variant leading-relaxed">${meal.description}</p>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[1.9rem] font-black leading-none text-jet-black">${Math.round(mealTotal.calories)}</span>
-                      <span className="font-label text-[0.6875rem] font-bold text-outline">kcal</span>
-                    </div>
-                  </button>
+                    <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] shrink-0" />
+                  </div>
+                  <div>
+                    <h3 className="font-headline text-[1.9rem] font-[300] leading-none mb-3 text-[#0F172A]">${meal.name}</h3>
+                    <p className="text-sm text-[#0F172A]/70 leading-relaxed">${meal.description}</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[1.9rem] font-black leading-none text-[#0F172A]">${Math.round(mealTotal.calories)}</span>
+                    <span className="font-label text-[0.6875rem] font-bold text-[#0F172A]/60">kcal</span>
+                  </div>
+                </button>
                 `;
               },
             )
@@ -2689,31 +2693,19 @@ OLD = nil
           onLeft=${() => setScreen("food")}
           rightSlot=${html`<div className="flex items-center gap-4">
             <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food: null })}>
-              <${Icon} name="edit" className="text-[#292B2D]" />
+              <${Icon} name="edit" className="text-[#101846]" />
             </button>
             <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${() => askDeleteConfirm({
               title: "Apagar refeição",
               message: "Tem certeza que deseja apagar este item?",
-              onConfirm: async () => {
-                if (authConfigured) {
-                  const user = await getAuthenticatedUser();
-                  if (!user) {
-                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar a refeição.");
-                    return;
-                  }
-                  const result = await deleteConsumedMealEntry(user.id, selectedConsumed.id);
-                  if (!result.ok) {
-                    showAuthNotice(result.error?.message || "Não foi possível apagar a refeição agora.");
-                    return;
-                  }
-                }
+              onConfirm: () => {
                 mutate((draft) => {
                   draft.consumedMeals[foodDate] = (draft.consumedMeals[foodDate] || (foodDate === todayKey ? consumedMeals : [])).filter((meal) => meal.id !== selectedConsumed.id);
                 });
                 setScreen("food");
               },
             })}>
-              <${Icon} name="delete" className="text-[#292B2D]" />
+              <${Icon} name="delete" className="text-[#101846]" />
             </button>
           </div>`}
         />
@@ -2759,7 +2751,7 @@ OLD = nil
             )}
           </section>
           <section className="space-y-3">
-            <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Informação nutricional</h3>
+            <h3 className="text-[0.875rem] font-bold text-[#101846]">Informação nutricional</h3>
             <div className="bg-white rounded-xl px-4 divide-y divide-surface-container-high">
               ${selectedConsumed.foods.map(
                 (food) => {
@@ -2768,23 +2760,23 @@ OLD = nil
                     <div className="py-5 space-y-4">
                       <div className="flex items-center gap-3">
                         <span className="w-3 h-3 rounded-full shrink-0" style=${{ backgroundColor: accent.dot }}></span>
-                        <h4 className="text-[1.15rem] font-bold text-jet-black">${food.name} <span className="font-medium text-[#292B2D]/75">(${food.quantity})</span></h4>
+                        <h4 className="text-[1.15rem] font-bold text-jet-black">${food.name} <span className="font-medium text-[#101846]/75">(${food.quantity})</span></h4>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-[10px] p-3" style=${{ backgroundColor: accent.soft }}>
-                          <span className="text-[0.75rem] font-bold text-[#292B2D]/70 block mb-1">Calorias</span>
+                          <span className="text-[0.75rem] font-bold text-[#101846]/70 block mb-1">Calorias</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.calories} kcal</p>
                         </div>
                         <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.75rem] font-bold text-[#292B2D]/70 block mb-1">Carbo</span>
+                          <span className="text-[0.75rem] font-bold text-[#101846]/70 block mb-1">Carbo</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.carbs} g</p>
                         </div>
                         <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.75rem] font-bold text-[#292B2D]/70 block mb-1">Proteína</span>
+                          <span className="text-[0.75rem] font-bold text-[#101846]/70 block mb-1">Proteína</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.protein} g</p>
                         </div>
                         <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.75rem] font-bold text-[#292B2D]/70 block mb-1">Gordura</span>
+                          <span className="text-[0.75rem] font-bold text-[#101846]/70 block mb-1">Gordura</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.fat} g</p>
                         </div>
                       </div>
@@ -2794,12 +2786,12 @@ OLD = nil
               )}
             </div>
           </section>
-          <section className="bg-[#292B2D] text-white p-6 rounded-xl space-y-6">
+          <section className="bg-white border border-[#e6e8ef] text-[#101846] p-6 rounded-xl space-y-6">
             <h3 className="font-bold text-lg">Distribuição de Macros</h3>
             <${MacroBarDark} proteinWidth=${`${Math.min(100, totals.protein)}%`} carbWidth=${`${Math.min(100, totals.carbs)}%`} fatWidth=${`${Math.min(100, totals.fat * 2)}%`} />
           </section>
           <section className="flex flex-col gap-3">
-            <button className="w-full bg-[#292B2D] text-white font-bold py-4 rounded-lg active:scale-95 transition-all text-sm" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food: null })}>
+            <button className="w-full bg-[#EF5F37] text-white font-bold py-4 rounded-lg active:scale-95 transition-all text-sm" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food: null })}>
               Adicionar alimento
             </button>
           </section>
@@ -2811,22 +2803,22 @@ OLD = nil
 
   function renderPlan() {
     return html`
-      <div className="bg-[#e9ecfa] text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
         <main className="pt-24 pb-32 px-6 max-w-md mx-auto space-y-8">
-          <header className="bg-[#DFF37D] text-[#292B2D] p-8 rounded-xl shadow-[0_14px_30px_rgba(41,43,45,0.06)]">
+          <header className="bg-[#fbeed2] border border-[#f1d9ad] text-[#0F172A] p-8 rounded-xl shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
             <div className="flex flex-col gap-1">
-              <span className="text-[0.6875rem] font-medium text-jet-black/60">Meta Ativa</span>
+              <span className="text-[0.6875rem] font-medium text-[#0F172A]/60">Meta Ativa</span>
               <h1 className="text-[1.75rem] font-bold leading-tight">${state.profile.activeGoal}</h1>
             </div>
           </header>
-          <div className="sticky top-20 z-40 bg-white rounded-xl p-2 flex gap-2 shadow-[0_10px_24px_rgba(41,43,45,0.06)] border border-white/80">
-            <button className="flex-1 py-3 px-4 rounded-xl bg-[#4558C8] text-white text-[0.875rem] font-bold transition-all active:scale-95">Cardápio</button>
-            <button className="flex-1 py-3 px-4 rounded-xl bg-surface-container-low text-[#292B2D] text-[0.875rem] font-bold" onClick=${() => setScreen("supplements")}>Suplementos</button>
+          <div className="sticky top-20 z-40 bg-white rounded-xl p-2 flex gap-2 shadow-[0_10px_24px_rgba(15,23,42,0.08)] border border-[#e3e8ef]">
+            <button className="flex-1 py-3 px-4 rounded-xl bg-[#fbeed2] border border-[#f1d9ad] text-[#0F172A] text-[0.875rem] font-bold transition-all active:scale-95">Cardápio</button>
+            <button className="flex-1 py-3 px-4 rounded-xl bg-surface-container-low text-[#101846] text-[0.875rem] font-bold border border-transparent" onClick=${() => setScreen("supplements")}>Suplementos</button>
           </div>
           <section className="space-y-4">
             <div className="flex justify-between items-end">
-              <h2 className="text-xl font-bold text-[#292B2D]">Cardápio do Plano</h2>
+              <h2 className="text-xl font-bold text-[#101846]">Cardápio do Plano</h2>
             </div>
             ${state.planMeals.map(
               (meal) => html`
@@ -2838,7 +2830,7 @@ OLD = nil
                     <${Icon} name="arrow_forward" className="text-jet-black text-[2rem] shrink-0" />
                   </div>
                   <div className="flex-grow">
-                    <h3 className="text-[1.55rem] font-bold leading-none text-[#292B2D]">${meal.name}</h3>
+                    <h3 className="text-[1.55rem] font-bold leading-none text-[#101846]">${meal.name}</h3>
                     <p className="text-[0.875rem] text-slate-500 mt-3 leading-relaxed">${meal.description}</p>
                   </div>
                 </button>
@@ -2846,22 +2838,22 @@ OLD = nil
             )}
           </section>
           <section className="grid grid-cols-3 gap-3">
-            <div className="bg-[#D9B8F3] p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(41,43,45,0.05)]">
-              <span className="text-[0.6875rem] font-bold text-[#292B2D]">Calorias</span>
+            <div className="bg-[#fbeed2] border border-[#f1d9ad] p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
+              <span className="text-[0.6875rem] font-bold text-[#0F172A]">Calorias</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.calories)}</span>
                 <span className="text-[0.6875rem] font-medium">kcal</span>
               </div>
             </div>
-            <div className="bg-surface-container-low p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(41,43,45,0.05)]">
-              <span className="text-[0.6875rem] font-bold text-[#292B2D]">Proteínas</span>
+            <div className="bg-[#fff1da] border border-[#f1d9ad] p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
+              <span className="text-[0.6875rem] font-bold text-[#0F172A]">Proteínas</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.protein)}</span>
                 <span className="text-[0.6875rem] font-medium">g</span>
               </div>
             </div>
-            <div className="bg-surface-container-highest p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(41,43,45,0.05)]">
-              <span className="text-[0.6875rem] font-bold text-[#292B2D]">Carbos</span>
+            <div className="bg-[#fff6e8] border border-[#f1d9ad] p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
+              <span className="text-[0.6875rem] font-bold text-[#0F172A]">Carbos</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.carbs)}</span>
                 <span className="text-[0.6875rem] font-medium">g</span>
@@ -2897,29 +2889,29 @@ OLD = nil
           onRight=${openNotifications}
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="bg-[#292B2D] text-white rounded-xl p-6 space-y-5">
+          <section className="bg-[#fbeed2] border border-[#f1d9ad] text-[#0F172A] rounded-xl p-6 space-y-5 shadow-[0_10px_22px_rgba(15,23,42,0.08)]">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
-                <span className="text-sm text-white/65">Painel do plano</span>
+                <span className="text-sm text-[#0F172A]/65">Painel do plano</span>
                 <h1 className="text-[1.8rem] font-bold leading-tight">${state.profile.activeGoal}</h1>
-                <p className="text-sm leading-relaxed text-white/72">${planFocus}</p>
+                <p className="text-sm leading-relaxed text-[#0F172A]/72">${planFocus}</p>
               </div>
-              <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center shrink-0">
-                <${Icon} name="dashboard" className="text-white text-[1.65rem]" />
+              <div className="w-12 h-12 rounded-[10px] bg-white/80 border border-[#e3e8ef] flex items-center justify-center shrink-0">
+                <${Icon} name="dashboard" className="text-[#0F172A] text-[1.65rem]" />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/8 rounded-[10px] p-4 space-y-2">
-                <span className="text-[0.75rem] text-white/65">Refeições</span>
-                <strong className="text-[1.5rem] font-bold block">${planMealCount}</strong>
+              <div className="bg-white/80 border border-[#e3e8ef] rounded-[10px] p-4 space-y-2">
+                <span className="text-[0.75rem] text-[#0F172A]/65">Refeições</span>
+                <strong className="text-[1.5rem] font-bold block text-[#0F172A]">${planMealCount}</strong>
               </div>
-              <div className="bg-white/8 rounded-[10px] p-4 space-y-2">
-                <span className="text-[0.75rem] text-white/65">Calorias</span>
-                <strong className="text-[1.5rem] font-bold block">${Math.round(planTotals.calories)}</strong>
+              <div className="bg-white/80 border border-[#e3e8ef] rounded-[10px] p-4 space-y-2">
+                <span className="text-[0.75rem] text-[#0F172A]/65">Calorias</span>
+                <strong className="text-[1.5rem] font-bold block text-[#0F172A]">${Math.round(planTotals.calories)}</strong>
               </div>
-              <div className="bg-white/8 rounded-[10px] p-4 space-y-2">
-                <span className="text-[0.75rem] text-white/65">Média</span>
-                <strong className="text-[1.5rem] font-bold block">${averageCalories}</strong>
+              <div className="bg-white/80 border border-[#e3e8ef] rounded-[10px] p-4 space-y-2">
+                <span className="text-[0.75rem] text-[#0F172A]/65">Média</span>
+                <strong className="text-[1.5rem] font-bold block text-[#0F172A]">${averageCalories}</strong>
               </div>
             </div>
           </section>
@@ -2927,11 +2919,11 @@ OLD = nil
           <section className="bg-white rounded-xl p-6 space-y-4 border border-[#dde4ff]">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-sm text-[#4558C8]">Estrutura atual</span>
+                <span className="text-sm text-[#101846]/70">Estrutura atual</span>
                 <h2 className="text-lg font-bold text-jet-black">Resumo do plano</h2>
                 <p className="text-sm text-on-surface-variant">Gerencie as refeições cadastradas como em um painel de controle.</p>
               </div>
-              <div className="w-11 h-11 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-[10px] bg-surface-container-low flex items-center justify-center shrink-0">
                 <${Icon} name="receipt_long" className="text-[#4558C8]" />
               </div>
             </div>
@@ -2946,7 +2938,7 @@ OLD = nil
                         </div>
                         <div className="flex items-center gap-2 mt-4">
                           <button
-                            className="h-10 px-4 rounded-[10px] bg-[#eef2ff] text-[#4558C8] font-bold active:scale-95 transition-transform"
+                            className="h-10 px-4 rounded-[10px] bg-surface-container-low text-[#4558C8] font-bold active:scale-95 transition-transform"
                             onClick=${() =>
                               guardPlanConfigNavigation(() => {
                                 setSelectedPlanId(meal.id);
@@ -2960,19 +2952,7 @@ OLD = nil
                             onClick=${() => askDeleteConfirm({
                               title: "Apagar refeição do plano",
                               message: "Tem certeza que deseja apagar este item?",
-                              onConfirm: async () => {
-                                if (authConfigured) {
-                                  const user = await getAuthenticatedUser();
-                                  if (!user) {
-                                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar a refeição do plano.");
-                                    return;
-                                  }
-                                  const result = await deletePlanMealEntry(user.id, meal.id);
-                                  if (!result.ok) {
-                                    showAuthNotice(result.error?.message || "Não foi possível apagar a refeição do plano agora.");
-                                    return;
-                                  }
-                                }
+                              onConfirm: () => {
                                 mutate((draft) => {
                                   draft.planMeals = draft.planMeals.filter((item) => item.id !== meal.id);
                                 });
@@ -2996,7 +2976,7 @@ OLD = nil
                 <h2 className="text-lg font-bold text-jet-black">Editar dados do plano</h2>
                 <p className="text-sm text-on-surface-variant">Atualize o nome, o foco e as notas gerais que orientam a rotina alimentar.</p>
               </div>
-              <div className="w-11 h-11 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-[10px] bg-surface-container-low flex items-center justify-center shrink-0">
                 <${Icon} name="tune" className="text-[#4558C8]" />
               </div>
             </div>
@@ -3092,7 +3072,7 @@ OLD = nil
             )}
           </section>
           <section className="space-y-3">
-            <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Informação Nutricional</h3>
+            <h3 className="text-[0.875rem] font-bold text-[#101846]">Informação Nutricional</h3>
             <div className="bg-white rounded-xl px-4 divide-y divide-surface-container-high">
               ${selectedPlan.foods.map(
                 (food) => {
@@ -3101,23 +3081,23 @@ OLD = nil
                     <div className="py-5 space-y-4">
                       <div className="flex items-center gap-3">
                         <span className="w-3 h-3 rounded-full shrink-0" style=${{ backgroundColor: accent.dot }}></span>
-                        <h4 className="text-[1.15rem] font-bold text-jet-black">${food.name} <span className="font-medium text-[#292B2D]/75">(${food.quantity})</span></h4>
+                        <h4 className="text-[1.15rem] font-bold text-jet-black">${food.name} <span className="font-medium text-[#101846]/75">(${food.quantity})</span></h4>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-[10px] p-3" style=${{ backgroundColor: accent.soft }}>
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Calorias</span>
+                          <span className="text-[0.6875rem] font-bold text-[#101846]/60 block mb-1">Calorias</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.calories} kcal</p>
                         </div>
                         <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Carbo</span>
+                          <span className="text-[0.6875rem] font-bold text-[#101846]/60 block mb-1">Carbo</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.carbs} g</p>
                         </div>
                         <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Proteína</span>
+                          <span className="text-[0.6875rem] font-bold text-[#101846]/60 block mb-1">Proteína</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.protein} g</p>
                         </div>
                         <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Gordura</span>
+                          <span className="text-[0.6875rem] font-bold text-[#101846]/60 block mb-1">Gordura</span>
                           <p className="text-[1rem] font-bold text-jet-black">${food.fat} g</p>
                         </div>
                       </div>
@@ -3127,7 +3107,7 @@ OLD = nil
               )}
             </div>
           </section>
-          <section className="bg-[#292B2D] text-white p-6 rounded-xl space-y-6">
+          <section className="bg-white border border-[#e6e8ef] text-[#101846] p-6 rounded-xl space-y-6">
             <h3 className="font-bold text-lg">Distribuição de Macros</h3>
             <${MacroBarDark} proteinWidth=${`${Math.min(100, totals.protein)}%`} carbWidth=${`${Math.min(100, totals.carbs)}%`} fatWidth=${`${Math.min(100, totals.fat * 2)}%`} />
           </section>
@@ -3136,12 +3116,529 @@ OLD = nil
               <div className="w-10 h-10 rounded-full bg-[#DFF37D] flex items-center justify-center">
                 <${Icon} name="lightbulb" className="text-jet-black" />
               </div>
-              <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Recomendação</h3>
+              <h3 className="text-[0.875rem] font-bold text-[#101846]">Recomendação</h3>
             </div>
             <p className="text-[1rem] leading-relaxed text-on-surface-variant">Mastigue bem os alimentos, faça a refeição com calma e respeite as quantidades planejadas para melhorar a digestão e a aderência à meta.</p>
           </section>
         </main>
         <${BottomNav} active="plan" onChange=${setScreen} />
+      </div>
+    `;
+  }
+
+  function renderTraining() {
+    return html`
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
+        <${TopBar} title="Treino" leftIcon="menu" centerBold=${false} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("training")} onRight=${openNotifications} />
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+          <section className="space-y-2">
+            <span className="text-sm text-[#EF5F37]">Sua jornada</span>
+            <div className="flex items-end justify-between gap-4">
+              <h1 className="text-[1.95rem] font-bold text-jet-black leading-tight">Meus treinos</h1>
+              <div className="${TRAINING_THEME.surface} rounded-[10px] px-4 py-3">
+                <p className="text-[0.75rem] ${TRAINING_THEME.accentText}">Treinos</p>
+                <strong className="text-[1.1rem] font-bold text-white">${trainingPlans.length}</strong>
+              </div>
+            </div>
+            <p className="text-sm text-on-surface-variant">Abra um treino para ver os exercícios, ajustar a rotina ou iniciar a sessão de hoje.</p>
+          </section>
+
+          <section className="space-y-3">
+            ${trainingPlans.map((plan) => {
+              const completedToday = trainingHistory.some((entry) => entry.planId === plan.id && entry.date === todayKey);
+              return html`
+                <button
+                  className="${TRAINING_THEME.surface} p-5 rounded-xl w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-4"
+                  onClick=${() => openTrainingDetail(plan.id)}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <span className="text-[0.6875rem] ${TRAINING_THEME.accentText}">Treino</span>
+                      <h3 className="text-[1.25rem] font-bold text-white">${plan.name}</h3>
+                    </div>
+                    ${
+                      completedToday
+                        ? html`<div className="w-11 h-11 rounded-full ${TRAINING_THEME.accentSurface} flex items-center justify-center shrink-0"><${Icon} name="check" className="text-[#101846]" /></div>`
+                        : html`<${Icon} name="arrow_forward" className="${TRAINING_THEME.accentText} text-[1.75rem] shrink-0" />`
+                    }
+                  </div>
+                  <div className="flex items-center gap-4 text-sm ${TRAINING_THEME.mutedText}">
+                    <span>${plan.estimatedMinutes} min</span>
+                    <span>${plan.exercises.length} exercícios</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[0.75rem] font-semibold ${TRAINING_THEME.accentText}">Exercícios do treino</p>
+                    <p className="text-sm ${TRAINING_THEME.mutedText}">${summarizeExerciseNames(plan)}</p>
+                  </div>
+                  ${completedToday ? html`<p className="text-sm ${TRAINING_THEME.accentText} font-bold">Treino concluído hoje</p>` : null}
+                </button>
+              `;
+            })}
+          </section>
+
+          <button className=${getPrimaryActionClass(false)} onClick=${openTrainingCreate}>
+            Novo treino
+          </button>
+        </main>
+        <${BottomNav} active="training" onChange=${setScreen} />
+      </div>
+    `;
+  }
+
+  function renderTrainingDetail() {
+    if (!selectedTraining) return renderTraining();
+    return html`
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
+        <${TopBar}
+          title=${selectedTraining.name}
+          leftIcon="arrow_back"
+          centerBold=${false}
+          onLeft=${() => setScreen("training")}
+          onSearch=${() => openSearch("training")}
+          onRight=${openNotifications}
+        />
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+          <section className="grid grid-cols-2 gap-3">
+            <div className="${TRAINING_THEME.surface} rounded-xl p-5">
+              <span className="text-[0.75rem] ${TRAINING_THEME.accentText}">Minutos estimados</span>
+              <strong className="block mt-2 text-[2rem] font-bold text-white">${selectedTraining.estimatedMinutes}</strong>
+            </div>
+            <div className="${TRAINING_THEME.surface} rounded-xl p-5">
+              <span className="text-[0.75rem] ${TRAINING_THEME.accentText}">Exercícios</span>
+              <strong className="block mt-2 text-[2rem] font-bold text-white">${selectedTraining.exercises.length}</strong>
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <div>
+              <h2 className="text-lg font-bold text-jet-black">Exercícios do treino</h2>
+              <p className="text-sm text-on-surface-variant">A ordem abaixo mostra como esse treino está cadastrado hoje.</p>
+            </div>
+          </section>
+
+          <section className="${TRAINING_THEME.surface} rounded-xl px-4 divide-y ${TRAINING_THEME.mutedBorder}">
+            ${selectedTraining.exercises.map((exercise, index) => {
+              const accent = getFoodAccent(exercise.name);
+              return html`
+                <div className="py-5 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
+                    <${Icon} name=${accent.icon} className="text-jet-black text-[1.35rem]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[0.8125rem] ${TRAINING_THEME.accentText}">Exercício ${index + 1}</p>
+                    <p className="text-[1.05rem] font-bold text-white">${exercise.name}</p>
+                    <p className="text-sm ${TRAINING_THEME.mutedText} mt-1">${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso</p>
+                  </div>
+                </div>
+              `;
+            })}
+          </section>
+
+          <div className="space-y-3">
+            <button className=${getPrimaryActionClass(false)} onClick=${() => startTraining(selectedTraining.id)}>
+              ${activeTraining?.planId === selectedTraining.id ? "Continuar treino" : "Iniciar treino"}
+            </button>
+            <button className=${getSecondaryActionClass(false)} onClick=${() => openTrainingEdit(selectedTraining.id)}>
+              Editar treino
+            </button>
+          </div>
+        </main>
+        <${BottomNav} active="training" onChange=${setScreen} />
+      </div>
+    `;
+  }
+
+  function renderTrainingExecution() {
+    if (!activeTraining || !activeTrainingPlan || !currentTrainingExercise) return renderTraining();
+    const allDone = completedTrainingExercises >= activeTrainingPlan.exercises.length;
+    const remainingExercises = Math.max(activeTrainingPlan.exercises.length - completedTrainingExercises, 0);
+    const progressPercent = Math.max(8, Math.min(100, (completedTrainingExercises / Math.max(1, activeTrainingPlan.exercises.length)) * 100));
+
+    return html`
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-12">
+      <${TopBar}
+        title=${activeTrainingPlan.name}
+        leftIcon="arrow_back"
+        centerBold=${false}
+        onLeft=${openTrainingPause}
+        rightSlot=${html`
+          <button
+            className="hover:opacity-80 transition-opacity active:scale-95"
+            onClick=${openTrainingPause}
+            aria-label="Pausar treino"
+          >
+            <${Icon} name="pause" className="text-[1.35rem] text-[#101846]" />
+          </button>
+        `}
+      />
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+          <section className="${TRAINING_THEME.surface} rounded-xl p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-sm ${TRAINING_THEME.accentText}">Treino em andamento</span>
+                <h1 className="text-[1.75rem] font-bold text-white">${activeTrainingPlan.name}</h1>
+                <p className="text-sm ${TRAINING_THEME.mutedText}">${completedTrainingExercises} de ${activeTrainingPlan.exercises.length} exercícios concluídos</p>
+              </div>
+              <div className="${TRAINING_THEME.accentSurface} rounded-[10px] px-4 py-3 text-right shrink-0">
+                <span className="block text-[0.75rem] text-[#101846]/72">Tempo</span>
+                <strong className="block text-[1.25rem] font-bold text-[#101846]">${formatClock(activeTrainingElapsedSeconds)}</strong>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#DFF37D]"
+                  style=${{ width: `${progressPercent}%` }}
+                ></div>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm ${TRAINING_THEME.mutedText}">
+                <span>${allDone ? "Treino pronto para encerrar" : `Agora: ${currentTrainingExercise.name}`}</span>
+                <span>${completedTrainingExercises} concluídos · ${remainingExercises} restantes</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-jet-black">Progresso do treino</h2>
+              <p className="text-sm text-on-surface-variant">Acompanhe o que já foi concluído, o exercício atual e o que ainda falta fazer.</p>
+            </div>
+            ${activeTrainingPlan.exercises.map((exercise, index) => {
+              const accent = getFoodAccent(exercise.name);
+              const done = completedTrainingExerciseIds.includes(exercise.id);
+              const isCurrent = !done && index === currentTrainingExerciseIndex && !allDone;
+              return html`
+                <div
+                  className=${[
+                    "w-full rounded-xl p-4 border space-y-3",
+                    done
+                      ? "bg-[#f4faef] border-[#d7ef9d]"
+                      : isCurrent
+                        ? "bg-white border-[#EF5F37] shadow-[0_10px_22px_rgba(41,43,45,0.05)]"
+                        : "bg-white border-surface-container-high",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: done ? "#e5f5c3" : accent.soft }}>
+                        <${Icon} name=${done ? "check" : accent.icon} className="text-jet-black text-[1.1rem]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[0.75rem] text-on-surface-variant">Exercício ${index + 1}</p>
+                        <p className="font-bold text-jet-black">${exercise.name}</p>
+                        <p className="text-sm text-on-surface-variant">${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso</p>
+                      </div>
+                    </div>
+                    <span className=${["text-sm font-bold shrink-0", done ? "text-[#4b7a10]" : isCurrent ? "text-[#EF5F37]" : "text-on-surface-variant"].join(" ")}>
+                      ${done ? "Feito" : isCurrent ? "Agora" : "Depois"}
+                    </span>
+                  </div>
+                    ${
+                      isCurrent
+                        ? html`
+                          <div className="rounded-[10px] bg-[#fff4ef] px-4 py-3 space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-bold text-[#EF5F37]">Em andamento</span>
+                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-medium text-jet-black">${exercise.sets} séries</span>
+                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-medium text-jet-black">${exercise.reps} reps</span>
+                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-medium text-jet-black">${exercise.restSeconds}s descanso</span>
+                            </div>
+                            <p className="text-sm text-on-surface-variant">Quando terminar este exercício, marque como concluído para ele entrar no progresso do treino.</p>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                className="min-h-11 rounded-[10px] border border-[#EF5F37] bg-white px-4 text-sm font-bold text-[#EF5F37] active:scale-[0.98] transition-transform"
+                                onClick=${() => markTrainingExerciseDone(exercise.id)}
+                              >
+                                Marcar como concluído
+                              </button>
+                            </div>
+                          </div>
+                        `
+                      : done
+                        ? html`
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-sm font-bold text-[#4b7a10]">Exercício concluído neste treino</div>
+                            <button
+                              className="inline-flex items-center gap-2 rounded-[10px] border border-outline-variant bg-surface-container-low px-3 py-2 text-sm font-medium text-jet-black active:scale-[0.98] transition-transform"
+                              onClick=${() => undoTrainingExerciseDone(exercise.id)}
+                            >
+                              <${Icon} name="undo" className="text-base" />
+                              <span>Desfazer</span>
+                            </button>
+                          </div>
+                        `
+                        : html`<p className="text-sm text-on-surface-variant">Este exercício aparece na sequência, depois que o atual for concluído.</p>`
+                  }
+                </div>
+              `;
+            })}
+          </section>
+
+          <button className=${getPrimaryActionClass(false)} onClick=${requestTrainingFinish}>
+            Concluir treino de hoje
+          </button>
+          <button className=${getSecondaryActionClass(false)} onClick=${openTrainingPause}>
+            Pausar treino
+          </button>
+        </main>
+      </div>
+    `;
+  }
+
+  function renderTrainingSummary() {
+    const summaryEntry = completedTraining || latestTrainingEntry;
+    if (!summaryEntry) return renderTraining();
+    return html`
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-24">
+        <${TopBar}
+          title="Resumo da sessão"
+          leftIcon="arrow_back"
+          centerBold=${false}
+          onLeft=${() => setScreen("training")}
+          onSearch=${() => openSearch("training")}
+          onRight=${openNotifications}
+        />
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+          <section className="${TRAINING_THEME.surface} rounded-xl p-6 space-y-2">
+            <span className="text-sm ${TRAINING_THEME.accentText}">Resumo da sessão</span>
+            <h1 className="text-[1.75rem] font-bold text-white">${summaryEntry.planName}</h1>
+            <div className="mt-4 ${TRAINING_THEME.surfaceMuted} rounded-xl p-5">
+              <span className="text-sm ${TRAINING_THEME.mutedText}">Volume total</span>
+              <strong className="block text-[2rem] font-bold ${TRAINING_THEME.accentText}">${summaryEntry.volumeTotal.toLocaleString("pt-BR")} kg</strong>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-2 gap-3">
+            <div className="${TRAINING_THEME.surface} rounded-xl p-5">
+              <span className="text-sm ${TRAINING_THEME.accentText}">Tempo</span>
+              <strong className="block mt-3 text-[1.8rem] font-bold text-white">${formatClock(summaryEntry.durationSeconds)}</strong>
+            </div>
+            <div className="${TRAINING_THEME.accentSurface} rounded-xl p-5">
+              <span className="text-sm text-[#101846]/72">Séries</span>
+              <strong className="block mt-3 text-[1.8rem] font-bold text-[#101846]">${summaryEntry.seriesCompleted}</strong>
+            </div>
+          </section>
+
+          <section className="${TRAINING_THEME.surface} rounded-xl p-6 space-y-4">
+            <div className="border-l-2 border-[#DFF37D] pl-4 space-y-2">
+              <span className="text-sm ${TRAINING_THEME.accentText}">Insight da sessão</span>
+              <p className="text-sm leading-relaxed ${TRAINING_THEME.mutedText}">Ótima leitura de volume para ${summaryEntry.planName}. Mantenha a técnica estável e tente subir a carga apenas quando completar as faixas de repetições com controle.</p>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-jet-black">Análise por exercício</h2>
+              <span className="text-sm text-on-surface-variant">${summaryEntry.exercisesCompleted} concluídos</span>
+            </div>
+            <div className="space-y-3">
+              ${summaryEntry.exercises.map(
+                (exercise) => html`
+                  <div className="bg-white rounded-xl p-5 shadow-[0_10px_22px_rgba(41,43,45,0.05)] space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-jet-black">${exercise.name}</p>
+                        <p className="text-sm text-on-surface-variant">${exercise.sets} séries · ${exercise.reps}</p>
+                      </div>
+                      <span className="text-sm font-bold text-[#EF5F37]">${Math.round(exercise.volume).toLocaleString("pt-BR")} kg</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-container-low overflow-hidden">
+                      <div className="h-full rounded-full bg-[#EF5F37]" style=${{ width: `${Math.max(12, Math.min(100, (exercise.volume / Math.max(1, summaryEntry.volumeTotal)) * 100))}%` }}></div>
+                    </div>
+                  </div>
+                `,
+              )}
+            </div>
+          </section>
+        </main>
+        <${BottomNav} active="training" onChange=${setScreen} />
+      </div>
+    `;
+  }
+
+  function renderTrainingEdit() {
+    if (!trainingDraft) return renderTraining();
+    const guardTrainingEditNavigation = (action) =>
+      confirmDiscard(action, "Deseja sair da edição atual? As alterações do treino ainda não foram salvas.");
+    const trainingLabel = trainingDraft.name?.trim() || "Novo treino";
+    return html`
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
+        <${TopBar}
+          title="Editar treino"
+          leftIcon="arrow_back"
+          centerBold=${false}
+          onLeft=${() => guardTrainingEditNavigation(() => {
+            setTrainingDraft(null);
+            setScreen(selectedTraining ? "training-detail" : "training");
+          })}
+          onSearch=${() => openSearch("training")}
+          onRight=${openNotifications}
+        />
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+          <form className="space-y-6" onSubmit=${saveTrainingDraft} onInput=${() => markDraftDirty("training-edit")} onChange=${() => markDraftDirty("training-edit")}>
+          <section className="rounded-xl p-6 space-y-4 ${TRAINING_THEME.surface}">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold ${TRAINING_THEME.accentText}">Informações do treino</h2>
+              <p className="text-sm ${TRAINING_THEME.mutedText}">Comece ajustando o nome e o tempo estimado. Logo abaixo aparecem os exercícios exatamente como estão cadastrados hoje, só que em modo editável.</p>
+            </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-white">Nome do treino</label>
+                <input
+                  className="w-full h-14 px-5 bg-white/95 border border-white/10 rounded-[10px] text-[#101846]"
+                  value=${trainingDraft.name}
+                  onInput=${(e) => updateTrainingDraftField("name", e.currentTarget.value)}
+                  placeholder="Ex: Peito + Ombro"
+                  required
+                />
+                <p className="text-[0.8125rem] ${TRAINING_THEME.mutedText}">Esse é o nome que a pessoa vê na lista e também no treino em andamento.</p>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-white">Duração estimada da sessão (minutos)</label>
+                <input
+                  className="w-full h-14 px-5 bg-white/95 border border-white/10 rounded-[10px] text-[#101846]"
+                  type="number"
+                  min="15"
+                  step="5"
+                  value=${trainingDraft.estimatedMinutes}
+                  onInput=${(e) => updateTrainingDraftField("estimatedMinutes", e.currentTarget.value)}
+                  placeholder="45"
+                  required
+                />
+                <p className="text-[0.8125rem] ${TRAINING_THEME.mutedText}">Use um tempo aproximado da sessão inteira.</p>
+              </div>
+              <div className="rounded-[10px] bg-[#D8E4F0] px-4 py-3 text-sm text-[#101846]">
+                <strong className="text-[#101846] font-bold">${trainingLabel}</strong>
+                <span> · ${trainingDraft.estimatedMinutes || 0} min estimados · ${trainingDraft.exercises.length} exercícios cadastrados</span>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-xl p-6 shadow-[0_12px_24px_rgba(41,43,45,0.04)] space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-bold text-jet-black">Exercícios do treino</h2>
+                  <p className="text-sm text-on-surface-variant">Cada exercício aparece do jeito que já está cadastrado. Basta tocar nos campos que quiser ajustar.</p>
+                </div>
+                <div className="space-y-3">
+                  <button className="w-full h-12 rounded-[10px] border border-[#EF5F37] bg-white px-4 text-sm font-bold text-[#EF5F37] active:scale-[0.98] transition-transform" type="button" onClick=${addTrainingExercise}>
+                    ${newTrainingExerciseId ? "Novo exercício criado no topo" : "Adicionar exercício"}
+                  </button>
+                  ${trainingDraft.exercises.length > 0
+                    ? html`
+                        <button
+                          className="text-sm font-bold text-error active:scale-95 transition-transform"
+                          type="button"
+                          onClick=${removeAllTrainingExercises}
+                        >
+                          Remover todos
+                        </button>
+                      `
+                    : null}
+                </div>
+              </div>
+              <div className="space-y-4">
+                ${newTrainingExerciseId
+                  ? html`<div className="rounded-[10px] bg-[#fff4ef] px-4 py-3 text-sm font-medium text-[#EF5F37]">Novo exercício criado no topo da lista. Ele foi destacado para ficar claro onde começar a edição.</div>`
+                  : null}
+                ${trainingDraft.exercises.length === 0
+                  ? html`
+                      <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
+                        Nenhum exercício cadastrado ainda. Toque em <strong className="text-jet-black">Adicionar exercício</strong> para montar este treino.
+                      </div>
+                    `
+                  : trainingDraft.exercises.map(
+                      (exercise, index) => html`
+                    <div
+                      id=${`training-exercise-${exercise.id}`}
+                      className=${[
+                        "rounded-xl border p-4 space-y-4 transition-all",
+                        newTrainingExerciseId === exercise.id
+                          ? "border-[#EF5F37]/30 bg-[#fffaf7] ring-2 ring-[#EF5F37]/20 shadow-[0_10px_22px_rgba(239,95,55,0.10)]"
+                          : "border-surface-container-high bg-white shadow-[0_10px_18px_rgba(15,23,42,0.06)]",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: getFoodAccent(exercise.name || `exercise-${index}`).soft }}>
+                            <${Icon} name=${getFoodAccent(exercise.name || `exercise-${index}`).icon} className="text-jet-black text-[1.1rem]" />
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm text-on-surface-variant">Exercício ${index + 1}</p>
+                              ${newTrainingExerciseId === exercise.id
+                                ? html`<span className="inline-flex items-center rounded-full bg-[#fff4ef] px-2.5 py-1 text-[0.75rem] font-bold text-[#EF5F37]">Novo</span>`
+                                : null}
+                            </div>
+                            <h3 className="text-lg font-bold text-jet-black">${exercise.name || "Novo exercício"}</h3>
+                            <p className="text-[0.8125rem] text-on-surface-variant">${exercise.focus || "Selecione o grupo muscular"} · ${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso</p>
+                          </div>
+                        </div>
+                        <button className="text-error font-bold text-sm active:scale-95 transition-transform" type="button" onClick=${() => removeTrainingExercise(exercise.id)}>
+                          Remover
+                        </button>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium text-jet-black">Nome do exercício</label>
+                        <input
+                          id=${`training-exercise-name-${exercise.id}`}
+                          className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-[10px] text-jet-black font-bold"
+                          value=${exercise.name}
+                          onInput=${(e) => updateTrainingExerciseField(exercise.id, "name", e.currentTarget.value)}
+                          placeholder="Ex: Supino reto"
+                          required
+                        />
+                        <p className="text-[0.8125rem] text-on-surface-variant">Esse é o nome que aparece na lista do treino e também durante a execução.</p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium text-jet-black">Grupo muscular</label>
+                        <select
+                          className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-[10px] text-jet-black"
+                          value=${exercise.focus || ""}
+                          onChange=${(e) => updateTrainingExerciseFocus(exercise.id, e.currentTarget.value)}
+                        >
+                          <option value="">Selecione o grupo muscular</option>
+                          ${TRAINING_MUSCLE_GROUPS.map(
+                            (group) => html`
+                              <optgroup label=${group.label}>
+                                ${group.options.map((option) => html`<option value=${option}>${option}</option>`)}
+                              </optgroup>
+                            `,
+                          )}
+                        </select>
+                        <p className="text-[0.8125rem] text-on-surface-variant">Selecione o principal grupo muscular trabalhado neste exercício.</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium text-jet-black">Séries</label>
+                          <input className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-[10px] text-jet-black" type="number" min="1" value=${exercise.sets} onInput=${(e) => updateTrainingExerciseField(exercise.id, "sets", e.currentTarget.value)} placeholder="4" />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium text-jet-black">Repetições por série</label>
+                          <input className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-[10px] text-jet-black" value=${exercise.reps} onInput=${(e) => updateTrainingExerciseField(exercise.id, "reps", e.currentTarget.value)} placeholder="8-12" />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium text-jet-black">Descanso entre séries (segundos)</label>
+                          <input className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-[10px] text-jet-black" type="number" min="0" value=${exercise.restSeconds} onInput=${(e) => updateTrainingExerciseField(exercise.id, "restSeconds", e.currentTarget.value)} placeholder="90" />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium text-jet-black">Carga de referência (kg)</label>
+                          <input className="w-full h-12 px-4 bg-surface-container-low border border-outline-variant rounded-[10px] text-jet-black" type="number" min="0" value=${exercise.suggestedLoadKg} onInput=${(e) => updateTrainingExerciseField(exercise.id, "suggestedLoadKg", e.currentTarget.value)} placeholder="40" />
+                        </div>
+                      </div>
+                    </div>
+                  `,
+                    )}
+              </div>
+            </section>
+
+            <button className=${getPrimaryActionClass(false)} type="submit">
+              Salvar treino
+            </button>
+          </form>
+        </main>
+        <${BottomNav} active="training" onChange=${(nextScreen) => guardTrainingEditNavigation(() => setScreen(nextScreen))} />
       </div>
     `;
   }
@@ -3199,18 +3696,18 @@ OLD = nil
     const quickWaterOptions = [100, 150, 200, 250, 300];
     const selectedEntriesCount = waterEntries.length;
     return html`
-      <div className="bg-[#f4f7ff] text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
           <section className="space-y-4">
             <div className="bg-[#f7fbff] rounded-[10px] p-6 md:p-8 relative overflow-hidden border border-[#e8f2ff] shadow-[0_16px_50px_rgba(47,104,255,0.08)]">
               <div className="flex flex-col items-center text-center">
-                <div className="w-11 h-11 rounded-full bg-[#eef2ff] flex items-center justify-center mb-4 shadow-[0_10px_20px_rgba(69,88,200,0.12)]">
+                <div className="w-11 h-11 rounded-full bg-surface-container-low flex items-center justify-center mb-4 shadow-[0_10px_20px_rgba(16,24,70,0.08)]">
                   <${Icon} name="water_drop" className="text-[#4558C8] text-[1.35rem]" filled=${true} />
                 </div>
                 <div className="space-y-1 mb-6">
-                  <p className="text-[0.95rem] font-medium text-[#292B2D]/82">Hidratação do dia</p>
-                  <h2 className="text-[2.05rem] font-bold text-[#292B2D]">Seu consumo de água</h2>
+                  <p className="text-[0.95rem] font-medium text-[#101846]/82">Hidratação do dia</p>
+                  <h2 className="text-[2.05rem] font-bold text-[#101846]">Seu consumo de água</h2>
                 </div>
 
                 <div className="mos-water-shell">
@@ -3225,23 +3722,23 @@ OLD = nil
                     <span>0</span>
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
-                    <strong className="text-[3rem] font-black leading-none text-[#292B2D] drop-shadow-[0_2px_8px_rgba(255,255,255,0.55)]">${Math.round(waterProgress)}%</strong>
-                    <span className="mt-2 text-[0.85rem] font-medium text-[#292B2D]/70">da meta diária</span>
+                    <strong className="text-[3rem] font-black leading-none text-[#101846] drop-shadow-[0_2px_8px_rgba(255,255,255,0.55)]">${Math.round(waterProgress)}%</strong>
+                    <span className="mt-2 text-[0.85rem] font-medium text-[#101846]/70">da meta diária</span>
                   </div>
                 </div>
 
                 <div className="mt-8 flex items-center justify-center gap-3 bg-white rounded-full px-5 py-3 shadow-[0_10px_24px_rgba(41,43,45,0.08)] border border-[#e5eaff]">
-                  <div className="w-8 h-8 rounded-full bg-[#eef2ff] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center">
                     <${Icon} name="water_drop" className="text-[#4558C8] text-[1rem]" filled=${true} />
                   </div>
                   <div className="text-left">
                     <strong className="block text-[1.1rem] text-[#4558C8]">${Math.round(water)} / ${waterGoal} ml</strong>
-                    <span className="text-[0.82rem] text-[#292B2D]/72">${waterHistoryDate === todayKey ? `Faltam ${remainingWater} ml` : `Visualizando ${waterViewDateLabel}`}</span>
+                    <span className="text-[0.82rem] text-[#101846]/72">${waterHistoryDate === todayKey ? `Faltam ${remainingWater} ml` : `Visualizando ${waterViewDateLabel}`}</span>
                   </div>
                 </div>
               </div>
               <div className="absolute -right-10 top-14 w-28 h-28 rounded-full bg-[#e1e7ff] blur-2xl opacity-55"></div>
-              <div className="absolute -left-8 bottom-8 w-24 h-24 rounded-full bg-[#eef2ff] blur-2xl opacity-80"></div>
+              <div className="absolute -left-8 bottom-8 w-24 h-24 rounded-full bg-surface-container-low blur-2xl opacity-80"></div>
             </div>
             ${waterHistoryDate !== todayKey
               ? html`
@@ -3260,17 +3757,17 @@ OLD = nil
 
           <section className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-xl p-4 shadow-[0_10px_22px_rgba(41,43,45,0.04)] border border-white/80">
-              <span className="text-[0.78rem] font-medium text-[#292B2D]/55">Faltam</span>
+              <span className="text-[0.78rem] font-medium text-[#101846]/55">Faltam</span>
               <div className="mt-2 flex items-baseline gap-1">
-                <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${remainingWater}</strong>
-                <span className="text-[0.82rem] font-medium text-[#292B2D]/62">ml</span>
+                <strong className="text-[1.9rem] font-black leading-none text-[#101846]">${remainingWater}</strong>
+                <span className="text-[0.82rem] font-medium text-[#101846]/62">ml</span>
               </div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-[0_10px_22px_rgba(41,43,45,0.04)] border border-white/80">
-              <span className="text-[0.78rem] font-medium text-[#292B2D]/55">${waterHistoryDate === todayKey ? "Registros hoje" : "Registros na data"}</span>
+              <span className="text-[0.78rem] font-medium text-[#101846]/55">${waterHistoryDate === todayKey ? "Registros hoje" : "Registros na data"}</span>
               <div className="mt-2 flex items-baseline gap-1">
-                <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${selectedEntriesCount}</strong>
-                <span className="text-[0.82rem] font-medium text-[#292B2D]/62">${selectedEntriesCount === 1 ? "registro" : "registros"}</span>
+                <strong className="text-[1.9rem] font-black leading-none text-[#101846]">${selectedEntriesCount}</strong>
+                <span className="text-[0.82rem] font-medium text-[#101846]/62">${selectedEntriesCount === 1 ? "registro" : "registros"}</span>
               </div>
             </div>
           </section>
@@ -3278,8 +3775,8 @@ OLD = nil
           <section className="bg-white rounded-xl p-4 md:p-5 space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)] border border-white/80">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-[1rem] font-bold text-[#292B2D]">Registro rápido</h3>
-                <p className="text-sm text-[#292B2D]/60">Toque em um volume para somar na data ${waterViewDateLabel.toLowerCase()}.</p>
+                <h3 className="text-[1rem] font-bold text-[#101846]">Registro rápido</h3>
+                <p className="text-sm text-[#101846]/60">Toque em um volume para somar na data ${waterViewDateLabel.toLowerCase()}.</p>
               </div>
               <button className="h-11 px-4 rounded-[10px] bg-[#EF5F37] text-white font-bold whitespace-nowrap shrink-0 active:scale-95 transition-transform" onClick=${() => setModal("water")}>
                 Outro valor
@@ -3295,7 +3792,7 @@ OLD = nil
                     <div className="w-10 h-10 rounded-full bg-[#edf2ff] flex items-center justify-center">
                       <${Icon} name="water_drop" className="text-[#4558C8]" filled=${true} />
                     </div>
-                    <span className="text-[0.95rem] font-bold text-[#292B2D]">${amount} ml</span>
+                    <span className="text-[0.95rem] font-bold text-[#101846]">${amount} ml</span>
                   </button>
                 `,
               )}
@@ -3304,7 +3801,7 @@ OLD = nil
 
           <section className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-[#292B2D]">${waterHistoryDate === todayKey ? "Histórico de hoje" : `Histórico de ${waterViewDateLabel}`}</h3>
+              <h3 className="text-base font-bold text-[#101846]">${waterHistoryDate === todayKey ? "Histórico de hoje" : `Histórico de ${waterViewDateLabel}`}</h3>
               <button className="min-h-10 px-3 rounded-[10px] bg-white border border-[#dbe5fb] text-[0.875rem] font-medium text-secondary shadow-[0_8px_18px_rgba(69,88,200,0.05)]" onClick=${openWaterHistory}>Ver tudo</button>
             </div>
             <div className="space-y-2">
@@ -3318,35 +3815,23 @@ OLD = nil
                           </div>
                           <div className="flex flex-col gap-1">
                             <div className="flex items-baseline gap-2">
-                              <span className="text-[1.35rem] font-black leading-none text-[#292B2D]">${entry.amount}</span>
-                              <span className="text-[0.75rem] font-bold text-[#292B2D]/55">ml</span>
+                              <span className="text-[1.35rem] font-black leading-none text-[#101846]">${entry.amount}</span>
+                              <span className="text-[0.75rem] font-bold text-[#101846]/55">ml</span>
                             </div>
-                            <p className="text-[0.82rem] text-[#292B2D]/55">${entry.label}</p>
+                            <p className="text-[0.82rem] text-[#101846]/55">${entry.label}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col items-end gap-1">
-                            <span className="text-[1rem] font-bold leading-none text-[#292B2D]">${entry.time}</span>
-                            <span className="text-[0.6875rem] font-medium text-[#292B2D]/40">registrado</span>
+                            <span className="text-[1rem] font-bold leading-none text-[#101846]">${entry.time}</span>
+                            <span className="text-[0.6875rem] font-medium text-[#101846]/40">registrado</span>
                           </div>
                           <button
                             className="w-10 h-10 rounded-full bg-[#fff4ef] text-[#EF5F37] flex items-center justify-center active:scale-95 transition-transform"
                             onClick=${() => askDeleteConfirm({
                               title: "Apagar registro de água",
                               message: "Tem certeza que deseja apagar este item?",
-                              onConfirm: async () => {
-                                if (authConfigured) {
-                                  const user = await getAuthenticatedUser();
-                                  if (!user) {
-                                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o registro.");
-                                    return;
-                                  }
-                                  const result = await deleteWaterEntry(user.id, entry.id);
-                                  if (!result.ok) {
-                                    showAuthNotice(result.error?.message || "Não foi possível apagar o registro agora.");
-                                    return;
-                                  }
-                                }
+                              onConfirm: () => {
                                 mutate((draft) => {
                                   draft.waterHistory[waterHistoryDate] = (draft.waterHistory[waterHistoryDate] || waterEntries).filter((item) => item.id !== entry.id);
                                   draft.water[waterHistoryDate] = Math.max(0, (draft.water[waterHistoryDate] || water) - entry.amount);
@@ -3372,8 +3857,8 @@ OLD = nil
           <section>
             <div className="bg-[#fff6f2] border border-[#f5ddd5] rounded-xl p-6 relative overflow-hidden shadow-[0_12px_22px_rgba(239,95,55,0.08)]">
               <div className="z-10 relative">
-                <h4 className="text-[#292B2D] text-lg font-bold">Dica de Performance</h4>
-                <p className="text-[#292B2D]/70 text-sm mt-1 max-w-[70%]">Beber água logo ao acordar ajuda a ativar a rotina e melhorar a consistência da hidratação ao longo do dia.</p>
+                <h4 className="text-[#101846] text-lg font-bold">Dica de Performance</h4>
+                <p className="text-[#101846]/70 text-sm mt-1 max-w-[70%]">Beber água logo ao acordar ajuda a ativar a rotina e melhorar a consistência da hidratação ao longo do dia.</p>
               </div>
               <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-[8rem] text-[#EF5F37]/10 rotate-12">lightbulb</span>
             </div>
@@ -3416,19 +3901,19 @@ OLD = nil
                 <h1 className="text-[1.9rem] font-bold text-jet-black leading-tight">Seu corpo em foco</h1>
                 <p className="text-sm text-on-surface-variant">Atualizado em ${latestDateLabel}</p>
               </div>
-              <div className="w-12 h-12 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-[10px] bg-surface-container-low flex items-center justify-center shrink-0">
                 <${Icon} name="monitor_weight" className="text-[#4558C8] text-[1.5rem]" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#292B2D] text-white rounded-[10px] p-4">
-                <span className="text-sm text-white/65 block mb-2">Peso atual</span>
-                <strong className="text-[2rem] font-bold leading-none">${latestMeasure.weight}</strong>
-                <span className="text-sm text-white/72 ml-1">kg</span>
-                <p className="text-sm text-white/65 mt-3">${formatMetricDelta(latestMeasure.weight, previousMeasure.weight, " kg")}</p>
+              <div className="bg-white border border-[#e6e8ef] rounded-[10px] p-4">
+                <span className="text-sm text-[#101846]/65 block mb-2">Peso atual</span>
+                <strong className="text-[2rem] font-bold leading-none text-jet-black">${latestMeasure.weight}</strong>
+                <span className="text-sm text-[#101846]/70 ml-1">kg</span>
+                <p className="text-sm text-on-surface-variant mt-3">${formatMetricDelta(latestMeasure.weight, previousMeasure.weight, " kg")}</p>
               </div>
-              <div className="bg-[#eef2ff] rounded-[10px] p-4">
+              <div className="bg-surface-container-low rounded-[10px] p-4">
                 <span className="text-sm text-[#4558C8] block mb-2">IMC</span>
                 <strong className="text-[2rem] font-bold leading-none text-jet-black">${latestBmi}</strong>
                 <p className="text-sm text-on-surface-variant mt-3">${formatMetricDelta(latestBmi, previousBmi)}</p>
@@ -3465,7 +3950,7 @@ OLD = nil
                     <stop offset="100%" stop-color="rgba(109,125,250,0)" />
                   </linearGradient>
                 </defs>
-                <path d="M 0 66 H 220" fill="none" stroke="#eef2ff" strokeWidth="1.5" />
+                <path d="M 0 66 H 220" fill="none" stroke="#e6e8ef" strokeWidth="1.5" />
                 <path d=${`${weightPath} L 220 72 L 0 72 Z`} fill="url(#measuresWeightGlow)" />
                 <path d=${weightPath} fill="none" stroke="url(#measuresWeightGradient)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -3550,12 +4035,10 @@ OLD = nil
         value: state.profile.birthday ? parseDateKey(state.profile.birthday).toLocaleDateString("pt-BR") : "Ainda não informado",
         icon: "cake",
       },
-      { label: "Meta calórica", value: `${Math.round(state.profile.calorieTarget || 0).toLocaleString("pt-BR")} kcal`, icon: "local_fire_department" },
-      { label: "Meta de água", value: `${Math.round(state.profile.waterTargetMl || 0).toLocaleString("pt-BR")} ml`, icon: "water_drop" },
     ];
 
     return html`
-      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar}
           title="Meu perfil"
           leftIcon="arrow_back"
@@ -3572,7 +4055,7 @@ OLD = nil
                 <h1 className="text-[1.9rem] font-bold text-jet-black leading-tight">${state.profile.name || "Meu perfil"}</h1>
                 <p className="text-sm leading-relaxed text-on-surface-variant">Aqui você concentra as informações principais da sua conta para manter o MOS mais pessoal e organizado.</p>
               </div>
-              <div className="w-12 h-12 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-[10px] bg-surface-container-low flex items-center justify-center shrink-0">
                 <${Icon} name="account_circle" className="text-[#4558C8] text-[1.6rem]" />
               </div>
             </div>
@@ -3616,7 +4099,7 @@ OLD = nil
     ];
 
     return html`
-      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar}
           title="Sobre o app"
           leftIcon="arrow_back"
@@ -3647,7 +4130,7 @@ OLD = nil
               ].map(
                 (item, index) => html`
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#eef2ff] text-[#4558C8] font-bold flex items-center justify-center shrink-0">${index + 1}</div>
+                    <div className="w-8 h-8 rounded-full bg-surface-container-low text-[#4558C8] font-bold flex items-center justify-center shrink-0">${index + 1}</div>
                     <p className="text-sm leading-relaxed text-jet-black">${item}</p>
                   </div>
                 `,
@@ -3714,10 +4197,10 @@ OLD = nil
               (item) => html`
                 <div className="bg-white rounded-xl p-6 flex justify-between items-center">
                   <div>
-                    <strong className="block text-[#292B2D]">${item.day}</strong>
+                    <strong className="block text-[#101846]">${item.day}</strong>
                     <p className="text-[0.875rem] text-slate-500 mt-1">${item.meals} refeições</p>
                   </div>
-                  <span className="text-lg font-bold text-[#292B2D]">${Math.round(item.calories)} kcal</span>
+                  <span className="text-lg font-bold text-[#101846]">${Math.round(item.calories)} kcal</span>
                 </div>
               `,
             )}
@@ -3730,7 +4213,7 @@ OLD = nil
 
   function renderAppNews() {
     return html`
-      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-24">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-24">
         <${TopBar}
           title="Novidades do app"
           leftIcon="arrow_back"
@@ -3755,7 +4238,7 @@ OLD = nil
                       <span className="text-[0.8rem] text-[#4558C8]">${parseDateKey(entry.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</span>
                       <h2 className="text-[1.1rem] font-bold text-jet-black">${entry.title}</h2>
                     </div>
-                    <div className="w-10 h-10 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-[10px] bg-surface-container-low flex items-center justify-center shrink-0">
                       <${Icon} name="article" className="text-[#4558C8]" />
                     </div>
                   </div>
@@ -3790,17 +4273,14 @@ OLD = nil
         <main className="pt-24 px-4 max-w-screen-md mx-auto space-y-5">
           <section className="rounded-xl p-4 flex items-center gap-3 shadow-[0_10px_30px_rgba(41,43,45,0.06)] border border-white/60" style=${{ background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(236,240,255,0.92) 100%)" }}>
             <div className="w-10 h-10 rounded-full bg-[#D9B8F3] flex items-center justify-center shrink-0">
-              <${Icon} name="search" className="text-[#292B2D]" />
+              <${Icon} name="search" className="text-[#101846]" />
             </div>
             <input
               className="flex-1 h-12 bg-transparent outline-none text-[1rem] text-jet-black placeholder:text-outline"
               type="search"
               placeholder="Buscar comida, alimento, suplemento..."
               value=${searchQuery}
-              onInput=${(e) => {
-                const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
-                setSearchQuery(value);
-              }}
+              onInput=${(e) => setSearchQuery(e.currentTarget.value)}
             />
             ${
               searchQuery
@@ -3829,7 +4309,7 @@ OLD = nil
                                 (item) => html`
                                   <button className="w-full bg-white rounded-xl p-4 text-left flex items-start gap-4 active:scale-[0.98] transition-transform" onClick=${item.action}>
                                     <div className="w-11 h-11 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
-                                      <${Icon} name=${item.icon} className="text-[#292B2D]" />
+                                      <${Icon} name=${item.icon} className="text-[#101846]" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between gap-4">
@@ -3863,7 +4343,7 @@ OLD = nil
                         (item) => html`
                           <button className="w-full bg-white rounded-xl p-4 text-left flex items-start gap-4 active:scale-[0.98] transition-transform" onClick=${item.action}>
                             <div className="w-11 h-11 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
-                              <${Icon} name=${item.icon} className="text-[#292B2D]" />
+                              <${Icon} name=${item.icon} className="text-[#101846]" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-4">
@@ -3880,8 +4360,14 @@ OLD = nil
                 `
           }
         </main>
-        <${BottomNav}
-          active=${searchOpenFrom === "water" ? "water" : searchOpenFrom === "plan" || searchOpenFrom === "supplements" ? "plan" : null}
+      <${BottomNav}
+          active=${searchOpenFrom === "training"
+            ? "training"
+            : searchOpenFrom === "water"
+              ? "water"
+              : searchOpenFrom === "plan" || searchOpenFrom === "supplements"
+                ? "plan"
+                : null}
           onChange=${setScreen}
         />
       </div>
@@ -4026,19 +4512,7 @@ OLD = nil
             <button className="w-full h-14 bg-white border border-outline-variant text-error rounded-xl font-bold" onClick=${() => askDeleteConfirm({
               title: "Apagar suplemento",
               message: "Tem certeza que deseja apagar este item?",
-              onConfirm: async () => {
-                if (authConfigured) {
-                  const user = await getAuthenticatedUser();
-                  if (!user) {
-                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
-                    return;
-                  }
-                  const result = await deleteSupplementEntry(user.id, supplement.id);
-                  if (!result.ok) {
-                    showAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
-                    return;
-                  }
-                }
+              onConfirm: () => {
                 mutate((draft) => {
                   draft.supplements = draft.supplements.filter((item) => item.id !== supplement.id);
                 });
@@ -4053,67 +4527,71 @@ OLD = nil
     `;
   }
 
-  const shouldRenderResetPassword = authReady && passwordRecoveryReady;
-
   return html`
     <div>
-      ${!authReady &&
-      html`
-        <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
-          <div className="max-w-sm w-full space-y-4 text-center">
-            <${AuthWordmark} />
-            <p className="text-[1rem] text-[#6e7178]">Preparando autenticação do MOS valendo...</p>
-          </div>
-        </div>
-      `}
-      ${shouldRenderResetPassword && renderResetPassword()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "welcome" && renderWelcome()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "signup" && renderSignup()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "login" && renderLogin()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "recover-password" && renderRecoverPassword()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "reset-password" && renderResetPassword()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "legal" && renderLegal()}
+      <style>
+        body {
+          background: #f4f7ff;
+        }
+        .text-jet-black { color: #0F172A; }
+        .text-on-surface { color: #0F172A; }
+        .text-on-surface-variant { color: #334155; }
+        .text-outline { color: #475569; }
+        section.bg-white:not([class*="shadow"]),
+        div.bg-white:not([class*="shadow"]) {
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+          border-radius: 20px;
+        }
+        nav.fixed.bottom-0 {
+          background: #0f0f12;
+          box-shadow: 0 -10px 22px rgba(15, 23, 42, 0.2);
+        }
+        nav.fixed.bottom-0 button {
+          color: #f8f7f2;
+        }
+        nav.fixed.bottom-0 button.bottom-nav-active,
+        nav.fixed.bottom-0 button.bottom-nav-active:hover {
+          color: #0F172A;
+        }
+        nav.fixed.bottom-0 button:not(.bottom-nav-active):hover {
+          color: #0F172A;
+        }
+        nav.fixed.bottom-0 button .material-symbols-outlined {
+          color: inherit;
+        }
+      </style>
+      ${!isSignedIn && screen === "welcome" && renderWelcome()}
+      ${!isSignedIn && screen === "signup" && renderSignup()}
+      ${!isSignedIn && screen === "login" && renderLogin()}
+      ${!isSignedIn && screen === "recover-password" && renderRecoverPassword()}
+      ${!isSignedIn && screen === "legal" && renderLegal()}
 
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "home" && renderHome()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "food" && renderFood()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "food-detail" && renderFoodDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "ingredient-detail" && renderIngredientDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan" && renderPlan()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan-config" && renderPlanConfig()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan-detail" && renderPlanDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "supplements" && renderSupplements()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "register-supplement" && renderRegisterSupplement()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "supplement-detail" && renderSupplementDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "water" && renderWater()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "profile" && renderProfile()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "measures" && renderMeasures()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "about-app" && renderAboutApp()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "app-news" && renderAppNews()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "history" && renderHistory()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "search" && renderSearch()}
+      ${isSignedIn && screen === "home" && renderHome()}
+      ${isSignedIn && screen === "food" && renderFood()}
+      ${isSignedIn && screen === "food-detail" && renderFoodDetail()}
+      ${isSignedIn && screen === "ingredient-detail" && renderIngredientDetail()}
+      ${isSignedIn && screen === "plan" && renderPlan()}
+      ${isSignedIn && screen === "plan-config" && renderPlanConfig()}
+      ${isSignedIn && screen === "plan-detail" && renderPlanDetail()}
+      ${isSignedIn && screen === "training" && renderTraining()}
+      ${isSignedIn && screen === "training-detail" && renderTrainingDetail()}
+      ${isSignedIn && screen === "training-execution" && renderTrainingExecution()}
+      ${isSignedIn && screen === "training-summary" && renderTrainingSummary()}
+      ${isSignedIn && screen === "training-edit" && renderTrainingEdit()}
+      ${isSignedIn && screen === "supplements" && renderSupplements()}
+      ${isSignedIn && screen === "register-supplement" && renderRegisterSupplement()}
+      ${isSignedIn && screen === "supplement-detail" && renderSupplementDetail()}
+      ${isSignedIn && screen === "water" && renderWater()}
+      ${isSignedIn && screen === "profile" && renderProfile()}
+      ${isSignedIn && screen === "measures" && renderMeasures()}
+      ${isSignedIn && screen === "about-app" && renderAboutApp()}
+      ${isSignedIn && screen === "app-news" && renderAppNews()}
+      ${isSignedIn && screen === "history" && renderHistory()}
+      ${isSignedIn && screen === "search" && renderSearch()}
 
-      ${authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} />`}
-      ${authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
-      ${
-        authReady &&
-        isSignedIn &&
-        authNotice &&
-        html`
-          <div className="fixed top-20 left-0 w-full px-4 z-[70] pointer-events-none">
-            <div className="max-w-md mx-auto pointer-events-auto bg-[#fff6f2] border border-[#f5ddd5] rounded-[10px] px-4 py-3 shadow-[0_14px_30px_rgba(41,43,45,0.08)] flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#ffe6dc] flex items-center justify-center shrink-0">
-                <${Icon} name="info" className="text-[#EF5F37] text-[1rem]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed text-[#292B2D]">${authNotice}</p>
-              </div>
-              <button className="shrink-0 active:scale-95 transition-transform" onClick=${clearAuthNotice}>
-                <${Icon} name="close" className="text-[#292B2D]/60 text-[1.15rem]" />
-              </button>
-            </div>
-          </div>
-        `
-      }
+      ${isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} />`}
+      ${isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
       ${
         isSignedIn &&
         foodCalendarOpen &&
@@ -4144,6 +4622,65 @@ OLD = nil
           onPrevMonth=${() => setWaterHistoryMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
           onNextMonth=${() => setWaterHistoryMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
         />`
+      }
+
+      ${
+        isSignedIn &&
+        modal === "training-pause" &&
+        html`
+          <${Modal} title="Pausa" onClose=${resumeTraining}>
+            <div className="flex flex-col gap-5">
+              <div className="rounded-[10px] bg-white p-6 text-center space-y-3">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#fff4ef]">
+                  <${Icon} name="pause" className="text-[1.5rem] text-[#EF5F37]" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-lg font-bold text-jet-black">Treino pausado</p>
+                  <p className="text-sm leading-relaxed text-on-surface-variant">
+                    O treino está pausado há ${formatClock(pausedTrainingSeconds)}.
+                  </p>
+                </div>
+              </div>
+              <button className=${getPrimaryActionClass(false)} onClick=${resumeTraining}>
+                Continuar
+              </button>
+              <button
+                className="h-14 w-full rounded-[10px] border border-outline-variant bg-white px-4 text-base font-bold text-error active:scale-[0.98] transition-transform"
+                onClick=${abandonTraining}
+              >
+                Encerrar treino
+              </button>
+            </div>
+          </${Modal}>
+        `
+      }
+
+      ${
+        isSignedIn &&
+        modal === "training-finish-confirm" &&
+        html`
+          <${Modal} title="Concluir treino de hoje" onClose=${() => setModal(null)}>
+            <div className="flex flex-col gap-5">
+              <div className="rounded-[10px] bg-white p-6 text-center space-y-3">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#fff4ef]">
+                  <${Icon} name="check" className="text-[1.5rem] text-[#EF5F37]" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-lg font-bold text-jet-black">Deseja concluir o treino de hoje?</p>
+                  <p className="text-sm leading-relaxed text-on-surface-variant">
+                    Ao confirmar, você verá o resumo desta sessão e poderá voltar para os treinos depois.
+                  </p>
+                </div>
+              </div>
+              <button className=${getSecondaryActionClass(false)} onClick=${() => setModal(null)}>
+                Voltar
+              </button>
+              <button className=${getPrimaryActionClass(false)} onClick=${() => completeTrainingSession(activeTraining)}>
+                Concluir treino de hoje
+              </button>
+            </div>
+          </${Modal}>
+        `
       }
 
       ${
@@ -4382,16 +4919,6 @@ OLD = nil
                 <label className="text-sm font-medium text-jet-black">Aniversário</label>
                 <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg text-jet-black" name="birthday" type="date" defaultValue=${state.profile.birthday || ""} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-jet-black">Meta calórica</label>
-                  <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg text-jet-black" name="calorieTarget" type="number" min="1" step="1" defaultValue=${state.profile.calorieTarget || 2400} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-jet-black">Meta de água (ml)</label>
-                  <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg text-jet-black" name="waterTargetMl" type="number" min="1" step="1" defaultValue=${state.profile.waterTargetMl || 3000} />
-                </div>
-              </div>
               <button
                 className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
                   isDraftDirty("modal-profile") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
@@ -4514,6 +5041,42 @@ OLD = nil
       }
 
       ${
+        modal === "supplement" &&
+        html`
+          <${Modal}
+            title="Novo suplemento"
+            onClose=${() => confirmDiscard(() => {
+              clearDraft("modal-supplement");
+              setModal(null);
+            }, "Deseja cancelar a edição? As alterações deste suplemento não foram salvas.")}
+          >
+            <form
+              className="flex flex-col gap-6"
+              onInput=${() => markDraftDirty("modal-supplement")}
+              onChange=${() => markDraftDirty("modal-supplement")}
+              onSubmit=${(e) => {
+                e.preventDefault();
+                createSupplement(new FormData(e.currentTarget));
+              }}
+            >
+              <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="name" placeholder="Nome" required />
+              <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="dosage" placeholder="Dosagem" required />
+              <textarea className="w-full p-6 bg-surface-container-low border-0 rounded-lg resize-none" name="instruction" rows="4" placeholder="Instrução" required></textarea>
+              <button
+                className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
+                  isDraftDirty("modal-supplement") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
+                }`}
+                type="submit"
+                disabled=${!isDraftDirty("modal-supplement")}
+              >
+                Registrar
+              </button>
+            </form>
+          </${Modal}>
+        `
+      }
+
+      ${
         substituteFood &&
         html`
           <${Modal} title=${`Substituir ${substituteFood.name}`} onClose=${() => setSubstituteFood(null)}>
@@ -4548,7 +5111,7 @@ OLD = nil
           <${Modal} title=${confirmAction.title || "Confirmar"} onClose=${() => setConfirmAction(null)}>
             <div className="flex flex-col gap-5">
               <p className="text-sm leading-relaxed text-on-surface-variant">${confirmAction.message || "Tem certeza que deseja apagar este item?"}</p>
-              <button type="button" className="w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold" onClick=${handleConfirmAction}>
+              <button className="w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold" onClick=${handleConfirmAction}>
                 ${confirmAction.confirmLabel || "Confirmar"}
               </button>
             </div>
