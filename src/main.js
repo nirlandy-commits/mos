@@ -3872,7 +3872,7 @@ OLD = nil
               <h1 className="text-[1.95rem] font-bold text-jet-black leading-tight">Meus treinos</h1>
               <div className="${TRAINING_THEME.surface} rounded-[10px] px-4 py-3">
                 <p className="text-[0.75rem] ${TRAINING_THEME.accentText}">Treinos</p>
-                <strong className="text-[1.1rem] font-bold text-white">${trainingPlans.length}</strong>
+                <strong className="text-[1.1rem] font-bold text-jet-black">${trainingPlans.length}</strong>
               </div>
             </div>
             <p className="text-sm text-on-surface-variant">Abra um treino para ver os exercícios, ajustar a rotina ou iniciar a sessão de hoje.</p>
@@ -3889,7 +3889,7 @@ OLD = nil
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <span className="text-[0.6875rem] ${TRAINING_THEME.accentText}">Treino</span>
-                      <h3 className="text-[1.25rem] font-bold text-white">${plan.name}</h3>
+                      <h3 className="text-[1.25rem] font-bold text-jet-black">${plan.name}</h3>
                     </div>
                     ${
                       completedToday
@@ -3936,11 +3936,11 @@ OLD = nil
           <section className="grid grid-cols-2 gap-3">
             <div className="${TRAINING_THEME.surface} rounded-xl p-5">
               <span className="text-[0.75rem] ${TRAINING_THEME.accentText}">Minutos estimados</span>
-              <strong className="block mt-2 text-[2rem] font-bold text-white">${selectedTraining.estimatedMinutes}</strong>
+              <strong className="block mt-2 text-[2rem] font-bold text-jet-black">${selectedTraining.estimatedMinutes}</strong>
             </div>
             <div className="${TRAINING_THEME.surface} rounded-xl p-5">
               <span className="text-[0.75rem] ${TRAINING_THEME.accentText}">Exercícios</span>
-              <strong className="block mt-2 text-[2rem] font-bold text-white">${selectedTraining.exercises.length}</strong>
+              <strong className="block mt-2 text-[2rem] font-bold text-jet-black">${selectedTraining.exercises.length}</strong>
             </div>
           </section>
 
@@ -3961,7 +3961,7 @@ OLD = nil
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[0.8125rem] ${TRAINING_THEME.accentText}">Exercício ${index + 1}</p>
-                    <p className="text-[1.05rem] font-bold text-white">${exercise.name}</p>
+                    <p className="text-[1.05rem] font-bold text-jet-black">${exercise.name}</p>
                     <p className="text-sm ${TRAINING_THEME.mutedText} mt-1">${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso</p>
                   </div>
                 </div>
@@ -4217,7 +4217,7 @@ OLD = nil
               <p className="text-sm ${TRAINING_THEME.mutedText}">Comece ajustando o nome e o tempo estimado. Logo abaixo aparecem os exercícios exatamente como estão cadastrados hoje, só que em modo editável.</p>
             </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-white">Nome do treino</label>
+                <label className="text-sm font-medium text-jet-black">Nome do treino</label>
                 <input
                   className="w-full h-14 px-4 rounded-[10px] bg-white text-jet-black border border-outline-variant"
                   value=${trainingDraft.name}
@@ -4227,7 +4227,7 @@ OLD = nil
                 <p className="text-[0.8125rem] ${TRAINING_THEME.mutedText}">Esse é o nome que a pessoa vê na lista e também no treino em andamento.</p>
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-white">Duração estimada da sessão (minutos)</label>
+                <label className="text-sm font-medium text-jet-black">Duração estimada da sessão (minutos)</label>
                 <input
                   className="w-full h-14 px-4 rounded-[10px] bg-white text-jet-black border border-outline-variant"
                   type="number"
