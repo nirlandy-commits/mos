@@ -617,7 +617,7 @@ function normalizeFood(food = {}) {
 }
 
 function getSectionBackground() {
-  return "bg-[#f4f7ff]";
+  return "mos-screen";
 }
 
 function getFoodAccent(name = "") {
@@ -747,8 +747,8 @@ function Icon({ name, className = "", filled = false }) {
 
 function TopBar({ title = "MOS", leftIcon = "menu", onLeft, onSearch, onRight, centerBold = true, rightSlot = null }) {
   return html`
-    <header className="fixed top-0 w-full z-50 bg-white">
-      <div className="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto">
+    <header className="top-bar headroom headroom--pinned fixed top-0 w-full z-50 bg-transparent">
+      <div className="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto backdrop-blur-sm bg-white/0">
         <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onLeft}>
           <${Icon} name=${leftIcon} className="text-[#292B2D]" />
         </button>
@@ -994,22 +994,22 @@ function MenuDrawer({ onClose, onSelect }) {
   ];
   return html`
     <div className="fixed inset-0 z-[70] bg-black/30" onClick=${onClose}>
-      <aside className="w-[82%] max-w-sm h-full bg-white p-6 flex flex-col gap-6" onClick=${(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
+      <aside className="w-[82%] max-w-sm h-full bg-white p-6 flex flex-col gap-6 border-r border-slate-200/80" onClick=${(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200/80">
           <div>
             <span className="text-[0.6875rem] font-medium text-royal-blue">MOS</span>
-            <h2 className="text-[1.75rem] font-bold text-jet-black">Menu</h2>
+            <h2 className="text-[1.6rem] font-bold text-jet-black">Menu</h2>
           </div>
           <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onClose}>
             <${Icon} name="close" className="text-[#292B2D]" />
           </button>
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 pt-2">
           ${items.map(
             (item) => html`
-              <button type="button" className="w-full rounded-xl px-4 py-3 text-left font-medium text-jet-black active:scale-[0.98] transition-transform flex items-center gap-4 hover:bg-surface-container-low" onClick=${() => onSelect(item.label)}>
-                <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
-                  <${Icon} name=${item.icon} className="text-[#292B2D]" />
+              <button type="button" className="w-full rounded-lg px-4 py-3 text-left font-semibold text-jet-black active:scale-[0.98] transition-transform flex items-center gap-4 hover:bg-slate-100" onClick=${() => onSelect(item.label)}>
+                <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <${Icon} name=${item.icon} className="text-[#1f2937]" />
                 </div>
                 <span>${item.label}</span>
               </button>
@@ -1031,13 +1031,13 @@ function BottomNav({ active, onChange }) {
   ];
 
   return html`
-    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-white z-50">
-      <div className="max-w-md mx-auto w-full h-20 flex justify-around items-center gap-1">
+    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-transparent z-50">
+      <div className="mos-bottom-nav max-w-[26rem] mx-auto w-full flex justify-around items-center gap-1 bg-[#0f0f12] rounded-2xl border border-white/5 px-2">
         ${items.map((item) => {
           const isActive = active === item.key;
           return html`
             <button
-              className=${`flex flex-col items-center justify-center ${isActive ? "bottom-nav-active bg-[#DFF37D] text-[#0F172A] rounded-full px-4 py-2 shadow-[0_8px_18px_rgba(223,243,125,0.35)]" : "text-[#101846] px-4 py-2 hover:bg-slate-100 rounded-full"} transition-all active:scale-98`}
+              className=${`flex flex-col items-center justify-center ${isActive ? "bottom-nav-active bg-[#DFF37D] text-[#0F172A] rounded-full px-3 py-2 shadow-[0_8px_18px_rgba(223,243,125,0.35)]" : "text-[#101846] px-3 py-2 hover:bg-slate-100 rounded-full"} transition-all active:scale-98`}
               onClick=${() => onChange(item.key)}
             >
               <${Icon} name=${item.icon} filled=${isActive} />
@@ -1059,11 +1059,11 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
   ];
 
   return html`
-    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-white z-50">
-      <div className="max-w-md mx-auto w-full h-20 flex justify-around items-center gap-1">
+    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-transparent z-50">
+      <div className="mos-bottom-nav max-w-[26rem] mx-auto w-full flex justify-around items-center gap-1 bg-[#0f0f12] rounded-2xl border border-white/5 px-2">
         ${items.map((item) => html`
           <button
-            className=${`flex flex-col items-center justify-center ${item.active ? "bottom-nav-active bg-[#DFF37D] text-[#0F172A] rounded-full px-4 py-2 shadow-[0_8px_18px_rgba(223,243,125,0.35)]" : "text-[#101846] px-4 py-2 hover:bg-slate-100 rounded-full"} transition-all active:scale-98`}
+            className=${`flex flex-col items-center justify-center ${item.active ? "bottom-nav-active bg-[#DFF37D] text-[#0F172A] rounded-full px-3 py-2 shadow-[0_8px_18px_rgba(223,243,125,0.35)]" : "text-[#101846] px-3 py-2 hover:bg-slate-100 rounded-full"} transition-all active:scale-98`}
             onClick=${item.onClick}
           >
             <${Icon} name=${item.icon} filled=${item.active} />
@@ -1351,6 +1351,100 @@ function App() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [draftGuard.dirty]);
+
+  useEffect(() => {
+    const header = document.querySelector(".top-bar");
+    if (!header) return undefined;
+
+    const headroomScreens = new Set([
+      "home",
+      "food",
+      "plan",
+      "water",
+      "training",
+      "supplements",
+      "measures",
+      "profile",
+      "about-app",
+      "app-news",
+      "history",
+    ]);
+    const offset = 80;
+    const tolerance = 10;
+    let lastY = window.scrollY;
+    let ticking = false;
+    let enabled = false;
+
+    const setPinned = () => {
+      header.classList.add("headroom--pinned");
+      header.classList.remove("headroom--unpinned");
+    };
+
+    const setUnpinned = () => {
+      header.classList.add("headroom--unpinned");
+      header.classList.remove("headroom--pinned");
+    };
+
+    const canEnable = () => {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight > 160;
+      return headroomScreens.has(screen) && scrollable;
+    };
+
+    const updateEnabled = () => {
+      enabled = canEnable();
+      if (!enabled) {
+        setPinned();
+      }
+      return enabled;
+    };
+
+    const update = () => {
+      if (!enabled) {
+        ticking = false;
+        return;
+      }
+      const currentY = window.scrollY;
+      const delta = currentY - lastY;
+      const beyondOffset = currentY > offset;
+
+      if (Math.abs(delta) > tolerance) {
+        if (delta > 0 && beyondOffset) {
+          setUnpinned();
+        } else if (delta < 0) {
+          setPinned();
+        }
+        lastY = currentY;
+      }
+      if (currentY <= 8) setPinned();
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    };
+
+    const onResize = () => {
+      updateEnabled();
+      lastY = window.scrollY;
+    };
+
+    const init = () => {
+      updateEnabled();
+      lastY = window.scrollY;
+    };
+
+    const initId = window.requestAnimationFrame(init);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      window.cancelAnimationFrame(initId);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [screen]);
 
   const todayKey = getTodayKey();
   const date = todayKey;
@@ -2792,95 +2886,105 @@ OLD = nil
     const formattedConsumed = Math.round(summary.calories).toLocaleString("pt-BR");
     const formattedRemaining = Math.max(0, Math.round(remaining)).toLocaleString("pt-BR");
     const formattedTarget = Math.round(state.profile.calorieTarget).toLocaleString("pt-BR");
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
+    const nowHour = new Date().getHours();
+    const greeting = nowHour < 12 ? "Bom dia" : nowHour < 18 ? "Boa tarde" : "Boa noite";
     return html`
       <div className="min-h-screen pb-32 ${getSectionBackground()}">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
-        <main className="pt-24 px-6 max-w-md mx-auto" style=${{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style=${{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <section className="bg-white rounded-xl p-7 space-y-6 shadow-[0_14px_30px_rgba(15,23,42,0.08)] border border-[#e3e8ef]">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex w-2.5 h-2.5 rounded-full bg-[#b9ddd3]"></span>
-                <span className="text-[1rem] font-semibold text-jet-black">Resumo calórico</span>
-              </div>
-              <div className="flex items-end gap-4 text-left pr-2">
-                <span className="text-[3.6rem] font-black leading-none text-jet-black">${formattedRemaining}</span>
-                <span className="text-[1rem] font-[300] leading-none text-[#0F172A]/75 pb-2 whitespace-nowrap">Restante</span>
-              </div>
-              <div className="w-full space-y-5">
-                <div className="h-4 w-full bg-[#d8eee7] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#b9ddd3]" style=${{ width: `${progress}%` }}></div>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-10 gap-y-3 w-full">
-                  <div className="flex items-baseline gap-3 whitespace-nowrap">
-                    <span className="text-[1.55rem] font-bold text-jet-black">${formattedConsumed}</span>
-                    <span className="text-[1.05rem] font-[300] text-[#0F172A]/75">Comido</span>
-                  </div>
-                  <div className="flex items-baseline gap-3 whitespace-nowrap">
-                    <span className="text-[1.55rem] font-bold text-jet-black">${formattedTarget}</span>
-                    <span className="text-[1.05rem] font-[300] text-[#0F172A]/75">Meta de consumo</span>
-                  </div>
-                </div>
-              </div>
-            </section>
+        <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
+          <section className="home-greeting space-y-2">
+            <div className="home-greeting-wrap space-y-2" style=${{ maxWidth: "90%" }}>
+              <span className="home-greeting-stamp home-greeting-stamp--sun" aria-hidden="true">😊</span>
+              <span className="home-greeting-stamp home-greeting-stamp--muscle" aria-hidden="true">💪</span>
+              <p className="text-[0.95rem] font-semibold text-[#0F172A]">${greeting}, ${profileName}!</p>
+              <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(3rem, 11vw, 4.6rem)", lineHeight: "1.06" }}>
+                Explorando metas,
+              </h1>
+              <h2 className="font-black text-[#94a3b8]" style=${{ fontSize: "clamp(2.8rem, 10vw, 4.2rem)", lineHeight: "1.06" }}>
+                inspirando mudança.
+              </h2>
+              <p className="text-[0.95rem] text-[#475569]">Hoje é um ótimo dia para cuidar de você.</p>
+            </div>
+          </section>
 
-            <section className="grid grid-cols-3" style=${{ gap: "8px" }}>
-              ${[
-                { label: "Proteína", value: `${Math.round(summary.protein)}`, unit: "g", color: "bg-royal-blue", bar: "75%" },
-                { label: "Carbo", value: `${Math.round(summary.carbs)}`, unit: "g", color: "bg-salmon-orange", bar: "52%" },
-                { label: "Água", value: `${round(water / 1000)}`, unit: "l", color: "bg-royal-blue", bar: `${Math.min(100, (water / 2500) * 100)}%` },
-              ].map(
-                (item) => html`
-                  <div className="bg-white rounded-xl p-5 flex flex-col items-center justify-between gap-3 min-h-[138px] shadow-[0_10px_24px_rgba(15,23,42,0.08)] border border-[#e3e8ef]">
-                    <div>
-                      <span className="block text-[1.05rem] font-semibold text-jet-black mb-2 whitespace-nowrap">${item.label === "Proteína" ? "Proteinas" : item.label}</span>
-                      <div className="flex items-baseline justify-center gap-1 whitespace-nowrap">
-                        <span className="text-[1.1rem] font-[200] text-jet-black">${item.value}</span>
-                        <span className="text-[1.1rem] font-[200] text-jet-black">${item.unit === "L" ? "litros" : item.unit.toLowerCase()}</span>
-                      </div>
-                    </div>
-                    <div className="w-full h-2 bg-surface-container-low rounded-full overflow-hidden">
-                      <div className=${`h-full ${item.color}`} style=${{ width: item.bar }}></div>
-                    </div>
-                  </div>
-                `,
-              )}
-            </section>
-          </div>
+          <section className="home-hero relative overflow-hidden rounded-2xl p-7">
+            <div className="home-hero-glow"></div>
+            <div className="space-y-5 relative z-10">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <span className="text-[0.95rem] font-semibold text-[#0F172A]">Resumo do dia</span>
+                  <h2 className="text-[2.5rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</h2>
+                  <p className="text-sm text-[#475569]">kcal restantes</p>
+                </div>
+                <div className="home-hero-badge">
+                  <${Icon} name="bolt" className="text-[#f97316] text-2xl" />
+                </div>
+              </div>
+              <div className="h-3 w-full bg-white/60 rounded-full overflow-hidden">
+                <div className="h-full bg-[#f97316]" style=${{ width: `${progress}%` }}></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="home-hero-chip">
+                  <span className="text-[0.75rem] text-[#6b7280]">Comido</span>
+                  <span className="text-[1.2rem] font-bold text-[#0F172A]">${formattedConsumed}</span>
+                </div>
+                <div className="home-hero-chip">
+                  <span className="text-[0.75rem] text-[#6b7280]">Meta</span>
+                  <span className="text-[1.2rem] font-bold text-[#0F172A]">${formattedTarget}</span>
+                </div>
+              </div>
+            </div>
+          </section>
 
-          <section className="grid grid-cols-1" style=${{ gap: "12px" }}>
-            <button className="bg-[#e9f7f1] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#d7efe4]" onClick=${() => setScreen("food")}>
-              <div className="flex items-center justify-between">
-                <${Icon} name="restaurant" className="text-[#0F172A] text-4xl opacity-90" />
-                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
-              </div>
-              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Comida</span>
-            </button>
-            <button className="bg-[#fbeed2] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#f1d9ad]" onClick=${() => setScreen("plan")}>
-              <div className="flex items-center justify-between">
-                <${Icon} name="description" className="text-[#0F172A] text-4xl opacity-90" />
-                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
-              </div>
-              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Plano alimentar</span>
-            </button>
-            <button className="bg-[#e6f0ff] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#cfe0fb]" onClick=${() => setScreen("water")}>
-              <div className="flex items-center justify-between">
-                <${Icon} name="water_drop" className="text-[#0F172A] text-4xl opacity-90" />
-                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
-              </div>
-              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Água</span>
-            </button>
-            <button className="bg-[#eee9ff] rounded-[10px] p-8 h-40 flex flex-col justify-between active:scale-95 transition-all text-left shadow-[0_10px_22px_rgba(15,23,42,0.08)] border border-[#ddd6fb]" onClick=${() => setScreen("training")}>
-              <div className="flex items-center justify-between">
-                <${Icon} name="fitness_center" className="text-[#0F172A] text-4xl opacity-90" />
-                <${Icon} name="arrow_forward" className="text-[#0F172A] text-[2rem] opacity-90" />
-              </div>
-              <span className="text-[#0F172A] text-[2.2rem] font-[200] leading-none whitespace-nowrap">Treino</span>
-            </button>
+          <section className="grid grid-cols-2 gap-4">
+            ${[
+              { label: "Comida", icon: "restaurant", accent: "#7bdcb5", screen: "food", note: "Registre suas refeições" },
+              { label: "Plano", icon: "description", accent: "#f7c948", screen: "plan", note: "Ajuste sua rotina" },
+              { label: "Água", icon: "water_drop", accent: "#7aaeff", screen: "water", note: "Controle sua hidratação" },
+              { label: "Treino", icon: "fitness_center", accent: "#c4b5fd", screen: "training", note: "Evolua no treino" },
+            ].map(
+              (item) => html`
+                <button className="home-action-card" onClick=${() => setScreen(item.screen)}>
+                  <div className="home-action-icon" style=${{ backgroundColor: item.accent }}>
+                    <${Icon} name=${item.icon} className="text-[#0F172A] text-[1.6rem]" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[1.15rem] font-semibold text-[#0F172A]">${item.label}</span>
+                      <${Icon} name="arrow_forward" className="text-[#0F172A]/70" />
+                    </div>
+                    <p className="text-sm text-[#64748b]">${item.note}</p>
+                  </div>
+                </button>
+              `,
+            )}
+          </section>
+
+          <section className="grid grid-cols-3 gap-3">
+            ${[
+              { label: "Proteínas", value: `${Math.round(summary.protein)}`, unit: "g", color: "#7aaeff", bar: "75%" },
+              { label: "Carbo", value: `${Math.round(summary.carbs)}`, unit: "g", color: "#f97316", bar: "52%" },
+              { label: "Água", value: `${round(water / 1000)}`, unit: "l", color: "#7aaeff", bar: `${Math.min(100, (water / 2500) * 100)}%` },
+            ].map(
+              (item) => html`
+                <div className="home-metric-card">
+                  <span className="text-[0.85rem] font-semibold text-[#0F172A]">${item.label}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[1.05rem] font-semibold text-[#0F172A]">${item.value}</span>
+                    <span className="text-[0.9rem] text-[#64748b]">${item.unit}</span>
+                  </div>
+                  <div className="h-2 w-full bg-white/70 rounded-full overflow-hidden">
+                    <div className="h-full" style=${{ width: item.bar, backgroundColor: item.color }}></div>
+                  </div>
+                </div>
+              `,
+            )}
           </section>
 
           <section className="space-y-4" style=${{ marginTop: "14px" }}>
             <h3 className="text-lg font-bold text-jet-black">Atividade Recente</h3>
-            <div className="bg-white rounded-xl overflow-hidden shadow-[0_12px_24px_rgba(41,43,45,0.04)] border border-white/80">
+            <div className="home-card-surface">
               ${recentMeal || recentWaterEntry
                 ? html`
                   ${recentMeal
@@ -2934,7 +3038,7 @@ OLD = nil
 
   function renderWelcome() {
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="mos-auth-screen min-h-screen" data-auth-screen="true">
         <main className="min-h-screen px-7 py-8 max-w-md mx-auto flex flex-col">
           <div className="pt-2">
             <${AuthWordmark} />
@@ -2942,19 +3046,19 @@ OLD = nil
 
           <div className="flex-1 flex flex-col justify-center">
             <div className="space-y-5">
-              <h1 className="text-[3.3rem] leading-[0.92] font-black text-[#111]">MOS</h1>
-              <p className="text-[1.35rem] leading-snug text-[#6e7178] max-w-[16rem]">Seu app para organizar alimentação, plano, água e evolução diária.</p>
+              <h1 className="text-[3.3rem] leading-[0.92] font-black mos-auth-title">MOS</h1>
+              <p className="text-[1.35rem] leading-snug mos-auth-subtitle max-w-[16rem]">Seu app para organizar alimentação, plano, água e evolução diária.</p>
               <div className="w-24 h-1 bg-[#111] rounded-full"></div>
             </div>
           </div>
 
           <div className="space-y-4 pb-5">
-            <div className="rounded-[10px] bg-[#eef6ff] border border-[#dbe7ff] p-4 text-sm text-[#111]">Bem-vinda ao MOS. Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>
+            <div className="mos-auth-card rounded-[10px] p-4 text-sm text-[#111]">Bem-vinda ao MOS. Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>
             <button className="w-full h-16 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2" onClick=${() => openAuthScreen("signup")}>
               <span>Começar</span>
               <${Icon} name="arrow_forward" className="text-white" />
             </button>
-            <button className="w-full h-16 bg-white border border-[#111]/25 text-[#111] rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => openAuthScreen("login")}>
+            <button className="w-full h-16 bg-white border border-[#111]/20 text-[#111] rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => openAuthScreen("login")}>
               Entrar
             </button>
             <button className="text-sm text-[#111]/72 underline underline-offset-4" onClick=${() => openAuthScreen("legal")}>
@@ -2984,7 +3088,7 @@ OLD = nil
       signupForm.acceptedTerms;
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="mos-auth-screen min-h-screen" data-auth-screen="true">
         <header className="border-b border-black/10">
           <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
             <${AuthWordmark} />
@@ -2994,8 +3098,8 @@ OLD = nil
 
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <section className="space-y-4">
-            <h1 className="text-[3.1rem] leading-[0.92] font-black text-[#111]">Criar conta</h1>
-            <p className="text-[1.2rem] leading-snug text-[#6e7178]">Junte-se à plataforma MOS para acessar sua rotina de forma organizada e visual.</p>
+            <h1 className="text-[3.1rem] leading-[0.92] font-black mos-auth-title">Criar conta</h1>
+            <p className="text-[1.2rem] leading-snug mos-auth-subtitle">Junte-se à plataforma MOS para acessar sua rotina de forma organizada e visual.</p>
           </section>
 
           ${renderAuthNoticeCard()}
@@ -3003,14 +3107,14 @@ OLD = nil
           <form className="space-y-5" onSubmit=${handleSignupSubmit}>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">Nome completo</label>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" value=${signupForm.name} onInput=${(e) => {
+              <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" value=${signupForm.name} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, name: value }));
               }} placeholder="Seu nome" />
             </div>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="email" value=${signupForm.email} onInput=${(e) => {
+              <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="email" value=${signupForm.email} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, email: value }));
               }} placeholder="exemplo@mos.app" />
@@ -3018,14 +3122,14 @@ OLD = nil
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[0.8rem] font-bold text-[#111]">Idade</label>
-                <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="number" min="10" step="1" value=${signupForm.age} onInput=${(e) => {
+                <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="number" min="10" step="1" value=${signupForm.age} onInput=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, age: value }));
                 }} placeholder="30" />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.8rem] font-bold text-[#111]">Altura (cm)</label>
-                <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="number" min="100" step="1" value=${signupForm.height} onInput=${(e) => {
+                <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="number" min="100" step="1" value=${signupForm.height} onInput=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, height: value }));
                 }} placeholder="170" />
@@ -3034,14 +3138,14 @@ OLD = nil
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[0.8rem] font-bold text-[#111]">Peso atual (kg)</label>
-                <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="number" min="20" step="0.1" value=${signupForm.weight} onInput=${(e) => {
+                <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="number" min="20" step="0.1" value=${signupForm.weight} onInput=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, weight: value }));
                 }} placeholder="77.7" />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.8rem] font-bold text-[#111]">Objetivo</label>
-                <select className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111] bg-white" value=${signupForm.goal} onChange=${(e) => {
+                <select className="w-full h-14 px-4 rounded-[10px] mos-auth-input bg-white" value=${signupForm.goal} onChange=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, goal: value }));
                 }}>
@@ -3051,10 +3155,10 @@ OLD = nil
                 </select>
               </div>
             </div>
-            <div className="rounded-[10px] border border-[#111]/10 bg-[#f7f8fb] p-4 space-y-1">
-              <p className="text-[0.78rem] font-bold text-[#6e7178]">Meta calórica sugerida</p>
-              <p className="text-[1.8rem] font-black text-[#111]">${suggestedCalories ? `${suggestedCalories.toLocaleString("pt-BR")} kcal` : "Preencha seus dados"}</p>
-              <p className="text-sm leading-snug text-[#6e7178]">Você poderá editar essa meta depois em Meu perfil.</p>
+            <div className="mos-auth-card rounded-[10px] p-4 space-y-1">
+              <p className="text-[0.78rem] font-bold mos-auth-subtitle">Meta calórica sugerida</p>
+              <p className="text-[1.8rem] font-black mos-auth-title">${suggestedCalories ? `${suggestedCalories.toLocaleString("pt-BR")} kcal` : "Preencha seus dados"}</p>
+              <p className="text-sm leading-snug mos-auth-subtitle">Você poderá editar essa meta depois em Meu perfil.</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -3064,7 +3168,7 @@ OLD = nil
                   <span>${showSignupPassword ? "Ocultar senha" : "Ver senha"}</span>
                 </button>
               </div>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type=${showSignupPassword ? "text" : "password"} value=${signupForm.password} onInput=${(e) => {
+              <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type=${showSignupPassword ? "text" : "password"} value=${signupForm.password} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, password: value }));
               }} placeholder="••••••••" />
@@ -3077,7 +3181,7 @@ OLD = nil
                   <span>${showSignupConfirmPassword ? "Ocultar senha" : "Ver senha"}</span>
                 </button>
               </div>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type=${showSignupConfirmPassword ? "text" : "password"} value=${signupForm.confirmPassword} onInput=${(e) => {
+              <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type=${showSignupConfirmPassword ? "text" : "password"} value=${signupForm.confirmPassword} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, confirmPassword: value }));
               }} placeholder="••••••••" />
@@ -3111,12 +3215,12 @@ OLD = nil
     const isReady = loginForm.email.trim() && loginForm.password;
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="mos-auth-screen min-h-screen" data-auth-screen="true">
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <${AuthWordmark} />
 
           <section className="space-y-4 pt-2">
-            <h1 className="text-[3.2rem] leading-[0.93] font-black text-[#111]">Acesse sua conta</h1>
+            <h1 className="text-[3.2rem] leading-[0.93] font-black mos-auth-title">Acesse sua conta</h1>
           </section>
 
           ${renderAuthNoticeCard()}
@@ -3169,7 +3273,7 @@ OLD = nil
     const isReady = recoverEmail.trim();
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="mos-auth-screen min-h-screen" data-auth-screen="true">
         <header className="border-b border-black/10">
           <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
             <${AuthWordmark} />
@@ -3179,8 +3283,8 @@ OLD = nil
 
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <section className="space-y-4 pt-10">
-            <h1 className="text-[3rem] leading-[0.94] font-black text-[#111]">Recuperar senha</h1>
-            <p className="text-[1.2rem] leading-snug text-[#6e7178]">Digite seu e-mail para enviarmos o link de recuperação.</p>
+            <h1 className="text-[3rem] leading-[0.94] font-black mos-auth-title">Recuperar senha</h1>
+            <p className="text-[1.2rem] leading-snug mos-auth-subtitle">Digite seu e-mail para enviarmos o link de recuperação.</p>
           </section>
 
           ${renderAuthNoticeCard()}
@@ -3188,7 +3292,7 @@ OLD = nil
           <form className="space-y-6" onSubmit=${handleRecoverSubmit}>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
-              <input className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]" type="email" value=${recoverEmail} onInput=${(e) => {
+              <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="email" value=${recoverEmail} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setRecoverEmail(value);
               }} placeholder="seu@email.com" />
@@ -3211,7 +3315,7 @@ OLD = nil
     const isReady = resetPasswordForm.password && resetPasswordForm.confirmPassword;
 
     return html`
-      <div className="bg-white text-[#111] min-h-screen" data-auth-screen="true">
+      <div className="mos-auth-screen min-h-screen" data-auth-screen="true">
         <header className="border-b border-black/10">
           <div className="h-16 px-6 max-w-md mx-auto flex items-center justify-between">
             <${AuthWordmark} />
@@ -3227,8 +3331,8 @@ OLD = nil
 
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <section className="space-y-4 pt-10">
-            <h1 className="text-[3rem] leading-[0.94] font-black text-[#111]">Criar nova senha</h1>
-            <p className="text-[1.2rem] leading-snug text-[#6e7178]">
+            <h1 className="text-[3rem] leading-[0.94] font-black mos-auth-title">Criar nova senha</h1>
+            <p className="text-[1.2rem] leading-snug mos-auth-subtitle">
               Defina sua nova senha para voltar a entrar no MOS com segurança.
             </p>
           </section>
@@ -3252,7 +3356,7 @@ OLD = nil
                 </button>
               </div>
               <input
-                className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]"
+                className="w-full h-14 px-4 rounded-[10px] mos-auth-input"
                 type=${showResetPassword ? "text" : "password"}
                 value=${resetPasswordForm.password}
                 onInput=${(e) => {
@@ -3279,7 +3383,7 @@ OLD = nil
                 </button>
               </div>
               <input
-                className="w-full h-14 px-4 border border-[#111]/30 rounded-[10px] text-[#111]"
+                className="w-full h-14 px-4 rounded-[10px] mos-auth-input"
                 type=${showResetPasswordConfirm ? "text" : "password"}
                 value=${resetPasswordForm.confirmPassword}
                 onInput=${(e) => {
@@ -3316,17 +3420,17 @@ OLD = nil
 
   function renderLegal() {
     return html`
-      <div className="bg-white text-[#111] min-h-screen">
+      <div className="mos-auth-screen min-h-screen">
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <div className="flex items-center justify-between">
             <${AuthWordmark} />
             <button onClick=${() => openAuthScreen("welcome")}><${Icon} name="close" className="text-[#111]" /></button>
           </div>
           <section className="space-y-4 pt-4">
-            <h1 className="text-[2.6rem] leading-[0.94] font-black text-[#111]">Termos e condições</h1>
-            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">O MOS funciona como um organizador pessoal de alimentação, água, plano e medidas. Os dados ficam salvos localmente neste dispositivo.</p>
-            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">Você pode editar suas informações quando quiser. Ao sair da conta, seus dados continuam guardados localmente até que você escolha apagar manualmente.</p>
-            <p className="text-[1.05rem] leading-relaxed text-[#6e7178]">Seus dados ficam vinculados à sua conta e podem ser acessados com segurança sempre que você entrar no MOS.</p>
+            <h1 className="text-[2.6rem] leading-[0.94] font-black mos-auth-title">Termos e condições</h1>
+            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">O MOS funciona como um organizador pessoal de alimentação, água, plano e medidas. Os dados ficam salvos localmente neste dispositivo.</p>
+            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">Você pode editar suas informações quando quiser. Ao sair da conta, seus dados continuam guardados localmente até que você escolha apagar manualmente.</p>
+            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">Seus dados ficam vinculados à sua conta e podem ser acessados com segurança sempre que você entrar no MOS.</p>
           </section>
           <button className="w-full h-14 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => openAuthScreen("welcome")}>
             Voltar
@@ -3337,17 +3441,26 @@ OLD = nil
   }
 
   function renderFood() {
+    const nowHour = new Date().getHours();
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     return html`
       <div className="${getSectionBackground()} text-on-surface min-h-screen pb-40">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("food")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-screen-xl mx-auto space-y-8">
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-8">
+          <section className="space-y-2">
+            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+              Sua alimentação em dia.
+            </h1>
+            <p className="text-[0.95rem] text-[#475569]">Cada registro te aproxima da meta. <span className="emoji-badge emoji-badge--food" aria-hidden="true">🍽️</span></p>
+          </section>
           <section className="w-full">
-            <button className="w-full bg-[#D9B8F3] rounded-xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
+            <button className="w-full food-hero-card rounded-2xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
               <div className="space-y-1">
                 <span className="font-label text-[0.6875rem] font-medium text-jet-black/60">Calendário</span>
                 <h2 className="font-headline text-2xl font-bold text-[#292B2D]">${foodDateLabel}</h2>
               </div>
-              <div className="bg-white/60 p-4 rounded-xl">
+              <div className="bg-white/70 p-4 rounded-xl">
                 <${Icon} name="calendar_today" className="text-[#292B2D]" />
               </div>
             </button>
@@ -3371,9 +3484,9 @@ OLD = nil
               (meal) => {
                 const mealTotal = summarizeFoods(meal.foods);
                 return html`
-                  <button className="bg-white rounded-xl p-6 min-h-[150px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-6" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
+                  <button className="mos-card rounded-2xl p-6 min-h-[150px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-6" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
                     <div className="flex items-start justify-between gap-4">
-                      <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shrink-0">
                         <${Icon} name=${meal.icon || "restaurant"} className="text-jet-black text-[1.65rem]" />
                       </div>
                       <${Icon} name="arrow_forward" className="text-jet-black text-[2rem] shrink-0" />
@@ -3391,14 +3504,14 @@ OLD = nil
               },
             )
               : html`
-                  <div className="bg-white rounded-xl p-6 text-center space-y-2">
+                  <div className="mos-card rounded-2xl p-6 text-center space-y-2">
                     <p className="font-bold text-jet-black">Nenhuma refeição registrada</p>
                     <p className="text-sm text-on-surface-variant">Escolha outra data ou registre uma refeição para este dia.</p>
                   </div>
                 `}
           </section>
-          <div className="fixed bottom-24 left-0 w-full px-4 z-40 pointer-events-none">
-            <button className="pointer-events-auto w-full max-w-screen-xl mx-auto bg-[#EF5F37] text-white py-5 rounded-xl font-headline font-bold text-lg flex items-center justify-center gap-3 active:scale-95 transition-transform" onClick=${() => setModal("food")}>
+          <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
+            <button className="mos-fixed-cta-button font-headline" onClick=${() => setModal("food")}>
               <${Icon} name="add_circle" />
               Registrar comida
             </button>
@@ -3453,7 +3566,7 @@ OLD = nil
           <section className="space-y-2">
             <h1 className="text-[2rem] font-bold text-jet-black">${selectedConsumed.name}</h1>
           </section>
-          <section className="bg-white rounded-xl px-4 divide-y divide-surface-container-high">
+          <section className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
             ${selectedConsumed.foods.map(
               (food) => {
                 const accent = getFoodAccent(food.name);
@@ -3492,7 +3605,7 @@ OLD = nil
           </section>
           <section className="space-y-3">
             <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Informação nutricional</h3>
-            <div className="bg-white rounded-xl px-4 divide-y divide-surface-container-high">
+            <div className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
               ${selectedConsumed.foods.map(
                 (food) => {
                   const accent = getFoodAccent(food.name);
@@ -3542,17 +3655,26 @@ OLD = nil
   }
 
   function renderPlan() {
+    const nowHour = new Date().getHours();
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     return html`
       <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
         <main className="pt-24 pb-32 px-6 max-w-md mx-auto space-y-8">
-          <header className="bg-[#DFF37D] text-[#292B2D] p-8 rounded-xl shadow-[0_14px_30px_rgba(41,43,45,0.06)]">
+          <section className="space-y-2">
+            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+              Seu plano, sua direção.
+            </h1>
+            <p className="text-[0.95rem] text-[#475569]">Cada ajuste hoje facilita a semana. <span className="emoji-badge emoji-badge--plan" aria-hidden="true">🧭</span></p>
+          </section>
+          <header className="plan-hero-card text-[#292B2D] p-8 rounded-2xl">
             <div className="flex flex-col gap-1">
               <span className="text-[0.6875rem] font-medium text-jet-black/60">Meta Ativa</span>
               <h1 className="text-[1.75rem] font-bold leading-tight">${state.profile.activeGoal}</h1>
             </div>
           </header>
-          <div className="sticky top-20 z-40 bg-white rounded-xl p-2 flex gap-2 shadow-[0_10px_24px_rgba(41,43,45,0.06)] border border-white/80">
+          <div className="sticky top-20 z-40 mos-card rounded-2xl p-2 flex gap-2">
             <button className="flex-1 py-3 px-4 rounded-xl bg-[#4558C8] text-white text-[0.875rem] font-bold transition-all active:scale-95">Cardápio</button>
             <button className="flex-1 py-3 px-4 rounded-xl bg-surface-container-low text-[#292B2D] text-[0.875rem] font-bold" onClick=${() => setScreen("supplements")}>Suplementos</button>
           </div>
@@ -3562,9 +3684,9 @@ OLD = nil
             </div>
             ${state.planMeals.map(
               (meal) => html`
-                <button className="bg-[#FFFFFF] p-6 rounded-xl w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-6 shadow-[0_12px_24px_rgba(41,43,45,0.04)] border border-white/80" onClick=${() => { setSelectedPlanId(meal.id); setScreen("plan-detail"); }}>
+                <button className="mos-card rounded-2xl p-6 w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-6" onClick=${() => { setSelectedPlanId(meal.id); setScreen("plan-detail"); }}>
                   <div className="flex items-start justify-between gap-4">
-                    <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shrink-0">
                       <${Icon} name=${meal.icon || "description"} className="text-jet-black text-[1.65rem]" />
                     </div>
                     <${Icon} name="arrow_forward" className="text-jet-black text-[2rem] shrink-0" />
@@ -3578,21 +3700,21 @@ OLD = nil
             )}
           </section>
           <section className="grid grid-cols-3 gap-3">
-            <div className="bg-[#D9B8F3] p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(41,43,45,0.05)]">
+            <div className="mos-card rounded-2xl p-5 flex flex-col justify-between min-h-[132px]">
               <span className="text-[0.6875rem] font-bold text-[#292B2D]">Calorias</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.calories)}</span>
                 <span className="text-[0.6875rem] font-medium">kcal</span>
               </div>
             </div>
-            <div className="bg-surface-container-low p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(41,43,45,0.05)]">
+            <div className="mos-card rounded-2xl p-5 flex flex-col justify-between min-h-[132px]">
               <span className="text-[0.6875rem] font-bold text-[#292B2D]">Proteínas</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.protein)}</span>
                 <span className="text-[0.6875rem] font-medium">g</span>
               </div>
             </div>
-            <div className="bg-surface-container-highest p-5 rounded-xl flex flex-col justify-between min-h-[132px] shadow-[0_10px_22px_rgba(41,43,45,0.05)]">
+            <div className="mos-card rounded-2xl p-5 flex flex-col justify-between min-h-[132px]">
               <span className="text-[0.6875rem] font-bold text-[#292B2D]">Carbos</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.carbs)}</span>
@@ -3630,34 +3752,34 @@ OLD = nil
           onRight=${openNotifications}
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="bg-[#292B2D] text-white rounded-xl p-6 space-y-5">
+          <section className="mos-card rounded-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
-                <span className="text-sm text-white/65">Painel do plano</span>
+                <span className="text-sm text-[#475569]">Painel do plano</span>
                 <h1 className="text-[1.8rem] font-bold leading-tight">${hasPlanConfigured ? state.profile.activeGoal : "Nenhum plano configurado"}</h1>
-                <p className="text-sm leading-relaxed text-white/72">${hasPlanConfigured ? planFocus : "Crie seu primeiro plano para começar a organizar suas refeições."}</p>
+                <p className="text-sm leading-relaxed text-[#475569]">${hasPlanConfigured ? planFocus : "Crie seu primeiro plano para começar a organizar suas refeições."}</p>
               </div>
-              <div className="w-12 h-12 rounded-[10px] bg-white/10 flex items-center justify-center shrink-0">
-                <${Icon} name="dashboard" className="text-white text-[1.65rem]" />
+              <div className="w-12 h-12 rounded-[10px] bg-white/80 flex items-center justify-center shrink-0">
+                <${Icon} name="dashboard" className="text-[#0F172A] text-[1.65rem]" />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/8 rounded-[10px] p-4 space-y-2">
-                <span className="text-[0.75rem] text-white/65">Refeições</span>
+              <div className="bg-white/70 rounded-[10px] p-4 space-y-2">
+                <span className="text-[0.75rem] text-[#64748b]">Refeições</span>
                 <strong className="text-[1.5rem] font-bold block">${planMealCount}</strong>
               </div>
-              <div className="bg-white/8 rounded-[10px] p-4 space-y-2">
-                <span className="text-[0.75rem] text-white/65">Calorias</span>
+              <div className="bg-white/70 rounded-[10px] p-4 space-y-2">
+                <span className="text-[0.75rem] text-[#64748b]">Calorias</span>
                 <strong className="text-[1.5rem] font-bold block">${Math.round(planTotals.calories)}</strong>
               </div>
-              <div className="bg-white/8 rounded-[10px] p-4 space-y-2">
-                <span className="text-[0.75rem] text-white/65">Média</span>
+              <div className="bg-white/70 rounded-[10px] p-4 space-y-2">
+                <span className="text-[0.75rem] text-[#64748b]">Média</span>
                 <strong className="text-[1.5rem] font-bold block">${averageCalories}</strong>
               </div>
             </div>
           </section>
 
-          <section className="bg-white rounded-xl p-6 space-y-4 border border-[#dde4ff]">
+          <section className="mos-card rounded-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="text-sm text-[#4558C8]">Estrutura atual</span>
@@ -3668,18 +3790,18 @@ OLD = nil
                 <${Icon} name="receipt_long" className="text-[#4558C8]" />
               </div>
             </div>
-            <div className="divide-y divide-surface-container-high border border-surface-container-high rounded-[10px] overflow-hidden">
+            <div className="space-y-4">
               ${state.planMeals.length
                 ? state.planMeals.map(
                     (meal) => html`
-                      <div className="py-4 px-4 bg-white">
+                      <div className="rounded-[10px] bg-white/90 border border-slate-200/70 px-5 py-4">
                         <div className="min-w-0">
                           <span className="text-[1rem] font-medium text-jet-black block">${meal.name}</span>
                           <span className="text-[0.85rem] text-on-surface-variant">${meal.foods.length} item(ns) no plano</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-4">
+                        <div className="flex items-center gap-3 mt-4">
                           <button
-                            className="h-10 px-4 rounded-[10px] bg-[#eef2ff] text-[#4558C8] font-bold active:scale-95 transition-transform"
+                            className="h-10 px-4 rounded-[10px] bg-[#eef2ff] text-[#3b4cca] font-bold active:scale-95 transition-transform"
                             onClick=${() =>
                               guardPlanConfigNavigation(() => {
                                 setSelectedPlanId(meal.id);
@@ -3689,7 +3811,7 @@ OLD = nil
                             Editar
                           </button>
                           <button
-                            className="h-10 px-4 rounded-[10px] bg-white border border-[#efc1bc] text-error font-bold active:scale-95 transition-transform"
+                            className="h-10 px-4 rounded-[10px] bg-[#fff0ec] text-[#b42318] font-bold active:scale-95 transition-transform"
                             onClick=${() => askDeleteConfirm({
                               title: "Apagar refeição do plano",
                               message: "Tem certeza que deseja apagar este item?",
@@ -3719,7 +3841,7 @@ OLD = nil
                     `,
                   )
                 : html`
-                  <div className="py-3 px-4 bg-white">
+                  <div className="rounded-[10px] bg-white/90 border border-slate-200/70 px-5 py-4">
                     <p className="text-sm text-on-surface-variant">Nenhuma refeição cadastrada no plano ainda.</p>
                     <p className="text-[0.78rem] text-on-surface-variant mt-1">Use o botão abaixo para adicionar sua primeira refeição.</p>
                   </div>
@@ -3727,7 +3849,7 @@ OLD = nil
             </div>
           </section>
 
-          <section className="bg-white rounded-xl p-6 border border-[#dde4ff] space-y-5">
+          <section className="mos-card rounded-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="text-sm text-[#4558C8]">Configuração</span>
@@ -3803,7 +3925,7 @@ OLD = nil
           <section className="space-y-2">
             <h1 className="text-[2rem] font-bold text-jet-black">${selectedPlan.name}</h1>
           </section>
-          <section className="bg-white rounded-xl px-4 divide-y divide-surface-container-high">
+          <section className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
             ${selectedPlan.foods.map(
               (food) => {
                 const accent = getFoodAccent(food.name);
@@ -3831,7 +3953,7 @@ OLD = nil
           </section>
           <section className="space-y-3">
             <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Informação Nutricional</h3>
-            <div className="bg-white rounded-xl px-4 divide-y divide-surface-container-high">
+            <div className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
               ${selectedPlan.foods.map(
                 (food) => {
                   const accent = getFoodAccent(food.name);
@@ -3865,11 +3987,39 @@ OLD = nil
               )}
             </div>
           </section>
-          <section className="bg-[#292B2D] text-white p-6 rounded-xl space-y-6">
-            <h3 className="font-bold text-lg">Distribuição de Macros</h3>
-            <${MacroBarDark} proteinWidth=${`${Math.min(100, totals.protein)}%`} carbWidth=${`${Math.min(100, totals.carbs)}%`} fatWidth=${`${Math.min(100, totals.fat * 2)}%`} />
+          <section className="mos-card rounded-2xl p-6 space-y-6">
+            <h3 className="font-bold text-lg text-jet-black">Distribuição de Macros</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-[0.6875rem] font-bold text-[#475569]">Carbo</span>
+                  <span className="text-sm font-bold text-jet-black">${Math.round(totals.carbs)}g</span>
+                </div>
+                <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#4558C8]" style=${{ width: `${Math.min(100, totals.carbs)}%` }}></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-[0.6875rem] font-bold text-[#475569]">Proteínas</span>
+                  <span className="text-sm font-bold text-jet-black">${Math.round(totals.protein)}g</span>
+                </div>
+                <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#EF5F37]" style=${{ width: `${Math.min(100, totals.protein)}%` }}></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-[0.6875rem] font-bold text-[#475569]">Gorduras</span>
+                  <span className="text-sm font-bold text-jet-black">${Math.round(totals.fat)}g</span>
+                </div>
+                <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#D9B8F3]" style=${{ width: `${Math.min(100, totals.fat * 2)}%` }}></div>
+                </div>
+              </div>
+            </div>
           </section>
-          <section className="bg-white rounded-xl p-6 space-y-3">
+          <section className="mos-card rounded-2xl p-6 space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#DFF37D] flex items-center justify-center">
                 <${Icon} name="lightbulb" className="text-jet-black" />
@@ -3885,12 +4035,15 @@ OLD = nil
   }
 
   function renderTraining() {
+    const nowHour = new Date().getHours();
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     return html`
       <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
         <${TopBar} title="Treino" leftIcon="menu" centerBold=${false} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("training")} onRight=${openNotifications} />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
           <section className="space-y-2">
             <span className="text-sm text-[#EF5F37]">Sua jornada</span>
+            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
             <div className="flex items-end justify-between gap-4">
               <h1 className="text-[1.95rem] font-bold text-jet-black leading-tight">Meus treinos</h1>
               <div className="${TRAINING_THEME.surface} rounded-[10px] px-4 py-3">
@@ -3898,6 +4051,7 @@ OLD = nil
                 <strong className="text-[1.1rem] font-bold text-jet-black">${trainingPlans.length}</strong>
               </div>
             </div>
+            <p className="text-[0.95rem] text-[#475569]">Todo treino é um passo adiante. <span className="emoji-badge emoji-badge--training" aria-hidden="true">💪</span></p>
             <p className="text-sm text-on-surface-variant">Abra um treino para ver os exercícios, ajustar a rotina ou iniciar a sessão de hoje.</p>
           </section>
 
@@ -3907,7 +4061,7 @@ OLD = nil
                   const completedToday = trainingHistory.some((entry) => entry.planId === plan.id && entry.date === todayKey);
                   return html`
                     <button
-                      className="${TRAINING_THEME.surface} p-5 rounded-xl w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-4"
+                      className="mos-card rounded-2xl p-5 w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-4"
                       onClick=${() => openTrainingDetail(plan.id)}
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -3934,7 +4088,7 @@ OLD = nil
                   `;
                 })
               : html`
-                <div className="bg-white border border-outline-variant rounded-xl p-5 text-jet-black">
+                <div className="mos-card rounded-2xl p-5 text-jet-black">
                   <p className="font-bold text-base">Você ainda não criou um treino.</p>
                   <p className="text-sm text-on-surface-variant mt-1">Crie seu primeiro treino para começar a acompanhar suas sessões e evoluções.</p>
                 </div>
@@ -3964,12 +4118,12 @@ OLD = nil
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
           <section className="grid grid-cols-2 gap-3">
-            <div className="${TRAINING_THEME.surface} rounded-xl p-5">
-              <span className="text-[0.75rem] ${TRAINING_THEME.accentText}">Minutos estimados</span>
+            <div className="mos-card rounded-2xl p-5">
+              <span className="text-[0.75rem] text-[#475569]">Minutos estimados</span>
               <strong className="block mt-2 text-[2rem] font-bold text-jet-black">${selectedTraining.estimatedMinutes}</strong>
             </div>
-            <div className="${TRAINING_THEME.surface} rounded-xl p-5">
-              <span className="text-[0.75rem] ${TRAINING_THEME.accentText}">Exercícios</span>
+            <div className="mos-card rounded-2xl p-5">
+              <span className="text-[0.75rem] text-[#475569]">Exercícios</span>
               <strong className="block mt-2 text-[2rem] font-bold text-jet-black">${selectedTraining.exercises.length}</strong>
             </div>
           </section>
@@ -3981,7 +4135,7 @@ OLD = nil
             </div>
           </section>
 
-          <section className="${TRAINING_THEME.surface} rounded-xl px-4 divide-y ${TRAINING_THEME.mutedBorder}">
+          <section className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
             ${selectedTraining.exercises.map((exercise, index) => {
               const accent = getFoodAccent(exercise.name);
               return html`
@@ -4476,28 +4630,39 @@ OLD = nil
               <p className="font-label text-xs font-bold text-outline">Adicionar mais</p>
             </button>
           </div>
-          <button className="fixed bottom-28 right-6 bg-[#EF5F37] text-white px-6 py-4 rounded-[10px] font-bold flex items-center gap-3 active:scale-95 transition-transform z-40" onClick=${() => setScreen("register-supplement")}>
-            <${Icon} name="add" />
-            <span className="font-['Sora'] text-[0.6875rem]">Novo suplemento</span>
-          </button>
         </main>
+        <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
+          <button className="mos-fixed-cta-button font-headline" onClick=${() => setScreen("register-supplement")}>
+            <${Icon} name="add_circle" />
+            Novo suplemento
+          </button>
+        </div>
         <${BottomNav} active="plan" onChange=${setScreen} />
       </div>
     `;
   }
 
   function renderWater() {
+    const nowHour = new Date().getHours();
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const waterProgress = Math.min(100, (water / waterGoal) * 100);
     const remainingWater = Math.max(0, waterGoal - water);
     const waterFillHeight = Math.max(26, Math.min(88, waterProgress));
     const quickWaterOptions = [100, 150, 200, 250, 300];
     const selectedEntriesCount = waterEntries.length;
     return html`
-      <div className="bg-[#f4f7ff] text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
+          <section className="space-y-2">
+            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+              Hidratação no foco.
+            </h1>
+            <p className="text-[0.95rem] text-[#475569]">Pequenos goles, grande constância. <span className="emoji-badge emoji-badge--water" aria-hidden="true">💧</span></p>
+          </section>
           <section className="space-y-4">
-            <div className="bg-[#f7fbff] rounded-[10px] p-6 md:p-8 relative overflow-hidden border border-[#e8f2ff] shadow-[0_16px_50px_rgba(47,104,255,0.08)]">
+            <div className="mos-hero mos-hero-transparent rounded-[10px] p-6 md:p-8 relative overflow-hidden">
               <div className="flex flex-col items-center text-center">
                 <div className="w-11 h-11 rounded-full bg-[#eef2ff] flex items-center justify-center mb-4 shadow-[0_10px_20px_rgba(69,88,200,0.12)]">
                   <${Icon} name="water_drop" className="text-[#4558C8] text-[1.35rem]" filled=${true} />
@@ -4673,8 +4838,8 @@ OLD = nil
             </div>
           </section>
         </main>
-        <div className="fixed bottom-24 left-0 w-full px-4 z-40 pointer-events-none">
-          <button className="pointer-events-auto w-full max-w-md mx-auto bg-[#EF5F37] text-white py-5 rounded-[10px] font-headline font-bold text-lg flex items-center justify-center gap-3 active:scale-95 transition-transform shadow-[0_16px_28px_rgba(239,95,55,0.24)]" onClick=${() => setModal("water")}>
+        <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
+          <button className="mos-fixed-cta-button font-headline" onClick=${() => setModal("water")}>
             <${Icon} name="add_circle" />
             Registrar água
           </button>
@@ -4904,6 +5069,7 @@ OLD = nil
       { name: "Comida", description: "Registra refeições, revisa o que foi consumido e permite ver dias anteriores." },
       { name: "Plano", description: "Organiza seu cardápio, refeições planejadas, trocas e a configuração do plano." },
       { name: "Água", description: "Acompanha hidratação, meta diária e histórico de consumo ao longo do dia." },
+      { name: "Treino", description: "Cria treinos, guia a execução e registra o resumo da sessão." },
       { name: "Minhas medidas", description: "Concentra peso, IMC, composição corporal e evolução das últimas atualizações." },
       { name: "Notificações", description: "Reúne lembretes de suplemento, avisos importantes e novidades do MOS." },
       { name: "Busca", description: "Ajuda a encontrar rapidamente refeições, alimentos, suplementos e páginas do app." },
@@ -4923,7 +5089,7 @@ OLD = nil
           <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
             <span className="text-sm text-[#4558C8]">Bem-vinda ao MOS</span>
             <h1 className="text-[1.85rem] font-bold text-jet-black leading-tight">Um guia rápido para usar o app com clareza e leveza</h1>
-            <p className="text-sm leading-relaxed text-on-surface-variant">O MOS foi pensado para acompanhar rotina, alimentação, água e evolução corporal sem complicar sua vida. Aqui você entende o que cada parte faz e como aproveitar melhor o app no dia a dia.</p>
+            <p className="text-sm leading-relaxed text-on-surface-variant">O MOS foi pensado para acompanhar rotina, alimentação, treino, água e evolução corporal sem complicar sua vida. Aqui você entende o que cada parte faz e como aproveitar melhor o app no dia a dia.</p>
           </section>
 
           <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
@@ -4937,6 +5103,7 @@ OLD = nil
                 "Use Comida para registrar refeições e revisar o que já foi consumido.",
                 "Entre em Plano para organizar o cardápio e ajustar as refeições planejadas.",
                 "Atualize Água sempre que beber algo para manter a meta visível.",
+                "Use Treino para criar sessões e acompanhar cada série com foco.",
                 "Revise Minhas medidas de tempos em tempos para acompanhar sua evolução real.",
               ].map(
                 (item, index) => html`
@@ -4983,6 +5150,10 @@ OLD = nil
               Enviar feedback
             </button>
           </section>
+
+          <footer className="text-center text-[0.8rem] text-on-surface-variant pt-2">
+            © ${new Date().getFullYear()} Projeto pessoal de Nirlandy Pinheiro. <a className="underline underline-offset-4" href="https://nirla.squarespace.com/" target="_blank" rel="noreferrer">nirla.squarespace.com</a>
+          </footer>
         </main>
         <${BottomNav} active=${null} onChange=${setScreen} />
       </div>
@@ -5200,19 +5371,19 @@ OLD = nil
             <span className="text-[0.6875rem] font-medium text-outline">Alimento</span>
             <h1 className="text-[1.9rem] font-bold text-jet-black">${selectedFood.name}</h1>
           </section>
-          <section className="bg-white rounded-xl p-6 grid grid-cols-2 gap-4">
+          <section className="mos-card rounded-2xl p-6 grid grid-cols-2 gap-4">
             <div><span className="text-[0.6875rem] text-outline block">Calorias</span><strong className="text-2xl text-jet-black">${selectedFood.calories} kcal</strong></div>
             <div><span className="text-[0.6875rem] text-outline block">Carbo</span><strong className="text-2xl text-jet-black">${selectedFood.carbs} g</strong></div>
             <div><span className="text-[0.6875rem] text-outline block">Proteínas</span><strong className="text-2xl text-jet-black">${selectedFood.protein} g</strong></div>
             <div><span className="text-[0.6875rem] text-outline block">Gorduras</span><strong className="text-2xl text-jet-black">${selectedFood.fat} g</strong></div>
           </section>
-          <section className="bg-white rounded-xl p-6 space-y-2">
+          <section className="mos-card rounded-2xl p-6 space-y-2">
             <h3 className="text-base font-bold text-jet-black">Benefícios</h3>
             <p className="text-sm leading-relaxed text-on-surface-variant">${selectedFood.benefit}</p>
             <p className="text-sm leading-relaxed text-on-surface-variant">Ajuda o corpo e a meta do usuário quando encaixado com consistência, porção adequada e regularidade no plano.</p>
             <p className="text-sm leading-relaxed text-on-surface-variant">Orientação de consumo: use dentro da refeição planejada e ajuste a quantidade conforme sua meta calórica do dia.</p>
           </section>
-          <section className="bg-white rounded-xl p-6 space-y-2">
+          <section className="mos-card rounded-2xl p-6 space-y-2">
             <h3 className="text-base font-bold text-jet-black">Fonte</h3>
             <p className="text-sm text-on-surface-variant">TACO</p>
             <p className="text-sm text-on-surface-variant">Ministério da Saúde</p>
@@ -5366,11 +5537,11 @@ OLD = nil
           border-radius: 20px;
         }
         nav.fixed.bottom-0 {
-          background: #0f0f12;
-          box-shadow: 0 -10px 22px rgba(15, 23, 42, 0.2);
+          background: transparent;
+          box-shadow: none;
         }
         nav.fixed.bottom-0 button {
-          color: #f8f7f2;
+          color: #f5f5f5;
         }
         nav.fixed.bottom-0 button.bottom-nav-active,
         nav.fixed.bottom-0 button.bottom-nav-active:hover,
