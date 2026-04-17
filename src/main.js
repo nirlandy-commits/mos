@@ -30,6 +30,13 @@ import {
   updatePassword,
   updateSupplementEntry,
 } from "./lib/auth.js";
+import {
+  calculateMosState,
+  calculateMosExecutionSignals,
+  generateMosMainMessage,
+  generateMosOperationalInsight,
+  generateMosShortRecommendation,
+} from "./lib/mos-brain.js";
 
 const html = htm.bind(React.createElement);
 
@@ -75,8 +82,32 @@ function isRecoveryRedirect() {
   }
 }
 
-const STORAGE_KEY = "mos-stitch-faithful";
-const FORCE_LOGIN_KEY = "mos-force-login";
+function getMosRoute(pathname = globalThis.location?.pathname || "/") {
+  return pathname.endsWith("/app") ? "app" : "landing";
+}
+
+function buildMosPath(route = "landing") {
+  const pathname = globalThis.location?.pathname || "/";
+  const segments = pathname.split("/").filter(Boolean);
+  const baseSegments = segments[segments.length - 1] === "app" ? segments.slice(0, -1) : segments;
+  const basePath = `/${baseSegments.join("/")}`.replace(/\/+/g, "/");
+  if (route === "app") return `${basePath === "/" ? "" : basePath}/app`;
+  return basePath === "" ? "/" : basePath;
+}
+
+function navigateMosRoute(route = "landing", { replace = false } = {}) {
+  const nextPath = buildMosPath(route);
+  const method = replace ? "replaceState" : "pushState";
+  globalThis.history?.[method]?.({}, "", nextPath);
+}
+
+const LOCAL_DEMO_MODE = Boolean(globalThis.MOS_LOCAL_DEMO);
+const STORAGE_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-state" : "mos-stitch-faithful";
+const FORCE_LOGIN_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-force-login" : "mos-force-login";
+const DEMO_TODAY_KEY = (() => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+})();
 
 const planImages = {
   breakfast:
@@ -89,8 +120,8 @@ const planImages = {
 
 const defaultState = {
   auth: {
-    registered: false,
-    signedIn: false,
+    registered: LOCAL_DEMO_MODE,
+    signedIn: LOCAL_DEMO_MODE,
     email: "",
     password: "",
   },
@@ -132,7 +163,55 @@ const defaultState = {
       metabolicAge: 50,
     },
   ],
-  consumedMeals: {},
+  consumedMeals: {
+    [DEMO_TODAY_KEY]: [
+      {
+        id: "meal-demo-breakfast",
+        name: "Café da manhã",
+        icon: "light_mode",
+        description: "Ovos, pão integral e café sem açúcar",
+        foods: [
+          { id: "meal-demo-breakfast-1", name: "Ovos mexidos", quantity: "2 ovos", calories: 180, protein: 14, carbs: 2, fat: 12, benefit: "Ajuda a manter saciedade pela manhã." },
+          { id: "meal-demo-breakfast-2", name: "Pão integral", quantity: "2 fatias", calories: 140, protein: 6, carbs: 24, fat: 2, benefit: "Entrega energia equilibrada para começar o dia." },
+          { id: "meal-demo-breakfast-3", name: "Café", quantity: "200 ml", calories: 5, protein: 0, carbs: 1, fat: 0, benefit: "Ajuda na rotina matinal sem pesar na refeição." },
+        ],
+      },
+      {
+        id: "meal-demo-lunch",
+        name: "Almoço",
+        icon: "restaurant",
+        description: "Frango, arroz, feijão e salada",
+        foods: [
+          { id: "meal-demo-lunch-1", name: "Peito de frango grelhado", quantity: "140g", calories: 230, protein: 34, carbs: 0, fat: 8, benefit: "Boa base de proteína para o plano." },
+          { id: "meal-demo-lunch-2", name: "Arroz integral", quantity: "120g", calories: 150, protein: 3, carbs: 31, fat: 1, benefit: "Fornece energia com boa saciedade." },
+          { id: "meal-demo-lunch-3", name: "Feijão", quantity: "80g", calories: 90, protein: 6, carbs: 15, fat: 1, benefit: "Ajuda no equilíbrio nutricional da refeição." },
+          { id: "meal-demo-lunch-4", name: "Salada verde", quantity: "1 prato", calories: 25, protein: 1, carbs: 4, fat: 0, benefit: "Aumenta volume e leveza do prato." },
+        ],
+      },
+      {
+        id: "meal-demo-snack",
+        name: "Lanche da tarde",
+        icon: "eco",
+        description: "Iogurte, banana e aveia",
+        foods: [
+          { id: "meal-demo-snack-1", name: "Iogurte natural", quantity: "1 pote", calories: 110, protein: 9, carbs: 8, fat: 4, benefit: "Ajuda a sustentar a tarde com praticidade." },
+          { id: "meal-demo-snack-2", name: "Banana", quantity: "1 un", calories: 89, protein: 1, carbs: 23, fat: 0, benefit: "Boa opção de energia rápida antes da rotina seguir." },
+          { id: "meal-demo-snack-3", name: "Aveia", quantity: "20g", calories: 78, protein: 3, carbs: 13, fat: 2, benefit: "Acrescenta fibra e mais saciedade ao lanche." },
+        ],
+      },
+      {
+        id: "meal-demo-dinner",
+        name: "Jantar",
+        icon: "dark_mode",
+        description: "Tilápia, purê e legumes",
+        foods: [
+          { id: "meal-demo-dinner-1", name: "Tilápia grelhada", quantity: "160g", calories: 210, protein: 34, carbs: 0, fat: 7, benefit: "Fecha o dia com proteína leve e de boa digestão." },
+          { id: "meal-demo-dinner-2", name: "Purê de batata", quantity: "130g", calories: 142, protein: 3, carbs: 27, fat: 3, benefit: "Traz conforto e energia sem pesar demais." },
+          { id: "meal-demo-dinner-3", name: "Legumes no vapor", quantity: "1 porção", calories: 48, protein: 2, carbs: 9, fat: 0, benefit: "Ajuda no equilíbrio e no volume do prato." },
+        ],
+      },
+    ],
+  },
   planMeals: [
     {
       id: "plan-breakfast",
@@ -213,8 +292,19 @@ const defaultState = {
     },
   ],
   trainingHistory: [],
-  water: {},
-  waterHistory: {},
+  water: {
+    [DEMO_TODAY_KEY]: 2450,
+  },
+  waterHistory: {
+    [DEMO_TODAY_KEY]: [
+      { id: "water-demo-1", amount: 300, label: "Ao acordar", time: "07:15" },
+      { id: "water-demo-2", amount: 500, label: "Após o café da manhã", time: "09:40" },
+      { id: "water-demo-3", amount: 450, label: "Antes do almoço", time: "12:10" },
+      { id: "water-demo-4", amount: 600, label: "Durante a tarde", time: "16:25" },
+      { id: "water-demo-5", amount: 350, label: "Após o treino", time: "19:05" },
+      { id: "water-demo-6", amount: 250, label: "No jantar", time: "20:20" },
+    ],
+  },
 };
 
 function uid(prefix) {
@@ -656,6 +746,63 @@ function normalizeMeal(meal = {}, index = 0) {
   };
 }
 
+function parseMealTimeValue(value = "") {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Math.max(0, Math.min(23, Number(match[1]) || 0));
+  const minutes = Math.max(0, Math.min(59, Number(match[2]) || 0));
+  return hours * 60 + minutes;
+}
+
+function formatMealTimeLabel(value = "") {
+  const parsed = parseMealTimeValue(value);
+  if (parsed == null) return "";
+  const hours = Math.floor(parsed / 60);
+  const minutes = parsed % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getSupplementMomentStatus(value = "", currentMinutes = getCurrentMinutes()) {
+  const parsed = parseMealTimeValue(value);
+  if (parsed == null) return { label: "Sem horário", tone: "idle" };
+  const delta = parsed - currentMinutes;
+  if (Math.abs(delta) <= 45) return { label: "Agora • recomendado", tone: "now" };
+  if (delta < -45) return { label: "Não registrado", tone: "late" };
+  return { label: "Mais tarde", tone: "later" };
+}
+
+function sortPlanMealsByTime(planMeals = []) {
+  return [...planMeals].sort((left, right) => {
+    const leftTime = parseMealTimeValue(left.time);
+    const rightTime = parseMealTimeValue(right.time);
+    if (leftTime == null && rightTime == null) return left.name.localeCompare(right.name);
+    if (leftTime == null) return 1;
+    if (rightTime == null) return -1;
+    return leftTime - rightTime;
+  });
+}
+
+function getCurrentMinutes() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function getCurrentPlanMeal(planMeals = [], currentMinutes = getCurrentMinutes()) {
+  const sortedMeals = sortPlanMealsByTime(planMeals);
+  if (!sortedMeals.length) return null;
+  const mealsWithTime = sortedMeals.filter((meal) => parseMealTimeValue(meal.time) != null);
+  if (!mealsWithTime.length) return sortedMeals[0];
+
+  let currentMeal = mealsWithTime[0];
+  mealsWithTime.forEach((meal) => {
+    const mealTime = parseMealTimeValue(meal.time);
+    if (mealTime != null && mealTime <= currentMinutes) {
+      currentMeal = meal;
+    }
+  });
+  return currentMeal;
+}
+
 function normalizeSupplement(item = {}, index = 0) {
   return {
     id: item.id || `supplement-${index + 1}`,
@@ -696,13 +843,34 @@ function migrate(raw) {
     measureEntries: Array.isArray(raw.measureEntries)
       ? raw.measureEntries.map((entry, index) => normalizeMeasureEntry(entry, index))
       : defaultState.measureEntries,
-    consumedMeals: raw.consumedMeals || raw.foodLog || {},
+    consumedMeals: (() => {
+      const nextConsumedMeals = raw.consumedMeals || raw.foodLog || {};
+      if (!LOCAL_DEMO_MODE) return nextConsumedMeals;
+      return {
+        ...defaultState.consumedMeals,
+        ...nextConsumedMeals,
+      };
+    })(),
     planMeals: Array.isArray(raw.planMeals || raw.mealPlan) ? (raw.planMeals || raw.mealPlan).map((meal, index) => normalizeMeal(meal, index)) : defaultState.planMeals,
     supplements: Array.isArray(raw.supplements) ? raw.supplements.map((item, index) => normalizeSupplement(item, index)) : defaultState.supplements,
     trainingPlans: Array.isArray(raw.trainingPlans) ? raw.trainingPlans.map((plan, index) => normalizeTrainingPlan(plan, index)) : defaultState.trainingPlans,
     trainingHistory: Array.isArray(raw.trainingHistory) ? raw.trainingHistory : [],
-    water: raw.water || {},
-    waterHistory: raw.waterHistory || {},
+    water: (() => {
+      const nextWater = raw.water || {};
+      if (!LOCAL_DEMO_MODE) return nextWater;
+      return {
+        ...defaultState.water,
+        ...nextWater,
+      };
+    })(),
+    waterHistory: (() => {
+      const nextWaterHistory = raw.waterHistory || {};
+      if (!LOCAL_DEMO_MODE) return nextWaterHistory;
+      return {
+        ...defaultState.waterHistory,
+        ...nextWaterHistory,
+      };
+    })(),
   };
 }
 
@@ -1025,13 +1193,13 @@ function BottomNav({ active, onChange }) {
   const items = [
     { key: "home", label: "Início", icon: "home" },
     { key: "food", label: "Comida", icon: "restaurant" },
-    { key: "plan", label: "Plano", icon: "description" },
     { key: "water", label: "Água", icon: "water_drop" },
     { key: "training", label: "Treino", icon: "fitness_center" },
+    { key: "plan", label: "Plano", icon: "description" },
   ];
 
   return html`
-    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-transparent z-50">
+    <nav className="mos-mobile-bottom-nav fixed bottom-0 left-0 w-full px-4 pb-4 bg-transparent z-50">
       <div className="mos-bottom-nav max-w-[26rem] mx-auto w-full flex justify-around items-center gap-1 bg-[#0f0f12] rounded-2xl border border-white/5 px-2">
         ${items.map((item) => {
           const isActive = active === item.key;
@@ -1059,7 +1227,7 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
   ];
 
   return html`
-    <nav className="fixed bottom-0 left-0 w-full px-4 pb-4 bg-transparent z-50">
+    <nav className="mos-mobile-bottom-nav fixed bottom-0 left-0 w-full px-4 pb-4 bg-transparent z-50">
       <div className="mos-bottom-nav max-w-[26rem] mx-auto w-full flex justify-around items-center gap-1 bg-[#0f0f12] rounded-2xl border border-white/5 px-2">
         ${items.map((item) => html`
           <button
@@ -1072,6 +1240,180 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
         `)}
       </div>
     </nav>
+  `;
+}
+
+function DesktopSidebar({ active, onChange, onOpenProfile, onOpenMeasures, onOpenSettings, onOpenAbout, onSignOut }) {
+  const items = [
+    { key: "home", label: "Início", icon: "home" },
+    { key: "food", label: "Comida", icon: "restaurant" },
+    { key: "water", label: "Água", icon: "water_drop" },
+    { key: "training", label: "Treino", icon: "fitness_center" },
+    { key: "plan", label: "Plano", icon: "description" },
+  ];
+  const secondaryItems = [
+    { label: "Configurar plano", icon: "settings", onClick: onOpenSettings },
+    { label: "Meu perfil", icon: "person", onClick: onOpenProfile },
+    { label: "Minhas medidas", icon: "straighten", onClick: onOpenMeasures },
+    { label: "Sobre o app", icon: "info", onClick: onOpenAbout },
+    { label: "Sair", icon: "logout", onClick: onSignOut, danger: true },
+  ];
+
+  return html`
+    <aside className="mos-desktop-sidebar">
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <button type="button" className="mos-desktop-brand" onClick=${() => onChange("home")}>MOS</button>
+          <p className="mos-desktop-copy">Organize sua rotina em um só lugar.</p>
+        </div>
+        <nav className="space-y-2">
+          ${items.map((item) => {
+            const isActive = active === item.key || (item.key === "plan" && active === "supplements");
+            return html`
+              <button type="button" className=${`mos-desktop-nav-item ${isActive ? "mos-desktop-nav-item--active" : ""}`} onClick=${() => onChange(item.key)}>
+                <${Icon} name=${item.icon} className="text-[1.15rem]" filled=${isActive} />
+                <span>${item.label}</span>
+              </button>
+            `;
+          })}
+        </nav>
+        <div className="mos-desktop-sidebar-divider"></div>
+        <nav className="space-y-1.5">
+          ${secondaryItems.map((item) => html`
+            <button type="button" className=${`mos-desktop-subnav-item ${item.danger ? "mos-desktop-subnav-item--danger" : ""}`} onClick=${item.onClick}>
+              <${Icon} name=${item.icon} className="text-[1rem]" />
+              <span>${item.label}</span>
+            </button>
+          `)}
+        </nav>
+      </div>
+    </aside>
+  `;
+}
+
+function DesktopSearchPanel({ query, results, onQueryChange, onClose, onPick }) {
+  return html`
+    <div className="mos-desktop-search-panel">
+      <div className="mos-desktop-search-panel-head">
+        <div className="mos-desktop-search-panel-input">
+          <${Icon} name="search" className="text-[1rem] text-[#64748B]" />
+          <input
+            type="search"
+            value=${query}
+            placeholder="Buscar..."
+            onInput=${(e) => onQueryChange(e.currentTarget.value)}
+            autoFocus
+          />
+        </div>
+        <button type="button" className="mos-desktop-search-close" onClick=${onClose}>Fechar</button>
+      </div>
+      <div className="mos-desktop-search-results">
+        ${results.length
+          ? results.slice(0, 10).map((item) => html`
+              <button type="button" className="mos-desktop-search-result" onClick=${() => onPick(item)}>
+                <div className="mos-desktop-search-result-icon">
+                  <${Icon} name=${item.icon} className="text-[1rem] text-[#0F172A]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="mos-desktop-search-result-title">${item.title}</p>
+                  <p className="mos-desktop-search-result-subtitle">${item.subtitle}</p>
+                </div>
+                <span className="mos-desktop-search-result-meta">${item.meta}</span>
+              </button>
+            `)
+          : html`
+              <div className="mos-desktop-search-empty">
+                ${query ? "Nada encontrado para essa busca." : "Busque alimentos, refeições, suplementos ou treinos sem sair da tela atual."}
+              </div>
+            `}
+      </div>
+    </div>
+  `;
+}
+
+function DesktopRightRail({
+  onSearch,
+  onOpenNotifications,
+  avatarLabel,
+  accountMenuOpen,
+  onToggleAccountMenu,
+  onCloseAccountMenu,
+  onOpenProfile,
+  onOpenMeasures,
+  onOpenSettings,
+  onSignOut,
+  caloriesConsumed,
+  calorieTarget,
+  waterConsumedMl,
+  waterTargetMl,
+  trainingDone,
+  onOpenFood,
+  onOpenWater,
+  onOpenTraining,
+}) {
+  const caloriesRemaining = Math.max(0, (Number(calorieTarget) || 0) - (Number(caloriesConsumed) || 0));
+  const waterPercent = waterTargetMl > 0 ? Math.round(((Number(waterConsumedMl) || 0) / waterTargetMl) * 100) : 0;
+
+  return html`
+    <aside className="mos-desktop-right-rail">
+      <div className="space-y-5">
+        <div className="mos-desktop-right-head">
+          <button type="button" className="mos-desktop-search mos-desktop-search--rail" onClick=${onSearch}>
+            <${Icon} name="search" className="text-[1rem] text-[#64748B]" />
+            <span>Buscar...</span>
+          </button>
+          <button type="button" className="mos-desktop-utility" onClick=${onOpenNotifications}>
+            <${Icon} name="notifications" className="text-[1.1rem] text-[#334155]" />
+          </button>
+          <div className="relative">
+            <button type="button" className="mos-desktop-avatar" onClick=${onToggleAccountMenu}>
+              <span>${avatarLabel}</span>
+            </button>
+            ${accountMenuOpen
+              ? html`
+                  <div className="mos-desktop-account-menu">
+                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenProfile(); }}>Meu perfil</button>
+                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenMeasures(); }}>Minhas medidas</button>
+                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenSettings(); }}>Configurações</button>
+                    <button type="button" className="mos-desktop-account-item mos-desktop-account-item--danger" onClick=${() => { onCloseAccountMenu(); onSignOut(); }}>Sair</button>
+                  </div>
+                `
+              : null}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h2 className="mos-desktop-rail-title">Atividade do dia</h2>
+          <p className="mos-desktop-rail-copy">Leitura rápida para agir no momento certo.</p>
+        </div>
+
+        <button type="button" className="mos-desktop-status-row" onClick=${onOpenFood}>
+          <div className="mos-desktop-status-top">
+            <span className="mos-desktop-status-label">Calorias</span>
+            <span className="mos-desktop-status-chip">${caloriesRemaining} kcal livres</span>
+          </div>
+          <strong className="mos-desktop-status-value">${caloriesConsumed}</strong>
+          <p className="mos-desktop-status-copy">Consumidas de ${calorieTarget} kcal hoje</p>
+        </button>
+
+        <button type="button" className="mos-desktop-status-row" onClick=${onOpenWater}>
+          <div className="mos-desktop-status-top">
+            <span className="mos-desktop-status-label">Água</span>
+            <span className="mos-desktop-status-chip">${Math.max(0, waterPercent)}%</span>
+          </div>
+          <strong className="mos-desktop-status-value">${waterConsumedMl}</strong>
+          <p className="mos-desktop-status-copy">de ${waterTargetMl} ml da sua meta</p>
+        </button>
+
+        <button type="button" className="mos-desktop-status-row" onClick=${onOpenTraining}>
+          <div className="mos-desktop-status-top">
+            <span className="mos-desktop-status-label">Treino</span>
+            <span className="mos-desktop-status-chip">${trainingDone ? "feito" : "pendente"}</span>
+          </div>
+          <strong className="mos-desktop-status-value">${trainingDone ? "OK" : "--"}</strong>
+          <p className="mos-desktop-status-copy">${trainingDone ? "Treino registrado hoje" : "Nenhum treino registrado hoje"}</p>
+        </button>
+      </div>
+    </aside>
   `;
 }
 
@@ -1152,9 +1494,12 @@ function AuthWordmark() {
 
 function App() {
   const [state, setState] = useState(loadState);
+  const [appRoute, setAppRoute] = useState(getMosRoute());
   const [screen, setScreen] = useState(() => (shouldOpenLoginAfterReload() ? "login" : loadState().auth?.signedIn ? "home" : "welcome"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
   const [searchOpenFrom, setSearchOpenFrom] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1206,6 +1551,7 @@ function App() {
   const [authNoticeTitle, setAuthNoticeTitle] = useState("");
   const [authNoticeTone, setAuthNoticeTone] = useState("error");
   const [authBusy, setAuthBusy] = useState(false);
+  const planTimelineRef = useRef(null);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
@@ -1216,6 +1562,28 @@ function App() {
   const authConfigured = isSupabaseConfigured();
   const recoveryFlowRef = useRef(isRecoveryRedirect());
   const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(recoveryFlowRef.current);
+  const passwordStrengthScore = useMemo(() => {
+    const value = signupForm.password || "";
+    let score = 0;
+    if (value.length >= 6) score += 1;
+    if (/[A-Z]/.test(value)) score += 1;
+    if (/\d/.test(value)) score += 1;
+    if (/[^A-Za-z0-9]/.test(value)) score += 1;
+    return score;
+  }, [signupForm.password]);
+  const passwordStrengthLabel =
+    passwordStrengthScore >= 4 ? "Senha forte" : passwordStrengthScore >= 2 ? "Senha média" : signupForm.password ? "Senha fraca" : "Use 6+ caracteres, número e letra";
+  const signupDisabledReason =
+    !signupForm.name.trim() ? "Preencha seu nome para continuar." :
+      !signupForm.email.trim() ? "Preencha seu e-mail para continuar." :
+        !signupForm.age ? "Informe sua idade." :
+          !signupForm.height ? "Informe sua altura." :
+            !signupForm.weight ? "Informe seu peso." :
+              !signupForm.password ? "Crie uma senha para continuar." :
+                !signupForm.confirmPassword ? "Confirme a senha para continuar." :
+                  signupForm.password !== signupForm.confirmPassword ? "As senhas precisam ser iguais." :
+                    !signupForm.acceptedTerms ? "Aceite os termos para continuar." :
+                      "";
 
   function markDraftDirty(key) {
     setDraftGuard({ key, dirty: true });
@@ -1291,7 +1659,7 @@ function App() {
   }
 
   useEffect(() => {
-    const hasOverlayOpen = drawerOpen || notificationsOpen || foodCalendarOpen || waterHistoryOpen || Boolean(modal) || Boolean(editor) || Boolean(substituteFood) || Boolean(confirmAction);
+    const hasOverlayOpen = drawerOpen || notificationsOpen || foodCalendarOpen || waterHistoryOpen || desktopSearchOpen || Boolean(modal) || Boolean(editor) || Boolean(substituteFood) || Boolean(confirmAction);
     const html = document.documentElement;
     const body = document.body;
     const scrollY = window.scrollY;
@@ -1458,6 +1826,17 @@ function App() {
   useEffect(() => {
     let active = true;
     if (!authConfigured) {
+      if (LOCAL_DEMO_MODE) {
+        setState((current) => ({
+          ...current,
+          auth: {
+            ...current.auth,
+            registered: true,
+            signedIn: true,
+          },
+        }));
+        setScreen("home");
+      }
       setAuthReady(true);
       return () => {
         active = false;
@@ -1526,6 +1905,22 @@ function App() {
     return unsubscribe;
   }, [authConfigured]);
 
+  useEffect(() => {
+    const syncRoute = () => setAppRoute(getMosRoute());
+    globalThis.addEventListener?.("popstate", syncRoute);
+    return () => globalThis.removeEventListener?.("popstate", syncRoute);
+  }, []);
+
+  useEffect(() => {
+    setDesktopAccountMenuOpen(false);
+  }, [screen]);
+
+  useEffect(() => {
+    if (!desktopSearchOpen) return;
+    setDesktopAccountMenuOpen(false);
+    setNotificationsOpen(false);
+  }, [desktopSearchOpen]);
+
   const foodMeals = state.consumedMeals[foodDate] || [];
 
   const allConsumedFoods = (state.consumedMeals[date] || []).flatMap((meal) => meal.foods);
@@ -1541,6 +1936,7 @@ function App() {
   const remaining = state.profile.calorieTarget - summary.calories;
   const progress = Math.min(100, Math.max(0, (summary.calories / Math.max(1, state.profile.calorieTarget)) * 100));
   const planTotals = summarizeFoods(state.planMeals.flatMap((meal) => meal.foods));
+  const sortedPlanMeals = sortPlanMealsByTime(state.planMeals);
   const selectedPlan = state.planMeals.find((meal) => meal.id === selectedPlanId);
   const selectedConsumed = foodMeals.find((meal) => meal.id === selectedConsumedId);
   const trainingPlans = Array.isArray(state.trainingPlans) ? state.trainingPlans : [];
@@ -1601,6 +1997,31 @@ function App() {
     },
     ].filter(Boolean);
   const currentDayMeals = state.consumedMeals[date] || [];
+  const profileInitial = (state.profile.name?.trim()?.[0] || state.profile.email?.trim()?.[0] || "M").toUpperCase();
+  const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
+
+  useEffect(() => {
+    if (screen !== "plan") return;
+    if (!state.planMeals.length) return;
+    const automaticPlanMeal = getCurrentPlanMeal(state.planMeals);
+    if (!automaticPlanMeal) return;
+    setSelectedPlanId(automaticPlanMeal.id);
+  }, [screen, state.planMeals]);
+
+  useEffect(() => {
+    if (screen !== "plan") return;
+    if (!selectedPlanId) return;
+    const container = planTimelineRef.current;
+    const activeTimelineItem = document.getElementById(`plan-timeline-item-${selectedPlanId}`);
+    if (!container || !activeTimelineItem) return;
+    const targetLeft =
+      activeTimelineItem.offsetLeft - (container.clientWidth / 2) + (activeTimelineItem.clientWidth / 2);
+    container.scrollTo({
+      left: Math.max(0, targetLeft),
+      behavior: "smooth",
+    });
+  }, [screen, selectedPlanId]);
+
   const recentActivities = [
     ...currentDayMeals.slice(0, 3).map((meal) => ({
       id: `recent-meal-${meal.id}`,
@@ -1798,6 +2219,77 @@ function App() {
     }, "Deseja sair da edição atual? As alterações não salvas serão perdidas.");
   }
 
+  function openDesktopSearch() {
+    setSearchOpenFrom(screen);
+    setDesktopSearchOpen(true);
+  }
+
+  function closeDesktopSearch() {
+    setDesktopSearchOpen(false);
+    setSearchQuery("");
+  }
+
+  function handleDesktopSearchPick(item) {
+    setDesktopSearchOpen(false);
+    setSearchQuery("");
+    item.action?.();
+  }
+
+  function openDesktopSettings() {
+    setScreen("plan-config");
+  }
+
+  function renderSignedInScreen() {
+    switch (screen) {
+      case "home":
+        return renderHome();
+      case "food":
+        return renderFood();
+      case "food-detail":
+        return renderFoodDetail();
+      case "ingredient-detail":
+        return renderIngredientDetail();
+      case "plan":
+        return renderPlan();
+      case "plan-config":
+        return renderPlanConfig();
+      case "plan-detail":
+        return renderPlanDetail();
+      case "supplements":
+        return renderSupplements();
+      case "register-supplement":
+        return renderRegisterSupplement();
+      case "supplement-detail":
+        return renderSupplementDetail();
+      case "water":
+        return renderWater();
+      case "training":
+        return renderTraining();
+      case "training-detail":
+        return renderTrainingDetail();
+      case "training-execution":
+        return renderTrainingExecution();
+      case "training-summary":
+        return renderTrainingSummary();
+      case "training-edit":
+        return renderTrainingEdit();
+      case "profile":
+        return renderProfile();
+      case "measures":
+        return renderMeasures();
+      case "about-app":
+        return renderAboutApp();
+      case "app-news":
+        return renderAppNews();
+      case "history":
+        return renderHistory();
+      case "search":
+        return renderSearch();
+      default:
+        return renderHome();
+    }
+  }
+
   function openNotificationItem(item) {
     setNotificationsOpen(false);
     item.action?.();
@@ -1924,6 +2416,8 @@ function App() {
 
   function openAuthScreen(nextScreen) {
     clearAuthNotice();
+    navigateMosRoute("app");
+    setAppRoute("app");
     setScreen(nextScreen);
   }
 
@@ -1940,7 +2434,14 @@ function App() {
     const calorieTarget = calculateSuggestedCalories({ weight, height, age, goal });
     const goalMeta = getGoalMeta(goal);
 
-    if (!name || !email || !password || !confirmPassword || !signupForm.acceptedTerms || !age || !weight || !height) return;
+    if (!name || !email || !password || !confirmPassword || !signupForm.acceptedTerms || !age || !weight || !height) {
+      showAuthNotice("Preencha todos os campos obrigatórios para concluir o cadastro.");
+      return;
+    }
+    if (password.length < 6) {
+      showAuthNotice("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
     if (password !== confirmPassword) {
       showAuthNotice("As senhas precisam ser iguais para concluir o cadastro.");
       return;
@@ -1997,6 +2498,8 @@ function App() {
           applyHydratedAuthState(hydrated, email);
         }
         clearAuthNotice();
+        navigateMosRoute("app", { replace: true });
+        setAppRoute("app");
         setScreen("home");
       }
       return;
@@ -2044,6 +2547,8 @@ function App() {
         });
       }
       clearAuthNotice();
+      navigateMosRoute("app", { replace: true });
+      setAppRoute("app");
       setScreen("home");
       return;
     }
@@ -2053,7 +2558,6 @@ function App() {
       title: "Autenticação indisponível",
     });
     return;
-OLD = nil
   }
 
   async function handleRecoverSubmit(event) {
@@ -2344,7 +2848,7 @@ OLD = nil
       name: formData.get("mealName"),
       title: formData.get("mealName"),
       description: "",
-      time: "12:30",
+      time: String(formData.get("time") || "12:30"),
       icon: "restaurant",
       foods: [],
       image: planImages.breakfast,
@@ -2881,157 +3385,100 @@ OLD = nil
 
   function renderHome() {
     const currentMeals = state.consumedMeals[date] || [];
-    const recentMeal = currentMeals[1] || currentMeals[0];
-    const recentWaterEntry = waterEntries[0] || null;
     const formattedConsumed = Math.round(summary.calories).toLocaleString("pt-BR");
     const formattedRemaining = Math.max(0, Math.round(remaining)).toLocaleString("pt-BR");
     const formattedTarget = Math.round(state.profile.calorieTarget).toLocaleString("pt-BR");
     const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const nowHour = new Date().getHours();
     const greeting = nowHour < 12 ? "Bom dia" : nowHour < 18 ? "Boa tarde" : "Boa noite";
+    const executionSignals = calculateMosExecutionSignals({
+      caloriesConsumed: summary.calories,
+      calorieTarget: state.profile.calorieTarget,
+      waterConsumedMl: water,
+      waterTargetMl: waterGoal,
+      trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
+    });
+    const insight = generateMosOperationalInsight(executionSignals);
     return html`
       <div className="min-h-screen pb-32 ${getSectionBackground()}">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
-          <section className="home-greeting space-y-2">
-            <div className="home-greeting-wrap space-y-2" style=${{ maxWidth: "90%" }}>
-              <span className="home-greeting-stamp home-greeting-stamp--sun" aria-hidden="true">😊</span>
-              <span className="home-greeting-stamp home-greeting-stamp--muscle" aria-hidden="true">💪</span>
-              <p className="text-[0.95rem] font-semibold text-[#0F172A]">${greeting}, ${profileName}!</p>
-              <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(3rem, 11vw, 4.6rem)", lineHeight: "1.06" }}>
-                Explorando metas,
-              </h1>
-              <h2 className="font-black text-[#94a3b8]" style=${{ fontSize: "clamp(2.8rem, 10vw, 4.2rem)", lineHeight: "1.06" }}>
-                inspirando mudança.
-              </h2>
-              <p className="text-[0.95rem] text-[#475569]">Hoje é um ótimo dia para cuidar de você.</p>
-            </div>
+          <section className="space-y-2">
+            <p className="text-[0.95rem] font-semibold text-[#0F172A]">${greeting}, ${profileName}.</p>
           </section>
 
           <section className="home-hero relative overflow-hidden rounded-2xl p-7">
-            <div className="home-hero-glow"></div>
             <div className="space-y-5 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <span className="text-[0.95rem] font-semibold text-[#0F172A]">Resumo do dia</span>
-                  <h2 className="text-[2.5rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</h2>
-                  <p className="text-sm text-[#475569]">kcal restantes</p>
-                </div>
-                <div className="home-hero-badge">
-                  <${Icon} name="bolt" className="text-[#f97316] text-2xl" />
-                </div>
+              <div className="space-y-2">
+                <span className="text-[0.9rem] font-semibold text-[#475569]">Calorias restantes</span>
+                <h1 className="text-[3rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</h1>
+                <p className="text-sm text-[#475569]">kcal disponíveis hoje</p>
               </div>
-              <div className="h-3 w-full bg-white/60 rounded-full overflow-hidden">
-                <div className="h-full bg-[#f97316]" style=${{ width: `${progress}%` }}></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="home-hero-chip">
                   <span className="text-[0.75rem] text-[#6b7280]">Comido</span>
-                  <span className="text-[1.2rem] font-bold text-[#0F172A]">${formattedConsumed}</span>
+                  <span className="text-[1.1rem] font-bold text-[#0F172A]">${formattedConsumed}</span>
                 </div>
                 <div className="home-hero-chip">
                   <span className="text-[0.75rem] text-[#6b7280]">Meta</span>
-                  <span className="text-[1.2rem] font-bold text-[#0F172A]">${formattedTarget}</span>
+                  <span className="text-[1.1rem] font-bold text-[#0F172A]">${formattedTarget}</span>
                 </div>
+                <div className="home-hero-chip">
+                  <span className="text-[0.75rem] text-[#6b7280]">Restante</span>
+                  <span className="text-[1.1rem] font-bold text-[#0F172A]">${formattedRemaining}</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-[rgba(148,163,184,0.18)] bg-white/65 px-4 py-3">
+                <p className="text-[0.92rem] font-semibold text-[#334155]">${insight}</p>
               </div>
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-4">
-            ${[
-              { label: "Comida", icon: "restaurant", accent: "#7bdcb5", screen: "food", note: "Registre suas refeições" },
-              { label: "Plano", icon: "description", accent: "#f7c948", screen: "plan", note: "Ajuste sua rotina" },
-              { label: "Água", icon: "water_drop", accent: "#7aaeff", screen: "water", note: "Controle sua hidratação" },
-              { label: "Treino", icon: "fitness_center", accent: "#c4b5fd", screen: "training", note: "Evolua no treino" },
-            ].map(
-              (item) => html`
-                <button className="home-action-card" onClick=${() => setScreen(item.screen)}>
-                  <div className="home-action-icon" style=${{ backgroundColor: item.accent }}>
-                    <${Icon} name=${item.icon} className="text-[#0F172A] text-[1.6rem]" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[1.15rem] font-semibold text-[#0F172A]">${item.label}</span>
-                      <${Icon} name="arrow_forward" className="text-[#0F172A]/70" />
-                    </div>
-                    <p className="text-sm text-[#64748b]">${item.note}</p>
-                  </div>
-                </button>
-              `,
-            )}
-          </section>
-
-          <section className="grid grid-cols-3 gap-3">
-            ${[
-              { label: "Proteínas", value: `${Math.round(summary.protein)}`, unit: "g", color: "#7aaeff", bar: "75%" },
-              { label: "Carbo", value: `${Math.round(summary.carbs)}`, unit: "g", color: "#f97316", bar: "52%" },
-              { label: "Água", value: `${round(water / 1000)}`, unit: "l", color: "#7aaeff", bar: `${Math.min(100, (water / 2500) * 100)}%` },
-            ].map(
-              (item) => html`
-                <div className="home-metric-card">
-                  <span className="text-[0.85rem] font-semibold text-[#0F172A]">${item.label}</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-[1.05rem] font-semibold text-[#0F172A]">${item.value}</span>
-                    <span className="text-[0.9rem] text-[#64748b]">${item.unit}</span>
-                  </div>
-                  <div className="h-2 w-full bg-white/70 rounded-full overflow-hidden">
-                    <div className="h-full" style=${{ width: item.bar, backgroundColor: item.color }}></div>
-                  </div>
-                </div>
-              `,
-            )}
-          </section>
-
-          <section className="space-y-4" style=${{ marginTop: "14px" }}>
-            <h3 className="text-lg font-bold text-jet-black">Atividade Recente</h3>
-            <div className="home-card-surface">
-              ${recentMeal || recentWaterEntry
-                ? html`
-                  ${recentMeal
-                    ? html`
-                      <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer text-left" onClick=${() => setScreen("food")}>
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
-                            <${Icon} name="lunch_dining" className="text-jet-black" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-jet-black">${recentMeal.title || recentMeal.name}</p>
-                            <p className="text-[0.6875rem] font-medium text-on-surface-variant">Hoje, ${recentMeal.time} • ${Math.round(summarizeFoods(recentMeal.foods || []).calories || 0)} kcal</p>
-                          </div>
-                        </div>
-                        <${Icon} name="chevron_right" className="text-on-surface-variant" />
-                      </button>
-                    `
-                    : null}
-                  ${recentWaterEntry
-                    ? html`
-                      <button className="w-full p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-pointer ${recentMeal ? "border-t border-surface-container-low" : ""} text-left" onClick=${() => setScreen("water")}>
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-royal-blue/10 flex items-center justify-center">
-                            <${Icon} name="water_full" className="text-royal-blue" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-jet-black">${recentWaterEntry.label}</p>
-                            <p className="text-[0.6875rem] font-medium text-on-surface-variant">
-                              Hoje, ${recentWaterEntry.time} • ${recentWaterEntry.amount} ml
-                            </p>
-                          </div>
-                        </div>
-                        <${Icon} name="chevron_right" className="text-on-surface-variant" />
-                      </button>
-                    `
-                    : null}
-                `
-                : html`
-                  <div className="p-4 text-left">
-                    <p className="font-bold text-jet-black">Nenhuma atividade registrada ainda.</p>
-                    <p className="text-[0.8125rem] text-on-surface-variant mt-1">Assim que você registrar uma refeição ou hidratação, ela aparecerá aqui.</p>
-                  </div>
-                `}
-            </div>
+          <section className="grid grid-cols-2 gap-3">
+            <button className="home-action-card" onClick=${() => setModal("food")}>
+              <div className="home-action-icon" style=${{ backgroundColor: "#7bdcb5" }}>
+                <${Icon} name="restaurant" className="text-[#0F172A] text-[1.6rem]" />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[1.05rem] font-semibold text-[#0F172A]">Registrar comida</span>
+                <p className="text-sm text-[#64748b]">Adicionar refeição</p>
+              </div>
+            </button>
+            <button className="home-action-card" onClick=${() => setModal("water")}>
+              <div className="home-action-icon" style=${{ backgroundColor: "#7aaeff" }}>
+                <${Icon} name="water_drop" className="text-[#0F172A] text-[1.6rem]" filled=${true} />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[1.05rem] font-semibold text-[#0F172A]">Registrar água</span>
+                <p className="text-sm text-[#64748b]">Somar consumo</p>
+              </div>
+            </button>
           </section>
         </main>
         <${BottomNav} active="home" onChange=${setScreen} />
+      </div>
+    `;
+  }
+
+  function renderLanding() {
+    return html`
+      <div className="min-h-screen bg-background text-on-surface">
+        <main className="min-h-screen px-6 max-w-md mx-auto flex flex-col items-start justify-center gap-8">
+          <div className="space-y-4">
+            <div className="text-[1.8rem] font-black text-[#111]">MOS</div>
+            <h1 className="text-[2.8rem] leading-[0.94] font-black text-[#0F172A]">Tudo que você precisa para seguir sua rotina, em um só lugar.</h1>
+          </div>
+          <button
+            className="w-full h-14 rounded-[10px] bg-[#111] text-white font-bold text-base active:scale-95 transition-transform"
+            onClick=${() => {
+              navigateMosRoute("app");
+              setAppRoute("app");
+              setScreen(state.auth?.signedIn ? "home" : "welcome");
+            }}
+          >
+            Acessar o MOS
+          </button>
+        </main>
       </div>
     `;
   }
@@ -3110,14 +3557,14 @@ OLD = nil
               <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" value=${signupForm.name} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, name: value }));
-              }} placeholder="Seu nome" />
+              }} placeholder="Ex.: Nirlandy" />
             </div>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
               <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="email" value=${signupForm.email} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, email: value }));
-              }} placeholder="exemplo@mos.app" />
+              }} placeholder="voce@email.com" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -3125,14 +3572,14 @@ OLD = nil
                 <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="number" min="10" step="1" value=${signupForm.age} onInput=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, age: value }));
-                }} placeholder="30" />
+                }} placeholder="Ex.: 29" />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.8rem] font-bold text-[#111]">Altura (cm)</label>
                 <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="number" min="100" step="1" value=${signupForm.height} onInput=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, height: value }));
-                }} placeholder="170" />
+                }} placeholder="Ex.: 165" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -3141,7 +3588,7 @@ OLD = nil
                 <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type="number" min="20" step="0.1" value=${signupForm.weight} onInput=${(e) => {
                   const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                   setSignupForm((current) => ({ ...current, weight: value }));
-                }} placeholder="77.7" />
+                }} placeholder="Ex.: 80.5" />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.8rem] font-bold text-[#111]">Objetivo</label>
@@ -3171,7 +3618,16 @@ OLD = nil
               <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type=${showSignupPassword ? "text" : "password"} value=${signupForm.password} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, password: value }));
-              }} placeholder="••••••••" />
+              }} placeholder="Crie uma senha" />
+              <div className="space-y-2">
+                <div className="h-2 rounded-full bg-[#e5e7eb] overflow-hidden">
+                  <div
+                    className=${`h-full transition-all ${passwordStrengthScore >= 4 ? "bg-emerald-500" : passwordStrengthScore >= 2 ? "bg-amber-400" : "bg-rose-400"}`}
+                    style=${{ width: `${Math.max(8, passwordStrengthScore * 25)}%` }}
+                  ></div>
+                </div>
+                <p className="text-[0.78rem] font-medium text-[#6e7178]">${passwordStrengthLabel}</p>
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -3184,7 +3640,7 @@ OLD = nil
               <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" type=${showSignupConfirmPassword ? "text" : "password"} value=${signupForm.confirmPassword} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, confirmPassword: value }));
-              }} placeholder="••••••••" />
+              }} placeholder="Repita a senha" />
             </div>
             <label className="flex items-start gap-3 text-sm text-[#555]">
               <input type="checkbox" className="mt-1" checked=${signupForm.acceptedTerms} onChange=${(e) => {
@@ -3196,6 +3652,7 @@ OLD = nil
             <button className=${`w-full h-14 rounded-[10px] font-bold text-base transition-transform ${isReady && !authBusy ? "bg-[#111] text-white active:scale-95" : "bg-[#111]/15 text-[#111]/45 cursor-not-allowed"}`} disabled=${!isReady || authBusy}>
               ${authBusy ? "Cadastrando..." : "Cadastrar"}
             </button>
+            ${!isReady && !authBusy ? html`<p className="text-[0.82rem] text-[#6e7178]">${signupDisabledReason}</p>` : null}
           </form>
 
           <button className="w-full text-sm font-bold text-[#111] underline underline-offset-4" onClick=${() => openAuthScreen("login")}>
@@ -3443,25 +3900,71 @@ OLD = nil
   function renderFood() {
     const nowHour = new Date().getHours();
     const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
+    const consumedCalories = Math.round(summary.calories);
+    const calorieTarget = Math.round(state.profile.calorieTarget);
+    const remainingCalories = Math.max(0, Math.round(remaining));
+    const rawRemainingCalories = Math.round(remaining);
+    const percentRemaining = calorieTarget > 0 ? rawRemainingCalories / calorieTarget : 0;
+    const foodHeadline =
+      rawRemainingCalories <= 0
+        ? "Atenção ao excesso"
+        : percentRemaining > 0.3
+          ? "Ainda há margem hoje"
+          : percentRemaining >= 0.1
+            ? "Meta próxima"
+            : "Meta quase atingida";
+    const nextMealRecommendation =
+      rawRemainingCalories <= 0
+        ? "Evite consumir mais calorias hoje"
+        : percentRemaining > 0.3
+          ? "Você pode reforçar a próxima refeição"
+          : percentRemaining >= 0.1
+            ? "Mantenha refeições equilibradas"
+            : "Prefira algo leve na próxima refeição";
     return html`
       <div className="${getSectionBackground()} text-on-surface min-h-screen pb-40">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("food")} onRight=${openNotifications} />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-8">
-          <section className="space-y-2">
+          <section className="space-y-3">
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
             <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
-              Sua alimentação em dia.
+              ${foodHeadline}
             </h1>
-            <p className="text-[0.95rem] text-[#475569]">Cada registro te aproxima da meta. <span className="emoji-badge emoji-badge--food" aria-hidden="true">🍽️</span></p>
+            <p className="text-[0.95rem] text-[#334155]">Veja rápido o que já entrou, o que falta e onde ajustar hoje. <span className="emoji-badge emoji-badge--food" aria-hidden="true">🍽️</span></p>
+          </section>
+          <section className="food-summary-card rounded-[28px] p-6 space-y-5">
+            <div className="space-y-2">
+              <span className="text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-[#475569]">Resumo do dia</span>
+              <p className="text-[0.95rem] text-[#334155]">Uma leitura simples para seguir o dia com clareza.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="food-summary-metric">
+                <span className="food-summary-label">Comidas</span>
+                <strong className="food-summary-value">${consumedCalories.toLocaleString("pt-BR")}</strong>
+                <span className="food-summary-unit">kcal</span>
+              </div>
+              <div className="food-summary-metric">
+                <span className="food-summary-label">Meta</span>
+                <strong className="food-summary-value">${calorieTarget.toLocaleString("pt-BR")}</strong>
+                <span className="food-summary-unit">kcal</span>
+              </div>
+              <div className="food-summary-metric">
+                <span className="food-summary-label">Restante</span>
+                <strong className="food-summary-value">${remainingCalories.toLocaleString("pt-BR")}</strong>
+                <span className="food-summary-unit">kcal</span>
+              </div>
+            </div>
+            <p className="text-[0.92rem] text-[#334155] leading-[1.45]">${nextMealRecommendation}</p>
           </section>
           <section className="w-full">
-            <button className="w-full food-hero-card rounded-2xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
+            <button className="w-full food-hero-card food-calendar-card rounded-2xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
               <div className="space-y-1">
-                <span className="font-label text-[0.6875rem] font-medium text-jet-black/60">Calendário</span>
-                <h2 className="font-headline text-2xl font-bold text-[#292B2D]">${foodDateLabel}</h2>
+                <span className="font-label text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-[#475569]">Calendário</span>
+                <h2 className="font-headline text-[1.8rem] font-bold text-[#0F172A]">${foodDateLabel}</h2>
+                <p className="text-[0.9rem] text-[#334155]">Abra outra data ou volte para hoje quando quiser comparar.</p>
               </div>
-              <div className="bg-white/70 p-4 rounded-xl">
-                <${Icon} name="calendar_today" className="text-[#292B2D]" />
+              <div className="food-calendar-badge">
+                <${Icon} name="calendar_today" className="text-[#0F172A]" />
               </div>
             </button>
             ${foodDate !== todayKey
@@ -3478,40 +3981,62 @@ OLD = nil
                 `
               : null}
           </section>
-          <section className="grid grid-cols-1 gap-4">
+          <section className="grid grid-cols-1 gap-5">
             ${foodMeals.length
               ? foodMeals.map(
               (meal) => {
                 const mealTotal = summarizeFoods(meal.foods);
+                const mealCalories = Math.round(mealTotal.calories);
+                const hasMealCalories = mealCalories > 0;
+                const mealDescription = Array.isArray(meal.foods) && meal.foods.length
+                  ? meal.foods
+                      .map((food) => `${food.name}${food.quantity ? ` (${food.quantity})` : ""}`)
+                      .join(", ")
+                  : meal.description || "Sem registro";
+                const mealCalorieLabel =
+                  mealCalories <= 300
+                    ? "Baixo"
+                    : mealCalories <= 600
+                      ? "OK"
+                      : "Alto";
                 return html`
-                  <button className="mos-card rounded-2xl p-6 min-h-[150px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-6" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shrink-0">
-                        <${Icon} name=${meal.icon || "restaurant"} className="text-jet-black text-[1.65rem]" />
+                  <button className="mos-card food-meal-card rounded-[26px] p-7 min-h-[176px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-8" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
+                    <div className="food-meal-top">
+                      <div className="food-meal-icon">
+                        <${Icon} name=${meal.icon || "restaurant"} className="text-[#0F172A] text-[1.55rem]" />
                       </div>
-                      <${Icon} name="arrow_forward" className="text-jet-black text-[2rem] shrink-0" />
+                      <${Icon} name="arrow_forward" className="food-meal-arrow" />
                     </div>
-                    <div>
-                      <h3 className="font-headline text-[1.9rem] font-[300] leading-none mb-3 text-jet-black">${meal.name}</h3>
-                      <p className="text-sm text-on-surface-variant leading-relaxed">${meal.description}</p>
+                    <div className="food-meal-copy">
+                      <h3 className="font-headline text-[1.82rem] font-[320] leading-none text-[#0F172A]">${meal.name}</h3>
+                      <p className="food-meal-description">${mealDescription}</p>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[1.9rem] font-black leading-none text-jet-black">${Math.round(mealTotal.calories)}</span>
-                      <span className="font-label text-[0.6875rem] font-bold text-outline">kcal</span>
+                    <div className="food-meal-footer">
+                      ${hasMealCalories
+                        ? html`
+                            <div className="food-meal-calories">
+                              <span className="food-meal-calories-value">${mealCalories}</span>
+                              <span className="food-meal-calories-unit">kcal</span>
+                            </div>
+                            <span className="food-meal-chip">${mealCalorieLabel}</span>
+                          `
+                        : html`
+                            <span className="food-meal-empty">Sem registro</span>
+                          `}
                     </div>
                   </button>
                 `;
               },
             )
               : html`
-                  <div className="mos-card rounded-2xl p-6 text-center space-y-2">
-                    <p className="font-bold text-jet-black">Nenhuma refeição registrada</p>
-                    <p className="text-sm text-on-surface-variant">Escolha outra data ou registre uma refeição para este dia.</p>
+                  <div className="mos-card rounded-[26px] p-6 text-center space-y-3">
+                    <p className="font-bold text-[#0F172A]">Nenhuma refeição registrada</p>
+                    <p className="text-[0.96rem] text-[#334155]">Escolha outra data ou registre uma refeição para este dia.</p>
                   </div>
                 `}
           </section>
           <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
-            <button className="mos-fixed-cta-button font-headline" onClick=${() => setModal("food")}>
+            <button className="mos-fixed-cta-button font-headline shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setModal("food")}>
               <${Icon} name="add_circle" />
               Registrar comida
             </button>
@@ -3657,72 +4182,189 @@ OLD = nil
   function renderPlan() {
     const nowHour = new Date().getHours();
     const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
+    const planBrainState = calculateMosState({
+      caloriesConsumed: summary.calories,
+      calorieTarget: state.profile.calorieTarget,
+      waterConsumedMl: water,
+      waterTargetMl: waterGoal,
+      trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
+    });
+    const planHeadline = "Seu plano, organizado pra você";
+    const currentPlanMeal = getCurrentPlanMeal(sortedPlanMeals);
+    const activePlanMeal = sortedPlanMeals.find((meal) => meal.id === selectedPlanId) || currentPlanMeal || sortedPlanMeals[0] || null;
+    const activePlanMealFoods = activePlanMeal?.foods || [];
+    const activePlanMealTotals = summarizeFoods(activePlanMealFoods);
+    const scrollPlanTimeline = (direction = 1) => {
+      planTimelineRef.current?.scrollBy({
+        left: direction * 220,
+        behavior: "smooth",
+      });
+    };
     return html`
       <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
-        <main className="pt-24 pb-32 px-6 max-w-md mx-auto space-y-8">
-          <section className="space-y-2">
+        <main className="pt-24 pb-64 px-6 max-w-md mx-auto space-y-8">
+          <section className="space-y-3">
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
             <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
-              Seu plano, sua direção.
+              ${planHeadline}
             </h1>
-            <p className="text-[0.95rem] text-[#475569]">Cada ajuste hoje facilita a semana. <span className="emoji-badge emoji-badge--plan" aria-hidden="true">🧭</span></p>
           </section>
-          <header className="plan-hero-card text-[#292B2D] p-8 rounded-2xl">
-            <div className="flex flex-col gap-1">
-              <span className="text-[0.6875rem] font-medium text-jet-black/60">Meta Ativa</span>
-              <h1 className="text-[1.75rem] font-bold leading-tight">${state.profile.activeGoal}</h1>
+          <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta plan-fixed-tabs">
+            <div className="pointer-events-auto plan-subnav-shell">
+              <button className="plan-subnav-tab plan-subnav-tab--active">Cardápio</button>
+              <button className="plan-subnav-tab" onClick=${() => setScreen("supplements")}>Suplementos</button>
             </div>
-          </header>
-          <div className="sticky top-20 z-40 mos-card rounded-2xl p-2 flex gap-2">
-            <button className="flex-1 py-3 px-4 rounded-xl bg-[#4558C8] text-white text-[0.875rem] font-bold transition-all active:scale-95">Cardápio</button>
-            <button className="flex-1 py-3 px-4 rounded-xl bg-surface-container-low text-[#292B2D] text-[0.875rem] font-bold" onClick=${() => setScreen("supplements")}>Suplementos</button>
           </div>
-          <section className="space-y-4">
-            <div className="flex justify-between items-end">
-              <h2 className="text-xl font-bold text-[#292B2D]">Cardápio do Plano</h2>
+          <section className="space-y-5">
+            <div className="space-y-0.5">
+              <h2 className="text-xl font-bold text-[#0F172A]">Roteiro do dia</h2>
             </div>
-            ${state.planMeals.map(
-              (meal) => html`
-                <button className="mos-card rounded-2xl p-6 w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-6" onClick=${() => { setSelectedPlanId(meal.id); setScreen("plan-detail"); }}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shrink-0">
-                      <${Icon} name=${meal.icon || "description"} className="text-jet-black text-[1.65rem]" />
+            <div className="plan-timeline-shell">
+              <div className="plan-timeline-head">
+                <div className="plan-timeline-nav">
+                  <button className="plan-timeline-arrow" type="button" onClick=${() => scrollPlanTimeline(-1)} aria-label="Ver refeição anterior">
+                    <${Icon} name="arrow_back" />
+                  </button>
+                  <button className="plan-timeline-arrow" type="button" onClick=${() => scrollPlanTimeline(1)} aria-label="Ver próxima refeição">
+                    <${Icon} name="arrow_forward" />
+                  </button>
+                </div>
+              </div>
+              <div className="plan-timeline-scroller" ref=${planTimelineRef}>
+                <div className="plan-timeline-track">
+                ${sortedPlanMeals.map((meal, index) => html`
+                    <button
+                      id=${`plan-timeline-item-${meal.id}`}
+                      className=${`plan-time-pill ${activePlanMeal?.id === meal.id ? "plan-time-pill--active" : ""} ${currentPlanMeal?.id === meal.id ? "plan-time-pill--now" : ""}`}
+                      onClick=${() => setSelectedPlanId(meal.id)}
+                    >
+                      <div className="plan-time-pill-top">
+                        <span className="plan-time-pill-step">${String(index + 1).padStart(2, "0")}</span>
+                        <span className=${`plan-time-pill-state ${activePlanMeal?.id === meal.id ? "plan-time-pill-state--active" : currentPlanMeal?.id === meal.id ? "plan-time-pill-state--now" : ""}`}>
+                          ${activePlanMeal?.id === meal.id ? "Ativa" : currentPlanMeal?.id === meal.id ? "Agora" : "Plano"}
+                        </span>
+                      </div>
+                      <span className="plan-time-pill-label">${meal.name}</span>
+                      <span className="plan-time-pill-time">${formatMealTimeLabel(meal.time) || "Sem horário"}</span>
+                    </button>
+                `)}
+                </div>
+              </div>
+              </div>
+          </section>
+          ${activePlanMeal
+            ? html`
+                <section className="plan-active-shell space-y-5">
+                  <div className="plan-active-header">
+                    <div className="space-y-1.5">
+                      <span className="plan-meal-eyebrow">Refeição ativa</span>
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-[2rem] font-bold leading-none text-[#0F172A]">${activePlanMeal.name}</h2>
+                        <span className="plan-active-time">${formatMealTimeLabel(activePlanMeal.time)}</span>
+                      </div>
                     </div>
-                    <${Icon} name="arrow_forward" className="text-jet-black text-[2rem] shrink-0" />
                   </div>
-                  <div className="flex-grow">
-                    <h3 className="text-[1.55rem] font-bold leading-none text-[#292B2D]">${meal.name}</h3>
-                    <p className="text-[0.875rem] text-slate-500 mt-3 leading-relaxed">${meal.description}</p>
-                  </div>
-                </button>
-              `,
-            )}
-          </section>
-          <section className="grid grid-cols-3 gap-3">
-            <div className="mos-card rounded-2xl p-5 flex flex-col justify-between min-h-[132px]">
-              <span className="text-[0.6875rem] font-bold text-[#292B2D]">Calorias</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.calories)}</span>
-                <span className="text-[0.6875rem] font-medium">kcal</span>
-              </div>
-            </div>
-            <div className="mos-card rounded-2xl p-5 flex flex-col justify-between min-h-[132px]">
-              <span className="text-[0.6875rem] font-bold text-[#292B2D]">Proteínas</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.protein)}</span>
-                <span className="text-[0.6875rem] font-medium">g</span>
-              </div>
-            </div>
-            <div className="mos-card rounded-2xl p-5 flex flex-col justify-between min-h-[132px]">
-              <span className="text-[0.6875rem] font-bold text-[#292B2D]">Carbos</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[1.9rem] font-bolder leading-none">${Math.round(planTotals.carbs)}</span>
-                <span className="text-[0.6875rem] font-medium">g</span>
-              </div>
-            </div>
-          </section>
-          <button className="w-full py-5 bg-[#EF5F37] text-white rounded-[10px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]" onClick=${() => setScreen("plan-config")}>
+
+                  <section className="space-y-3">
+                    <div className="mos-card plan-active-foods rounded-[24px] px-4 divide-y divide-[rgba(148,163,184,0.1)]">
+                      ${activePlanMealFoods.map((food) => {
+                        const accent = getFoodAccent(food.name);
+                        return html`
+                          <div className="py-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className="plan-detail-food-icon w-10 h-10 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
+                                <${Icon} name=${accent.icon} className="text-jet-black text-[1.35rem]" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[1rem] leading-relaxed text-jet-black">
+                                  <strong className="font-bold">${food.name}</strong>
+                                </p>
+                                <p className="text-[0.9rem] text-on-surface-variant mt-1">${food.quantity}</p>
+                              </div>
+                            </div>
+                            <button className="plan-swap-button shrink-0 min-h-9 px-3.5 rounded-[10px] text-[0.78rem] font-bold active:scale-95 transition-transform flex items-center gap-2" onClick=${() => setSubstituteFood(food)}>
+                              <${Icon} name="swap_horiz" className="text-[1.05rem] text-[#EF5F37]" />
+                              <span>Trocar</span>
+                            </button>
+                          </div>
+                        `;
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="space-y-3">
+                    <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Resumo nutricional</h3>
+                    <div className="plan-inline-totals">
+                      <div className="plan-inline-total">
+                        <span className="plan-total-label">Calorias</span>
+                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.calories)}</strong>
+                        <span className="plan-total-unit">kcal</span>
+                      </div>
+                      <div className="plan-inline-total">
+                        <span className="plan-total-label">Proteína</span>
+                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.protein)}</strong>
+                        <span className="plan-total-unit">g</span>
+                      </div>
+                      <div className="plan-inline-total">
+                        <span className="plan-total-label">Carbos</span>
+                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.carbs)}</strong>
+                        <span className="plan-total-unit">g</span>
+                      </div>
+                      <div className="plan-inline-total">
+                        <span className="plan-total-label">Gordura</span>
+                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.fat)}</strong>
+                        <span className="plan-total-unit">g</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="mos-card plan-macro-card rounded-2xl p-5 space-y-5">
+                    <h3 className="font-bold text-lg text-jet-black">Distribuição de Macros</h3>
+                    <div className="space-y-3.5">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-end">
+                          <span className="text-[0.6875rem] font-bold text-[#475569]">Carbo</span>
+                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.carbs)}g</span>
+                        </div>
+                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#4558C8]" style=${{ width: `${Math.min(100, activePlanMealTotals.carbs)}%` }}></div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-end">
+                          <span className="text-[0.6875rem] font-bold text-[#475569]">Proteínas</span>
+                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.protein)}g</span>
+                        </div>
+                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#EF5F37]" style=${{ width: `${Math.min(100, activePlanMealTotals.protein)}%` }}></div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-end">
+                          <span className="text-[0.6875rem] font-bold text-[#475569]">Gorduras</span>
+                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.fat)}g</span>
+                        </div>
+                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#D9B8F3]" style=${{ width: `${Math.min(100, activePlanMealTotals.fat * 2)}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="mos-card plan-guidance-card rounded-[22px] p-5 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#DFF37D] flex items-center justify-center">
+                        <${Icon} name="lightbulb" className="text-jet-black" />
+                      </div>
+                      <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Ajuste com segurança</h3>
+                    </div>
+                    <p className="text-[0.96rem] leading-relaxed text-on-surface-variant">${planBrainState.calorie === "ACIMA_CALORIA" ? "Troque sem pesar e mantenha a base da refeição." : "Troque quando precisar, sem perder a base do plano."}</p>
+                  </section>
+                </section>
+              `
+            : null}
+          <button className="w-full py-5 bg-[#EF5F37] text-white rounded-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setScreen("plan-config")}>
             <${Icon} name="settings" />
             Configurar plano
           </button>
@@ -3913,6 +4555,21 @@ OLD = nil
   function renderPlanDetail() {
     if (!selectedPlan) return renderPlan();
     const totals = summarizeFoods(selectedPlan.foods);
+    const planBrainState = calculateMosState({
+      caloriesConsumed: summary.calories,
+      calorieTarget: state.profile.calorieTarget,
+      waterConsumedMl: water,
+      waterTargetMl: waterGoal,
+      trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
+    });
+    const planDetailGuidance =
+      planBrainState.calorie === "ACIMA_CALORIA"
+        ? "Troque quando quiser, mas prefira opções mais leves."
+        : planBrainState.calorie === "ABAIXO_CALORIA_EXTREMO"
+          ? "Troque se precisar, sem perder a base da refeição."
+          : planBrainState.hydration === "HIDRATACAO_BAIXA"
+            ? "Troque quando precisar e mantenha a refeição leve."
+            : "Troque alimentos quando precisar, sem perder a base da refeição.";
     return html`
       <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-24">
         <${TopBar}
@@ -3921,18 +4578,24 @@ OLD = nil
           centerBold=${false}
           onLeft=${() => setScreen("plan")}
         />
-        <main className="pt-20 px-4 max-w-md mx-auto space-y-8">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="space-y-2">
             <h1 className="text-[2rem] font-bold text-jet-black">${selectedPlan.name}</h1>
+            <p className="text-[0.95rem] text-[#475569]">Veja os alimentos e troque se quiser.</p>
           </section>
-          <section className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Base da refeição</span>
+              <p className="text-[0.92rem] text-[#475569]">O que foi pensado pra você, com ajustes possíveis.</p>
+            </div>
+            <div className="mos-card rounded-[24px] px-4 divide-y divide-[rgba(148,163,184,0.12)]">
             ${selectedPlan.foods.map(
               (food) => {
                 const accent = getFoodAccent(food.name);
                 return html`
-                  <div className="py-5 flex items-center justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
+                  <div className="py-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="plan-detail-food-icon w-10 h-10 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
                         <${Icon} name=${accent.icon} className="text-jet-black text-[1.35rem]" />
                       </div>
                       <div className="min-w-0">
@@ -3942,43 +4605,44 @@ OLD = nil
                         <p className="text-[0.9rem] text-on-surface-variant mt-1">${food.quantity}</p>
                       </div>
                     </div>
-                    <button className="shrink-0 min-h-10 px-4 rounded-[10px] bg-[#fff4ef] border border-[#ffd8ce] text-[#EF5F37] text-[0.8rem] font-bold active:scale-95 transition-transform flex items-center gap-2" onClick=${() => setSubstituteFood(food)}>
+                    <button className="plan-swap-button shrink-0 min-h-9 px-3.5 rounded-[10px] text-[0.78rem] font-bold active:scale-95 transition-transform flex items-center gap-2" onClick=${() => setSubstituteFood(food)}>
                       <${Icon} name="swap_horiz" className="text-[1.05rem] text-[#EF5F37]" />
-                      <span>Ver trocas</span>
+                      <span>Trocar</span>
                     </button>
                   </div>
                 `;
               },
             )}
+            </div>
           </section>
           <section className="space-y-3">
-            <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Informação Nutricional</h3>
-            <div className="mos-card rounded-2xl px-4 divide-y divide-surface-container-high">
+            <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Resumo nutricional</h3>
+            <div className="mos-card rounded-[24px] px-4 divide-y divide-[rgba(148,163,184,0.12)]">
               ${selectedPlan.foods.map(
                 (food) => {
                   const accent = getFoodAccent(food.name);
                   return html`
-                    <div className="py-5 space-y-4">
+                    <div className="py-4 space-y-3">
                       <div className="flex items-center gap-3">
                         <span className="w-3 h-3 rounded-full shrink-0" style=${{ backgroundColor: accent.dot }}></span>
                         <h4 className="text-[1.15rem] font-bold text-jet-black">${food.name} <span className="font-medium text-[#292B2D]/75">(${food.quantity})</span></h4>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-[10px] p-3" style=${{ backgroundColor: accent.soft }}>
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Calorias</span>
-                          <p className="text-[1rem] font-bold text-jet-black">${food.calories} kcal</p>
+                      <div className="plan-nutrient-list">
+                        <div className="plan-nutrient-row" style=${{ backgroundColor: accent.soft }}>
+                          <span className="plan-nutrient-label">Calorias</span>
+                          <strong className="plan-nutrient-value">${food.calories} kcal</strong>
                         </div>
-                        <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Carbo</span>
-                          <p className="text-[1rem] font-bold text-jet-black">${food.carbs} g</p>
+                        <div className="plan-nutrient-row">
+                          <span className="plan-nutrient-label">Proteína</span>
+                          <strong className="plan-nutrient-value">${food.protein} g</strong>
                         </div>
-                        <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Proteína</span>
-                          <p className="text-[1rem] font-bold text-jet-black">${food.protein} g</p>
+                        <div className="plan-nutrient-row">
+                          <span className="plan-nutrient-label">Carbo</span>
+                          <strong className="plan-nutrient-value">${food.carbs} g</strong>
                         </div>
-                        <div className="rounded-[10px] p-3 bg-surface-container-low">
-                          <span className="text-[0.6875rem] font-bold text-[#292B2D]/60 block mb-1">Gordura</span>
-                          <p className="text-[1rem] font-bold text-jet-black">${food.fat} g</p>
+                        <div className="plan-nutrient-row">
+                          <span className="plan-nutrient-label">Gordura</span>
+                          <strong className="plan-nutrient-value">${food.fat} g</strong>
                         </div>
                       </div>
                     </div>
@@ -3987,9 +4651,9 @@ OLD = nil
               )}
             </div>
           </section>
-          <section className="mos-card rounded-2xl p-6 space-y-6">
+          <section className="mos-card rounded-2xl p-5 space-y-5">
             <h3 className="font-bold text-lg text-jet-black">Distribuição de Macros</h3>
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
                   <span className="text-[0.6875rem] font-bold text-[#475569]">Carbo</span>
@@ -4019,14 +4683,14 @@ OLD = nil
               </div>
             </div>
           </section>
-          <section className="mos-card rounded-2xl p-6 space-y-3">
+          <section className="mos-card plan-guidance-card rounded-[22px] p-5 space-y-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#DFF37D] flex items-center justify-center">
                 <${Icon} name="lightbulb" className="text-jet-black" />
               </div>
-              <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Recomendação</h3>
+              <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Ajuste com segurança</h3>
             </div>
-            <p className="text-[1rem] leading-relaxed text-on-surface-variant">Mastigue bem os alimentos, faça a refeição com calma e respeite as quantidades planejadas para melhorar a digestão e a aderência à meta.</p>
+            <p className="text-[0.96rem] leading-relaxed text-on-surface-variant">${planDetailGuidance}</p>
           </section>
         </main>
         <${BottomNav} active="plan" onChange=${setScreen} />
@@ -4595,84 +5259,172 @@ OLD = nil
   }
 
   function renderSupplements() {
+    const groupedSupplements = state.supplements.reduce((groups, supplement) => {
+      const category = supplement.category || "Geral";
+      if (!groups[category]) groups[category] = [];
+      groups[category].push(supplement);
+      return groups;
+    }, {});
+    const sortedCategories = Object.keys(groupedSupplements).sort((left, right) => left.localeCompare(right));
+    const currentMinutes = getCurrentMinutes();
     return html`
       <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("supplements")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-screen-xl mx-auto">
-          <div className="mb-10">
-            <span className="font-label text-[0.6875rem] font-medium text-secondary">Performance</span>
-            <h2 className="font-headline text-[1.75rem] font-bold text-custom-jet leading-tight">Meus Suplementos</h2>
+        <main className="pt-24 px-6 max-w-md mx-auto space-y-8 pb-64">
+          <div className="space-y-2">
+            <span className="font-label text-[0.6875rem] font-medium text-secondary">Suplementos</span>
+            <h2 className="font-headline text-[1.75rem] font-bold text-custom-jet leading-tight">Sua rotina de hoje</h2>
+            <p className="text-[0.95rem] text-[#475569]">Veja horários, uso e ações em um só lugar.</p>
           </div>
-          <div className="grid grid-cols-1 gap-3">
-            ${state.supplements.map(
-              (supplement) => html`
-                <button className="bg-white rounded-xl p-6 flex flex-col justify-between h-40 text-left w-full" onClick=${() => { setSelectedSupplementId(supplement.id); setScreen("supplement-detail"); }}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-label text-[0.6875rem] font-medium text-outline">${supplement.category || supplement.period}</span>
-                      <h3 className="font-headline text-[1.2rem] font-bold mt-1 text-jet-black">${supplement.name}</h3>
-                    </div>
-                    <${Icon} name="chevron_right" className="text-outline" />
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-jet-black">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[1.8rem] font-bold leading-none">${supplement.dosage.split(" ")[0] || supplement.dosage}</span>
-                      <span className="font-label text-[0.6875rem] font-bold">${supplement.dosage.split(" ").slice(1).join(" ") || ""}</span>
-                    </div>
-                    <span className="text-[0.85rem] text-on-surface-variant">${supplement.time || "Sem horário"}</span>
-                  </div>
-                  <p className="text-on-surface-variant text-sm">${supplement.instruction}</p>
-                </button>
-              `,
-            )}
-            <button className="bg-surface-container-low rounded-xl p-6 flex flex-col items-center justify-center h-40 border border-outline-variant opacity-60" onClick=${() => setScreen("register-supplement")}>
-              <${Icon} name="add_circle" className="text-4xl text-outline mb-2" />
-              <p className="font-label text-xs font-bold text-outline">Adicionar mais</p>
-            </button>
+          <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta plan-fixed-tabs">
+            <div className="pointer-events-auto plan-subnav-shell">
+              <button className="plan-subnav-tab" onClick=${() => setScreen("plan")}>Cardápio</button>
+              <button className="plan-subnav-tab plan-subnav-tab--active">Suplementos</button>
+            </div>
           </div>
-        </main>
-        <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
-          <button className="mos-fixed-cta-button font-headline" onClick=${() => setScreen("register-supplement")}>
+          <div className="space-y-6">
+            ${sortedCategories.map((category) => html`
+              <section className="space-y-3">
+                <div className="space-y-1">
+                  <span className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[#64748B]">${category}</span>
+                </div>
+                <div className="space-y-3">
+                  ${groupedSupplements[category].map((supplement) => {
+                    const status = getSupplementMomentStatus(supplement.time, currentMinutes);
+                    const timeLabel = formatMealTimeLabel(supplement.time);
+                    const instructionLabel = timeLabel
+                      ? `Tomar hoje às ${timeLabel}`
+                      : supplement.instruction;
+                    return html`
+                      <div className="supplement-inline-card">
+                        <div className="p-5 space-y-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-3 min-w-0">
+                              <div className="space-y-1">
+                                <h3 className="text-[1.15rem] font-bold text-[#0F172A]">${supplement.name}</h3>
+                                <p className="text-[0.92rem] text-[#475569]">${instructionLabel}</p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3 text-[0.82rem] text-[#475569]">
+                                <span>${supplement.dosage}</span>
+                                <span>${timeLabel || "Sem horário"}</span>
+                                <span className=${`supplement-status supplement-status--${status.tone}`}>${status.label}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="supplement-inline-details">
+                            <p className="text-[0.92rem] leading-relaxed text-[#475569]">${supplement.instruction}</p>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              <button
+                                className="supplement-action-button"
+                                onClick=${() => {
+                                  setSelectedSupplementId(supplement.id);
+                                  setModal("edit-supplement");
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                className="supplement-action-button supplement-action-button--danger"
+                                onClick=${() => askDeleteConfirm({
+                                  title: "Apagar suplemento",
+                                  message: "Tem certeza que deseja apagar este item?",
+                                  onConfirm: async () => {
+                                    if (authConfigured) {
+                                      const user = await getAuthenticatedUser();
+                                      if (!user) {
+                                        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
+                                        return;
+                                      }
+                                      const result = await deleteSupplementEntry(user.id, supplement.id);
+                                      if (!result.ok) {
+                                        showAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
+                                        return;
+                                      }
+                                    }
+                                    mutate((draft) => {
+                                      draft.supplements = draft.supplements.filter((item) => item.id !== supplement.id);
+                                    });
+                                    setSelectedSupplementId(null);
+                                  },
+                                })}
+                              >
+                                Apagar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  })}
+                </div>
+              </section>
+            `)}
+          </div>
+          <button className="w-full py-5 bg-[#EF5F37] text-white rounded-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setScreen("register-supplement")}>
             <${Icon} name="add_circle" />
             Novo suplemento
           </button>
-        </div>
+        </main>
         <${BottomNav} active="plan" onChange=${setScreen} />
       </div>
     `;
   }
 
   function renderWater() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const waterProgress = Math.min(100, (water / waterGoal) * 100);
     const remainingWater = Math.max(0, waterGoal - water);
-    const waterFillHeight = Math.max(26, Math.min(88, waterProgress));
-    const quickWaterOptions = [100, 150, 200, 250, 300];
+    const waterFillHeight = Math.max(20, Math.min(72, waterProgress));
+    const waterTextOnFill = waterFillHeight >= 52;
+    const waterPercentClass = waterTextOnFill
+      ? "text-white drop-shadow-[0_6px_18px_rgba(15,23,42,0.28)]"
+      : "text-[#292B2D] drop-shadow-[0_2px_8px_rgba(255,255,255,0.55)]";
+    const waterCaptionClass = waterTextOnFill ? "text-white/88" : "text-[#292B2D]/70";
+    const quickWaterOptions = [200, 300, 500];
     const selectedEntriesCount = waterEntries.length;
+    const waterInsight = generateMosOperationalInsight(
+      calculateMosExecutionSignals({
+        caloriesConsumed: summary.calories,
+        calorieTarget: state.profile.calorieTarget,
+        waterConsumedMl: water,
+        waterTargetMl: waterGoal,
+        trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
+      }),
+    );
     return html`
       <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
           <section className="space-y-2">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
-              Hidratação no foco.
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: "1.05" }}>
+              Água hoje
             </h1>
-            <p className="text-[0.95rem] text-[#475569]">Pequenos goles, grande constância. <span className="emoji-badge emoji-badge--water" aria-hidden="true">💧</span></p>
           </section>
           <section className="space-y-4">
-            <div className="mos-hero mos-hero-transparent rounded-[10px] p-6 md:p-8 relative overflow-hidden">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-11 h-11 rounded-full bg-[#eef2ff] flex items-center justify-center mb-4 shadow-[0_10px_20px_rgba(69,88,200,0.12)]">
-                  <${Icon} name="water_drop" className="text-[#4558C8] text-[1.35rem]" filled=${true} />
-                </div>
-                <div className="space-y-1 mb-6">
-                  <p className="text-[0.95rem] font-medium text-[#292B2D]/82">Hidratação do dia</p>
-                  <h2 className="text-[2.05rem] font-bold text-[#292B2D]">Seu consumo de água</h2>
+            <div className="mos-hero mos-hero-transparent rounded-[10px] p-6 relative overflow-hidden">
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/80 bg-white/72 p-4">
+                    <span className="text-[0.78rem] font-medium text-[#292B2D]/55">Consumido</span>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${Math.round(water)}</strong>
+                      <span className="text-[0.82rem] font-medium text-[#292B2D]/62">ml</span>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/80 bg-white/72 p-4">
+                    <span className="text-[0.78rem] font-medium text-[#292B2D]/55">Meta</span>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${waterGoal}</strong>
+                      <span className="text-[0.82rem] font-medium text-[#292B2D]/62">ml</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mos-water-shell">
+                <div className="rounded-xl border border-[rgba(148,163,184,0.18)] bg-white/65 px-4 py-3">
+                  <p className="text-[0.92rem] font-semibold text-[#334155]">${remainingWater} ml faltando</p>
+                  <p className="text-[0.82rem] text-[#64748b] mt-1">${waterInsight}</p>
+                </div>
+
+                <div className="mos-water-shell mx-auto scale-[0.88] origin-top">
                   <div className="mos-water-fill" style=${{ height: `${waterFillHeight}%` }}></div>
                   <div className="mos-water-glow"></div>
                   <div className="mos-water-markers">
@@ -4684,23 +5436,11 @@ OLD = nil
                     <span>0</span>
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
-                    <strong className="text-[3rem] font-black leading-none text-[#292B2D] drop-shadow-[0_2px_8px_rgba(255,255,255,0.55)]">${Math.round(waterProgress)}%</strong>
-                    <span className="mt-2 text-[0.85rem] font-medium text-[#292B2D]/70">da meta diária</span>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex items-center justify-center gap-3 bg-white rounded-full px-5 py-3 shadow-[0_10px_24px_rgba(41,43,45,0.08)] border border-[#e5eaff]">
-                  <div className="w-8 h-8 rounded-full bg-[#eef2ff] flex items-center justify-center">
-                    <${Icon} name="water_drop" className="text-[#4558C8] text-[1rem]" filled=${true} />
-                  </div>
-                  <div className="text-left">
-                    <strong className="block text-[1.1rem] text-[#4558C8]">${Math.round(water)} / ${waterGoal} ml</strong>
-                    <span className="text-[0.82rem] text-[#292B2D]/72">${waterHistoryDate === todayKey ? `Faltam ${remainingWater} ml` : `Visualizando ${waterViewDateLabel}`}</span>
+                    <strong className=${`text-[3rem] font-black leading-none transition-colors duration-200 ${waterPercentClass}`}>${Math.round(waterProgress)}%</strong>
+                    <span className=${`mt-2 text-[0.85rem] font-medium transition-colors duration-200 ${waterCaptionClass}`}>da meta diária</span>
                   </div>
                 </div>
               </div>
-              <div className="absolute -right-10 top-14 w-28 h-28 rounded-full bg-[#e1e7ff] blur-2xl opacity-55"></div>
-              <div className="absolute -left-8 bottom-8 w-24 h-24 rounded-full bg-[#eef2ff] blur-2xl opacity-80"></div>
             </div>
             ${waterHistoryDate !== todayKey
               ? html`
@@ -4717,14 +5457,7 @@ OLD = nil
               : null}
           </section>
 
-          <section className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl p-4 shadow-[0_10px_22px_rgba(41,43,45,0.04)] border border-white/80">
-              <span className="text-[0.78rem] font-medium text-[#292B2D]/55">Faltam</span>
-              <div className="mt-2 flex items-baseline gap-1">
-                <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${remainingWater}</strong>
-                <span className="text-[0.82rem] font-medium text-[#292B2D]/62">ml</span>
-              </div>
-            </div>
+          <section className="grid grid-cols-1 gap-3">
             <div className="bg-white rounded-xl p-4 shadow-[0_10px_22px_rgba(41,43,45,0.04)] border border-white/80">
               <span className="text-[0.78rem] font-medium text-[#292B2D]/55">${waterHistoryDate === todayKey ? "Registros hoje" : "Registros na data"}</span>
               <div className="mt-2 flex items-baseline gap-1">
@@ -4738,7 +5471,7 @@ OLD = nil
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[1rem] font-bold text-[#292B2D]">Registro rápido</h3>
-                <p className="text-sm text-[#292B2D]/60">Toque em um volume para somar na data ${waterViewDateLabel.toLowerCase()}.</p>
+                <p className="text-sm text-[#292B2D]/60">Toque para somar água na data ${waterViewDateLabel.toLowerCase()}.</p>
               </div>
               <button className="h-11 px-4 rounded-[10px] bg-[#EF5F37] text-white font-bold whitespace-nowrap shrink-0 active:scale-95 transition-transform" onClick=${() => setModal("water")}>
                 Outro valor
@@ -5164,7 +5897,7 @@ OLD = nil
     return html`
       <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
         <${TopBar} title="Histórico" leftIcon="arrow_back" centerBold=${false} onLeft=${() => setScreen("plan-config")} onSearch=${() => openSearch("history")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-screen-xl mx-auto">
+        <main className="pt-24 px-4 max-w-md mx-auto">
           <section className="mb-5">
             <${ContextNav}
               items=${[
@@ -5252,7 +5985,7 @@ OLD = nil
           onSearch=${() => null}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-screen-md mx-auto space-y-5">
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-5">
           <section className="rounded-xl p-4 flex items-center gap-3 shadow-[0_10px_30px_rgba(41,43,45,0.06)] border border-white/60" style=${{ background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(236,240,255,0.92) 100%)" }}>
             <div className="w-10 h-10 rounded-full bg-[#D9B8F3] flex items-center justify-center shrink-0">
               <${Icon} name="search" className="text-[#292B2D]" />
@@ -5459,63 +6192,7 @@ OLD = nil
   }
 
   function renderSupplementDetail() {
-    const supplement = state.supplements.find((item) => item.id === selectedSupplementId);
-    if (!supplement) return renderSupplements();
-    return html`
-      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-24">
-        <${TopBar} title=${supplement.name} leftIcon="arrow_back" centerBold=${false} onLeft=${() => setScreen("supplements")} onSearch=${() => openSearch("supplement-detail")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <${ContextNav}
-            items=${[
-              { label: "Suplementos", onClick: () => setScreen("supplements"), primary: true },
-              { label: "Plano", onClick: () => setScreen("plan") },
-              { label: "Início", onClick: () => setScreen("home") },
-            ]}
-          />
-          <section className="space-y-2">
-            <span className="text-[0.6875rem] font-medium text-outline">${supplement.category || supplement.period}</span>
-            <h1 className="text-[1.9rem] font-bold text-jet-black">${supplement.name}</h1>
-          </section>
-          <section className="bg-white rounded-xl p-6 space-y-3">
-            <p className="text-base font-semibold text-jet-black">${supplement.dosage}</p>
-            <div className="flex items-center gap-3 text-sm text-on-surface-variant">
-              <span>Horário: ${supplement.time || "Não definido"}</span>
-              <span>•</span>
-              <span>Categoria: ${supplement.category || "Geral"}</span>
-            </div>
-            <p className="text-sm leading-relaxed text-on-surface-variant">${supplement.instruction}</p>
-            <p className="text-sm leading-relaxed text-on-surface-variant">Descrição: suplemento usado para apoiar consistência, recuperação e adesão à rotina, conforme objetivo da pessoa.</p>
-          </section>
-          <div className="grid grid-cols-1 gap-3">
-            <button className="w-full h-14 bg-surface-container-low text-jet-black rounded-xl font-bold" onClick=${() => setModal("edit-supplement")}>Editar</button>
-            <button className="w-full h-14 bg-white border border-outline-variant text-error rounded-xl font-bold" onClick=${() => askDeleteConfirm({
-              title: "Apagar suplemento",
-              message: "Tem certeza que deseja apagar este item?",
-              onConfirm: async () => {
-                if (authConfigured) {
-                  const user = await getAuthenticatedUser();
-                  if (!user) {
-                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
-                    return;
-                  }
-                  const result = await deleteSupplementEntry(user.id, supplement.id);
-                  if (!result.ok) {
-                    showAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
-                    return;
-                  }
-                }
-                mutate((draft) => {
-                  draft.supplements = draft.supplements.filter((item) => item.id !== supplement.id);
-                });
-                setSelectedSupplementId(null);
-                setScreen("supplements");
-              },
-            })}>Apagar</button>
-          </div>
-        </main>
-        <${BottomNav} active="plan" onChange=${setScreen} />
-      </div>
-    `;
+    return renderSupplements();
   }
 
   const shouldRenderResetPassword = authReady && passwordRecoveryReady;
@@ -5552,7 +6229,8 @@ OLD = nil
           color: inherit;
         }
       </style>
-      ${!authReady &&
+      ${appRoute === "landing" && renderLanding()}
+      ${appRoute === "app" && !authReady &&
       html`
         <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
           <div className="max-w-sm w-full space-y-4 text-center">
@@ -5561,39 +6239,68 @@ OLD = nil
           </div>
         </div>
       `}
-      ${shouldRenderResetPassword && renderResetPassword()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "welcome" && renderWelcome()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "signup" && renderSignup()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "login" && renderLogin()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "recover-password" && renderRecoverPassword()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "reset-password" && renderResetPassword()}
-      ${!shouldRenderResetPassword && authReady && !isSignedIn && screen === "legal" && renderLegal()}
+      ${appRoute === "app" && shouldRenderResetPassword && renderResetPassword()}
+      ${appRoute === "app" && authReady && !isSignedIn && screen === "welcome" && renderWelcome()}
+      ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "signup" && renderSignup()}
+      ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "login" && renderLogin()}
+      ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "recover-password" && renderRecoverPassword()}
+      ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "reset-password" && renderResetPassword()}
+      ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "legal" && renderLegal()}
 
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "home" && renderHome()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "food" && renderFood()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "food-detail" && renderFoodDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "ingredient-detail" && renderIngredientDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan" && renderPlan()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan-config" && renderPlanConfig()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "plan-detail" && renderPlanDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "supplements" && renderSupplements()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "register-supplement" && renderRegisterSupplement()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "supplement-detail" && renderSupplementDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "water" && renderWater()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "training" && renderTraining()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "training-detail" && renderTrainingDetail()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "training-execution" && renderTrainingExecution()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "training-summary" && renderTrainingSummary()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "training-edit" && renderTrainingEdit()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "profile" && renderProfile()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "measures" && renderMeasures()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "about-app" && renderAboutApp()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "app-news" && renderAppNews()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "history" && renderHistory()}
-      ${!shouldRenderResetPassword && authReady && isSignedIn && screen === "search" && renderSearch()}
+      ${appRoute === "app" &&
+      !shouldRenderResetPassword &&
+      authReady &&
+      isSignedIn &&
+      html`
+        ${desktopAccountMenuOpen ? html`<button className="mos-desktop-menu-backdrop" onClick=${() => setDesktopAccountMenuOpen(false)} aria-label="Fechar menu da conta"></button>` : null}
+        <div className="mos-desktop-shell">
+          <${DesktopSidebar}
+            active=${screen}
+            onChange=${setScreen}
+            onOpenProfile=${() => setScreen("profile")}
+            onOpenMeasures=${() => setScreen("measures")}
+            onOpenSettings=${openDesktopSettings}
+            onOpenAbout=${() => setScreen("about-app")}
+            onSignOut=${() => openMenuItem("Sair")}
+          />
+          <${DesktopRightRail}
+            onSearch=${openDesktopSearch}
+            onOpenNotifications=${openNotifications}
+            avatarLabel=${profileInitial}
+            accountMenuOpen=${desktopAccountMenuOpen}
+            onToggleAccountMenu=${() => setDesktopAccountMenuOpen((current) => !current)}
+            onCloseAccountMenu=${() => setDesktopAccountMenuOpen(false)}
+            onOpenProfile=${() => setScreen("profile")}
+            onOpenMeasures=${() => setScreen("measures")}
+            onOpenSettings=${openDesktopSettings}
+            onSignOut=${() => openMenuItem("Sair")}
+            caloriesConsumed=${summary.calories}
+            calorieTarget=${state.profile.calorieTarget}
+            waterConsumedMl=${state.water[todayKey] ?? 0}
+            waterTargetMl=${Number(state.profile.waterTargetMl) || 3000}
+            trainingDone=${trainingDoneToday}
+            onOpenFood=${() => setScreen("food")}
+            onOpenWater=${() => setScreen("water")}
+            onOpenTraining=${() => setScreen("training")}
+          />
+          <div className="mos-desktop-main">
+            ${renderSignedInScreen()}
+          </div>
+        </div>
+        ${desktopSearchOpen ? html`<button className="mos-desktop-search-backdrop" onClick=${closeDesktopSearch} aria-label="Fechar busca"></button>` : null}
+        ${desktopSearchOpen
+          ? html`<${DesktopSearchPanel}
+              query=${searchQuery}
+              results=${normalizedSearch ? searchResults : searchableItems.slice(0, 8)}
+              onQueryChange=${setSearchQuery}
+              onClose=${closeDesktopSearch}
+              onPick=${handleDesktopSearchPick}
+            />`
+          : null}
+      `}
 
-      ${authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} />`}
-      ${authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
+      ${appRoute === "app" && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} />`}
+      ${appRoute === "app" && authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
       ${
         authReady &&
         isSignedIn &&
@@ -5786,6 +6493,10 @@ OLD = nil
               <div className="flex flex-col gap-2">
                 <label className="text-[0.6875rem] font-medium text-jet-black">Nome da Refeição</label>
                 <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg focus:ring-2 focus:ring-royal-blue placeholder:text-outline/50 text-jet-black font-medium transition-all" name="mealName" placeholder="Ex: Ceia leve" required />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[0.6875rem] font-medium text-jet-black">Horário planejado</label>
+                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg focus:ring-2 focus:ring-royal-blue text-jet-black font-medium transition-all" name="time" type="time" defaultValue="12:30" />
               </div>
               <button
                 className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
