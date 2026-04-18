@@ -82,12 +82,17 @@ function isRecoveryRedirect() {
   }
 }
 
+function normalizeMosPath(pathname = globalThis.location?.pathname || "/") {
+  return pathname.replace(/\/index\.html$/, "").replace(/\/+$/, "") || "/";
+}
+
 function getMosRoute(pathname = globalThis.location?.pathname || "/") {
-  return pathname.endsWith("/app") ? "app" : "landing";
+  const normalizedPath = normalizeMosPath(pathname);
+  return normalizedPath.endsWith("/app") ? "app" : "landing";
 }
 
 function buildMosPath(route = "landing") {
-  const pathname = globalThis.location?.pathname || "/";
+  const pathname = normalizeMosPath(globalThis.location?.pathname || "/");
   const segments = pathname.split("/").filter(Boolean);
   const baseSegments = segments[segments.length - 1] === "app" ? segments.slice(0, -1) : segments;
   const basePath = `/${baseSegments.join("/")}`.replace(/\/+/g, "/");
@@ -3391,14 +3396,93 @@ function App() {
     const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const nowHour = new Date().getHours();
     const greeting = nowHour < 12 ? "Bom dia" : nowHour < 18 ? "Boa tarde" : "Boa noite";
+    const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
+    const waterRemaining = Math.max(0, waterGoal - water);
     const executionSignals = calculateMosExecutionSignals({
       caloriesConsumed: summary.calories,
       calorieTarget: state.profile.calorieTarget,
       waterConsumedMl: water,
       waterTargetMl: waterGoal,
-      trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
+      trainingDone: trainingDoneToday,
+    });
+    const mosState = calculateMosState({
+      caloriesConsumed: summary.calories,
+      calorieTarget: state.profile.calorieTarget,
+      waterConsumedMl: water,
+      waterTargetMl: waterGoal,
+      trainingDone: trainingDoneToday,
     });
     const insight = generateMosOperationalInsight(executionSignals);
+    const nextStep = (() => {
+      if (!currentMeals.length) return "Próximo passo: registrar comida";
+      if (waterRemaining > 0 && executionSignals.waterPercent < 0.75) {
+        return `Próximo passo: beber ${Math.ceil(waterRemaining / 50) * 50} ml`;
+      }
+      if (!trainingDoneToday) return "Próximo passo: fazer treino de hoje";
+      if (!state.planMeals.length) return "Próximo passo: ajustar seu plano";
+      return "Próximo passo: seguir o que já foi definido";
+    })();
+    const daySignals = [
+      {
+        key: "food",
+        label: "Comida",
+        status:
+          summary.calories <= 0 ? "Sem registro" : remaining <= 0 ? "Ajustar hoje" : "Dentro da meta",
+        detail: `${formattedConsumed} de ${formattedTarget} kcal`,
+      },
+      {
+        key: "water",
+        label: "Água",
+        status: waterRemaining > 0 ? `Faltam ${waterRemaining} ml` : "Meta batida",
+        detail: `${Math.round(water)} de ${Math.round(waterGoal)} ml`,
+      },
+      {
+        key: "training",
+        label: "Treino",
+        status: trainingDoneToday ? "Feito" : "Pendente",
+        detail: trainingDoneToday ? "Treino registrado hoje" : "Nenhum treino hoje",
+      },
+      {
+        key: "plan",
+        label: "Plano",
+        status: state.planMeals.length ? "Ativo" : "Sem plano",
+        detail: state.planMeals.length ? `${state.planMeals.length} refeições no roteiro` : "Defina um roteiro do dia",
+      },
+    ];
+    const moduleCards = [
+      {
+        key: "food",
+        label: "Comida",
+        value: daySignals[0].status,
+        detail: `${currentMeals.length} ${currentMeals.length === 1 ? "refeição" : "refeições"} hoje`,
+        icon: "restaurant",
+        action: () => setScreen("food"),
+      },
+      {
+        key: "water",
+        label: "Água",
+        value: waterRemaining > 0 ? `${waterRemaining} ml faltando` : "Meta do dia",
+        detail: `${Math.round(water)} ml registrados`,
+        icon: "water_drop",
+        action: () => setScreen("water"),
+      },
+      {
+        key: "training",
+        label: "Treino",
+        value: trainingDoneToday ? "Treino feito" : "Treino pendente",
+        detail: trainingDoneToday ? "Dia marcado no histórico" : "Abra para seguir o treino",
+        icon: "fitness_center",
+        action: () => setScreen("training"),
+      },
+      {
+        key: "plan",
+        label: "Plano",
+        value: state.planMeals.length ? "Roteiro ativo" : "Sem roteiro",
+        detail: state.planMeals.length ? "Abra para ver refeições" : "Configure o plano do dia",
+        icon: "description",
+        action: () => setScreen("plan"),
+      },
+    ];
     return html`
       <div className="min-h-screen pb-32 ${getSectionBackground()}">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
@@ -3407,52 +3491,89 @@ function App() {
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">${greeting}, ${profileName}.</p>
           </section>
 
-          <section className="home-hero relative overflow-hidden rounded-2xl p-7">
-            <div className="space-y-5 relative z-10">
+          <section className="home-panel home-panel--primary">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <span className="text-[0.9rem] font-semibold text-[#475569]">Calorias restantes</span>
-                <h1 className="text-[3rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</h1>
-                <p className="text-sm text-[#475569]">kcal disponíveis hoje</p>
+                <span className="home-panel-eyebrow">Seu dia em 4 sinais</span>
+                <h1 className="text-[2.25rem] font-black leading-[0.96] text-[#0F172A]">Veja seu dia com clareza</h1>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="home-hero-chip">
-                  <span className="text-[0.75rem] text-[#6b7280]">Comido</span>
-                  <span className="text-[1.1rem] font-bold text-[#0F172A]">${formattedConsumed}</span>
-                </div>
-                <div className="home-hero-chip">
-                  <span className="text-[0.75rem] text-[#6b7280]">Meta</span>
-                  <span className="text-[1.1rem] font-bold text-[#0F172A]">${formattedTarget}</span>
-                </div>
-                <div className="home-hero-chip">
-                  <span className="text-[0.75rem] text-[#6b7280]">Restante</span>
-                  <span className="text-[1.1rem] font-bold text-[#0F172A]">${formattedRemaining}</span>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                ${daySignals.map(
+                  (signal) => html`
+                    <div className="home-signal-card" key=${signal.key}>
+                      <span className="home-signal-label">${signal.label}</span>
+                      <strong className="home-signal-value">${signal.status}</strong>
+                      <span className="home-signal-detail">${signal.detail}</span>
+                    </div>
+                  `
+                )}
               </div>
-              <div className="rounded-xl border border-[rgba(148,163,184,0.18)] bg-white/65 px-4 py-3">
-                <p className="text-[0.92rem] font-semibold text-[#334155]">${insight}</p>
+              <div className="home-next-step">
+                <div className="space-y-1">
+                  <span className="home-panel-eyebrow">Próxima ação</span>
+                  <p className="text-[1.05rem] font-bold text-[#0F172A]">${nextStep}</p>
+                </div>
+                <p className="text-[0.95rem] font-semibold text-[#475569]">${generateMosShortRecommendation(mosState)}</p>
               </div>
             </div>
           </section>
 
           <section className="grid grid-cols-2 gap-3">
-            <button className="home-action-card" onClick=${() => setModal("food")}>
-              <div className="home-action-icon" style=${{ backgroundColor: "#7bdcb5" }}>
-                <${Icon} name="restaurant" className="text-[#0F172A] text-[1.6rem]" />
+            ${moduleCards.map(
+              (card) => html`
+                <button className="home-module-card" onClick=${card.action} key=${card.key}>
+                  <div className="home-module-head">
+                    <div className="home-module-icon">
+                      <${Icon} name=${card.icon} className="text-[#0F172A] text-[1.35rem]" filled=${card.icon === "water_drop"} />
+                    </div>
+                    <span className="home-module-label">${card.label}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <strong className="home-module-value">${card.value}</strong>
+                    <p className="home-module-detail">${card.detail}</p>
+                  </div>
+                </button>
+              `
+            )}
+          </section>
+
+          <section className="home-panel">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <span className="home-panel-eyebrow">Calorias do dia</span>
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-[2.8rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</div>
+                    <p className="text-sm text-[#64748b]">kcal restantes hoje</p>
+                  </div>
+                  <div className="home-inline-insight">${insight}</div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <span className="text-[1.05rem] font-semibold text-[#0F172A]">Registrar comida</span>
-                <p className="text-sm text-[#64748b]">Adicionar refeição</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="home-summary-stat">
+                  <span className="home-summary-label">Comido</span>
+                  <span className="home-summary-value">${formattedConsumed}</span>
+                </div>
+                <div className="home-summary-stat">
+                  <span className="home-summary-label">Meta</span>
+                  <span className="home-summary-value">${formattedTarget}</span>
+                </div>
+                <div className="home-summary-stat">
+                  <span className="home-summary-label">Restante</span>
+                  <span className="home-summary-value">${formattedRemaining}</span>
+                </div>
               </div>
-            </button>
-            <button className="home-action-card" onClick=${() => setModal("water")}>
-              <div className="home-action-icon" style=${{ backgroundColor: "#7aaeff" }}>
-                <${Icon} name="water_drop" className="text-[#0F172A] text-[1.6rem]" filled=${true} />
+              <div className="grid grid-cols-2 gap-3">
+                <button className="home-quick-action" onClick=${() => setModal("food")}>
+                  <${Icon} name="add_circle" className="text-[1.25rem] text-[#EF5F37]" filled=${true} />
+                  <span>Registrar comida</span>
+                </button>
+                <button className="home-quick-action" onClick=${() => setModal("water")}>
+                  <${Icon} name="water_drop" className="text-[1.25rem] text-[#4558C8]" filled=${true} />
+                  <span>Registrar água</span>
+                </button>
               </div>
-              <div className="space-y-1">
-                <span className="text-[1.05rem] font-semibold text-[#0F172A]">Registrar água</span>
-                <p className="text-sm text-[#64748b]">Somar consumo</p>
-              </div>
-            </button>
+            </div>
           </section>
         </main>
         <${BottomNav} active="home" onChange=${setScreen} />
