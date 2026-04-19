@@ -918,14 +918,26 @@ function Icon({ name, className = "", filled = false }) {
   return html`<span className=${`material-symbols-outlined ${className}`} style=${filled ? { fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" } : {}}>${name}</span>`;
 }
 
-function TopBar({ title = "MOS", leftIcon = "menu", onLeft, onSearch, onRight, centerBold = true, rightSlot = null }) {
+const MOS_LOGO_SRC = new URL("../logo-mos.svg", import.meta.url).href;
+
+function MosWordmark({ className = "" }) {
+  return html`
+    <span className=${`mos-wordmark ${className}`} aria-label="MOS!" role="img">
+      <img src=${MOS_LOGO_SRC} alt="MOS!" />
+    </span>
+  `;
+}
+
+function TopBar({ title = "MOS!", leftIcon = "menu", onLeft, onSearch, onRight, centerBold = true, rightSlot = null }) {
   return html`
     <header className="top-bar headroom headroom--pinned fixed top-0 w-full z-50 bg-transparent">
       <div className="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto backdrop-blur-sm bg-white/0">
         <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onLeft}>
           <${Icon} name=${leftIcon} className="text-[#292B2D]" />
         </button>
-        <h1 className=${centerBold ? "text-xl font-black text-[#292B2D]" : "font-bold text-base text-[#292B2D]"}>${title}</h1>
+        <h1 className=${centerBold ? "text-xl font-black text-[#292B2D]" : "font-bold text-base text-[#292B2D]"}>
+          ${title === "MOS!" ? html`<${MosWordmark} className="mos-wordmark--topbar" />` : title}
+        </h1>
         ${
           rightSlot ||
           html`<div className="flex items-center gap-4">
@@ -1170,7 +1182,7 @@ function MenuDrawer({ onClose, onSelect }) {
       <aside className="w-[82%] max-w-sm h-full bg-white p-6 flex flex-col gap-6 border-r border-slate-200/80" onClick=${(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/80">
           <div>
-            <span className="text-[0.6875rem] font-medium text-royal-blue">MOS</span>
+            <${MosWordmark} className="mos-wordmark--drawer-kicker" />
             <h2 className="text-[1.6rem] font-bold text-jet-black">Menu</h2>
           </div>
           <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onClose}>
@@ -1268,7 +1280,7 @@ function DesktopSidebar({ active, onChange, onOpenProfile, onOpenMeasures, onOpe
     <aside className="mos-desktop-sidebar">
       <div className="space-y-8">
         <div className="space-y-3">
-          <button type="button" className="mos-desktop-brand" onClick=${() => onChange("home")}>MOS</button>
+          <button type="button" className="mos-desktop-brand" onClick=${() => onChange("home")}><${MosWordmark} /></button>
           <p className="mos-desktop-copy">Organize sua rotina em um só lugar.</p>
         </div>
         <nav className="space-y-2">
@@ -1494,7 +1506,7 @@ function Modal({ title, children, onClose }) {
 }
 
 function AuthWordmark() {
-  return html`<div className="text-[1.6rem] font-black text-[#111]">MOS</div>`;
+  return html`<div><${MosWordmark} className="mos-wordmark--auth" /></div>`;
 }
 
 function App() {
@@ -1901,7 +1913,7 @@ function App() {
         setPasswordRecoveryReady(true);
         setScreen("reset-password");
         showAuthNotice(
-          "Seu link de recuperação foi validado. Agora defina uma nova senha para voltar a entrar no MOS.",
+          "Seu link de recuperação foi validado. Agora defina uma nova senha para voltar a entrar no MOS!",
           { tone: "info", title: "Criar nova senha" },
         );
       }
@@ -1988,7 +2000,7 @@ function App() {
       id: "measures-update",
       icon: "monitor_weight",
       title: "Dados pessoais desatualizados",
-      body: "Atualize peso e medidas para o MOS calcular seu progresso com mais precisão.",
+      body: "Atualize peso e medidas para o MOS! calcular seu progresso com mais precisão.",
       tag: "Perfil",
       action: () => setScreen("measures"),
     },
@@ -2493,7 +2505,7 @@ function App() {
 
       if (result.needsEmailConfirmation) {
         showAuthNotice(
-          `Enviamos um link de confirmação para ${email}. Abra seu e-mail e confirme a conta antes de entrar no MOS. Se não encontrar a mensagem, verifique a pasta de spam ou promoções.`,
+          `Enviamos um link de confirmação para ${email}. Abra seu e-mail e confirme a conta antes de entrar no MOS! Se não encontrar a mensagem, verifique a pasta de spam ou promoções.`,
           { tone: "info", title: "Confirme seu e-mail" }
         );
         setScreen("login");
@@ -3413,15 +3425,75 @@ function App() {
       trainingDone: trainingDoneToday,
     });
     const insight = generateMosOperationalInsight(executionSignals);
-    const nextStep = (() => {
-      if (!currentMeals.length) return "Próximo passo: registrar comida";
-      if (waterRemaining > 0 && executionSignals.waterPercent < 0.75) {
-        return `Próximo passo: beber ${Math.ceil(waterRemaining / 50) * 50} ml`;
+    const profileInsight = generateMosShortRecommendation(mosState);
+    const latestWeight = Number(latestMeasure?.weight) || Number(state.profile.weight) || 0;
+    const targetWeight = Number(state.profile.targetWeight) || 0;
+    const profileGoal = String(state.profile.activeGoal || "Plano em acompanhamento").replace(/^Plano atual:\s*/i, "");
+    const profileStats = [
+      {
+        label: "Peso",
+        value: latestWeight ? `${latestWeight.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "--",
+      },
+      {
+        label: "Meta",
+        value: targetWeight ? `${targetWeight.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : `${formattedTarget} kcal`,
+      },
+      {
+        label: "IMC",
+        value: latestBmi ? latestBmi.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "--",
+      },
+    ];
+    const nextAction = (() => {
+      if (!currentMeals.length) {
+        return {
+          label: "Registrar comida",
+          title: "Registrar primeira refeição",
+          detail: "Abra comida e marque o que já foi consumido.",
+          icon: "restaurant",
+          action: () => setModal("food"),
+        };
       }
-      if (!trainingDoneToday) return "Próximo passo: fazer treino de hoje";
-      if (!state.planMeals.length) return "Próximo passo: ajustar seu plano";
-      return "Próximo passo: seguir o que já foi definido";
+      if (waterRemaining > 0 && executionSignals.waterPercent < 0.75) {
+        return {
+          label: "Registrar água",
+          title: `Beber ${Math.ceil(waterRemaining / 50) * 50} ml`,
+          detail: "Some água para aproximar sua meta do dia.",
+          icon: "water_drop",
+          action: () => setModal("water"),
+        };
+      }
+      if (!trainingDoneToday) {
+        return {
+          label: "Ver treino",
+          title: "Fazer treino de hoje",
+          detail: "Abra o treino definido e registre a sessão.",
+          icon: "fitness_center",
+          action: () => setScreen("training"),
+        };
+      }
+      if (!state.planMeals.length) {
+        return {
+          label: "Ajustar plano",
+          title: "Configurar roteiro",
+          detail: "Organize as refeições que já foram definidas.",
+          icon: "description",
+          action: () => setScreen("plan-config"),
+        };
+      }
+      return {
+        label: "Ver plano",
+        title: "Seguir o roteiro",
+        detail: "Abra o plano e veja a próxima refeição.",
+        icon: "description",
+        action: () => setScreen("plan"),
+      };
     })();
+    const signalIcons = {
+      food: "restaurant",
+      water: "water_drop",
+      training: "fitness_center",
+      plan: "description",
+    };
     const daySignals = [
       {
         key: "food",
@@ -3449,88 +3521,51 @@ function App() {
         detail: state.planMeals.length ? `${state.planMeals.length} refeições no roteiro` : "Defina um roteiro do dia",
       },
     ];
-    const moduleCards = [
-      {
-        key: "food",
-        label: "Comida",
-        value: daySignals[0].status,
-        detail: `${currentMeals.length} ${currentMeals.length === 1 ? "refeição" : "refeições"} hoje`,
-        icon: "restaurant",
-        action: () => setScreen("food"),
-      },
-      {
-        key: "water",
-        label: "Água",
-        value: waterRemaining > 0 ? `${waterRemaining} ml faltando` : "Meta do dia",
-        detail: `${Math.round(water)} ml registrados`,
-        icon: "water_drop",
-        action: () => setScreen("water"),
-      },
-      {
-        key: "training",
-        label: "Treino",
-        value: trainingDoneToday ? "Treino feito" : "Treino pendente",
-        detail: trainingDoneToday ? "Dia marcado no histórico" : "Abra para seguir o treino",
-        icon: "fitness_center",
-        action: () => setScreen("training"),
-      },
-      {
-        key: "plan",
-        label: "Plano",
-        value: state.planMeals.length ? "Roteiro ativo" : "Sem roteiro",
-        detail: state.planMeals.length ? "Abra para ver refeições" : "Configure o plano do dia",
-        icon: "description",
-        action: () => setScreen("plan"),
-      },
-    ];
     return html`
       <div className="min-h-screen pb-32 ${getSectionBackground()}">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
-        <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
-          <section className="space-y-2">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">${greeting}, ${profileName}.</p>
+        <main className="home-main pt-24 px-6 max-w-md mx-auto space-y-5">
+          <section className="home-greeting-line">
+            <p>${greeting}, ${profileName}.</p>
           </section>
 
-          <section className="home-panel home-panel--primary">
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <span className="home-panel-eyebrow">Seu dia em 4 sinais</span>
-                <h1 className="text-[2.25rem] font-black leading-[0.96] text-[#0F172A]">Veja seu dia com clareza</h1>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                ${daySignals.map(
-                  (signal) => html`
-                    <div className="home-signal-card" key=${signal.key}>
-                      <span className="home-signal-label">${signal.label}</span>
-                      <strong className="home-signal-value">${signal.status}</strong>
-                      <span className="home-signal-detail">${signal.detail}</span>
-                    </div>
-                  `
-                )}
-              </div>
-              <div className="home-next-step">
-                <div className="space-y-1">
-                  <span className="home-panel-eyebrow">Próxima ação</span>
-                  <p className="text-[1.05rem] font-bold text-[#0F172A]">${nextStep}</p>
+          <section className="home-signature">
+            <div className="home-signature-orb home-signature-orb--warm"></div>
+            <div className="home-signature-orb home-signature-orb--cool"></div>
+            <div className="home-signature-content">
+              <div className="space-y-3">
+                <span className="home-panel-eyebrow">Painel do dia</span>
+                <h1 className="home-hero-number">${formattedRemaining}</h1>
+                <div>
+                  <p className="home-hero-unit">kcal livres hoje</p>
+                  <p className="home-hero-insight">${insight}</p>
                 </div>
-                <p className="text-[0.95rem] font-semibold text-[#475569]">${generateMosShortRecommendation(mosState)}</p>
               </div>
+              <button className="home-next-action" onClick=${nextAction.action}>
+                <div className="home-next-action-icon">
+                  <${Icon} name=${nextAction.icon} className="text-[1.35rem] text-[#0F172A]" filled=${nextAction.icon === "water_drop"} />
+                </div>
+                <div className="min-w-0">
+                  <span className="home-panel-eyebrow">Próxima ação</span>
+                  <strong>${nextAction.title}</strong>
+                  <p>${nextAction.detail}</p>
+                </div>
+                <${Icon} name="arrow_forward" className="text-[1.2rem] text-white/70" />
+              </button>
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3">
-            ${moduleCards.map(
-              (card) => html`
-                <button className="home-module-card" onClick=${card.action} key=${card.key}>
-                  <div className="home-module-head">
-                    <div className="home-module-icon">
-                      <${Icon} name=${card.icon} className="text-[#0F172A] text-[1.35rem]" filled=${card.icon === "water_drop"} />
-                    </div>
-                    <span className="home-module-label">${card.label}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <strong className="home-module-value">${card.value}</strong>
-                    <p className="home-module-detail">${card.detail}</p>
+          <section className="home-signal-strip">
+            ${daySignals.map(
+              (signal) => html`
+                <button className="home-signal-pill" key=${signal.key} onClick=${() => setScreen(signal.key)}>
+                  <span className="home-signal-pill-icon">
+                    <${Icon} name=${signalIcons[signal.key]} className="text-[1.05rem]" filled=${signal.key === "water"} />
+                  </span>
+                  <div>
+                    <span>${signal.label}</span>
+                    <strong>${signal.status}</strong>
+                    <small>${signal.detail}</small>
                   </div>
                 </button>
               `
@@ -3540,28 +3575,24 @@ function App() {
           <section className="home-panel">
             <div className="space-y-4">
               <div className="space-y-2">
-                <span className="home-panel-eyebrow">Calorias do dia</span>
+                <span className="home-panel-eyebrow">Dados do perfil</span>
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <div className="text-[2.8rem] font-black leading-none text-[#0F172A]">${formattedRemaining}</div>
-                    <p className="text-sm text-[#64748b]">kcal restantes hoje</p>
+                    <div className="text-[1.9rem] font-black leading-tight text-[#0F172A]">${profileGoal}</div>
+                    <p className="text-sm text-[#64748b]">base para o MOS! orientar seu dia</p>
                   </div>
-                  <div className="home-inline-insight">${insight}</div>
+                  <div className="home-inline-insight">${profileInsight}</div>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div className="home-summary-stat">
-                  <span className="home-summary-label">Comido</span>
-                  <span className="home-summary-value">${formattedConsumed}</span>
-                </div>
-                <div className="home-summary-stat">
-                  <span className="home-summary-label">Meta</span>
-                  <span className="home-summary-value">${formattedTarget}</span>
-                </div>
-                <div className="home-summary-stat">
-                  <span className="home-summary-label">Restante</span>
-                  <span className="home-summary-value">${formattedRemaining}</span>
-                </div>
+                ${profileStats.map(
+                  (item) => html`
+                    <div className="home-summary-stat" key=${item.label}>
+                      <span className="home-summary-label">${item.label}</span>
+                      <span className="home-summary-value">${item.value}</span>
+                    </div>
+                  `
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <button className="home-quick-action" onClick=${() => setModal("food")}>
@@ -3586,7 +3617,7 @@ function App() {
       <div className="min-h-screen bg-background text-on-surface">
         <main className="min-h-screen px-6 max-w-md mx-auto flex flex-col items-start justify-center gap-8">
           <div className="space-y-4">
-            <div className="text-[1.8rem] font-black text-[#111]">MOS</div>
+            <${MosWordmark} className="mos-wordmark--landing" />
             <h1 className="text-[2.8rem] leading-[0.94] font-black text-[#0F172A]">Tudo que você precisa para seguir sua rotina, em um só lugar.</h1>
           </div>
           <button
@@ -3597,7 +3628,7 @@ function App() {
               setScreen(state.auth?.signedIn ? "home" : "welcome");
             }}
           >
-            Acessar o MOS
+            Acessar o MOS!
           </button>
         </main>
       </div>
@@ -3614,14 +3645,14 @@ function App() {
 
           <div className="flex-1 flex flex-col justify-center">
             <div className="space-y-5">
-              <h1 className="text-[3.3rem] leading-[0.92] font-black mos-auth-title">MOS</h1>
+              <h1 className="leading-[0.92] mos-auth-title"><${MosWordmark} className="mos-wordmark--hero" /></h1>
               <p className="text-[1.35rem] leading-snug mos-auth-subtitle max-w-[16rem]">Seu app para organizar alimentação, plano, água e evolução diária.</p>
               <div className="w-24 h-1 bg-[#111] rounded-full"></div>
             </div>
           </div>
 
           <div className="space-y-4 pb-5">
-            <div className="mos-auth-card rounded-[10px] p-4 text-sm text-[#111]">Bem-vinda ao MOS. Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>
+            <div className="mos-auth-card rounded-[10px] p-4 text-sm text-[#111]">Bem-vinda ao MOS! Entre ou crie sua conta para começar sua rotina com mais clareza, consistência e controle do seu dia.</div>
             <button className="w-full h-16 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2" onClick=${() => openAuthScreen("signup")}>
               <span>Começar</span>
               <${Icon} name="arrow_forward" className="text-white" />
@@ -3667,7 +3698,7 @@ function App() {
         <main className="px-6 py-8 max-w-md mx-auto space-y-8">
           <section className="space-y-4">
             <h1 className="text-[3.1rem] leading-[0.92] font-black mos-auth-title">Criar conta</h1>
-            <p className="text-[1.2rem] leading-snug mos-auth-subtitle">Junte-se à plataforma MOS para acessar sua rotina de forma organizada e visual.</p>
+            <p className="text-[1.2rem] leading-snug mos-auth-subtitle">Junte-se à plataforma MOS! para acessar sua rotina de forma organizada e visual.</p>
           </section>
 
           ${renderAuthNoticeCard()}
@@ -3781,7 +3812,7 @@ function App() {
           </button>
 
           <footer className="pt-8 border-t border-black/10 space-y-4">
-            <h2 className="text-xl font-black text-[#111]">MOS system</h2>
+            <h2 className="text-xl font-black text-[#111]">MOS! system</h2>
             <p className="text-sm leading-relaxed text-[#6e7178]">Organização editorial do seu dia com foco em alimentação, hidratação, medidas e consistência.</p>
           </footer>
         </main>
@@ -3911,7 +3942,7 @@ function App() {
           <section className="space-y-4 pt-10">
             <h1 className="text-[3rem] leading-[0.94] font-black mos-auth-title">Criar nova senha</h1>
             <p className="text-[1.2rem] leading-snug mos-auth-subtitle">
-              Defina sua nova senha para voltar a entrar no MOS com segurança.
+              Defina sua nova senha para voltar a entrar no MOS! com segurança.
             </p>
           </section>
 
@@ -4006,9 +4037,9 @@ function App() {
           </div>
           <section className="space-y-4 pt-4">
             <h1 className="text-[2.6rem] leading-[0.94] font-black mos-auth-title">Termos e condições</h1>
-            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">O MOS funciona como um organizador pessoal de alimentação, água, plano e medidas. Os dados ficam salvos localmente neste dispositivo.</p>
+            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">O MOS! funciona como um organizador pessoal de alimentação, água, plano e medidas. Os dados ficam salvos localmente neste dispositivo.</p>
             <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">Você pode editar suas informações quando quiser. Ao sair da conta, seus dados continuam guardados localmente até que você escolha apagar manualmente.</p>
-            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">Seus dados ficam vinculados à sua conta e podem ser acessados com segurança sempre que você entrar no MOS.</p>
+            <p className="text-[1.05rem] leading-relaxed mos-auth-subtitle">Seus dados ficam vinculados à sua conta e podem ser acessados com segurança sempre que você entrar no MOS!</p>
           </section>
           <button className="w-full h-14 bg-[#111] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => openAuthScreen("welcome")}>
             Voltar
@@ -5811,7 +5842,7 @@ function App() {
           <section className="bg-white rounded-xl p-6 border border-[#dde8f3] space-y-5">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Composição atual</h2>
-              <p className="text-sm text-on-surface-variant">Os indicadores abaixo ajudam a acompanhar o que mais importa para o MOS.</p>
+              <p className="text-sm text-on-surface-variant">Os indicadores abaixo ajudam a acompanhar o que mais importa para o MOS!</p>
             </div>
 
             ${[
@@ -5883,7 +5914,7 @@ function App() {
               <div className="space-y-1">
                 <span className="text-sm text-[#4558C8]">Dados pessoais</span>
                 <h1 className="text-[1.9rem] font-bold text-jet-black leading-tight">${state.profile.name || "Meu perfil"}</h1>
-                <p className="text-sm leading-relaxed text-on-surface-variant">Aqui você concentra as informações principais da sua conta para manter o MOS mais pessoal e organizado.</p>
+                <p className="text-sm leading-relaxed text-on-surface-variant">Aqui você concentra as informações principais da sua conta para manter o MOS! mais pessoal e organizado.</p>
               </div>
               <div className="w-12 h-12 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
                 <${Icon} name="account_circle" className="text-[#4558C8] text-[1.6rem]" />
@@ -5925,7 +5956,7 @@ function App() {
       { name: "Água", description: "Acompanha hidratação, meta diária e histórico de consumo ao longo do dia." },
       { name: "Treino", description: "Cria treinos, guia a execução e registra o resumo da sessão." },
       { name: "Minhas medidas", description: "Concentra peso, IMC, composição corporal e evolução das últimas atualizações." },
-      { name: "Notificações", description: "Reúne lembretes de suplemento, avisos importantes e novidades do MOS." },
+      { name: "Notificações", description: "Reúne lembretes de suplemento, avisos importantes e novidades do MOS!" },
       { name: "Busca", description: "Ajuda a encontrar rapidamente refeições, alimentos, suplementos e páginas do app." },
     ];
 
@@ -5941,15 +5972,15 @@ function App() {
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
           <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
-            <span className="text-sm text-[#4558C8]">Bem-vinda ao MOS</span>
+            <span className="text-sm text-[#4558C8]">Bem-vinda ao MOS!</span>
             <h1 className="text-[1.85rem] font-bold text-jet-black leading-tight">Um guia rápido para usar o app com clareza e leveza</h1>
-            <p className="text-sm leading-relaxed text-on-surface-variant">O MOS foi pensado para acompanhar rotina, alimentação, treino, água e evolução corporal sem complicar sua vida. Aqui você entende o que cada parte faz e como aproveitar melhor o app no dia a dia.</p>
+            <p className="text-sm leading-relaxed text-on-surface-variant">O MOS! foi pensado para acompanhar rotina, alimentação, treino, água e evolução corporal sem complicar sua vida. Aqui você entende o que cada parte faz e como aproveitar melhor o app no dia a dia.</p>
           </section>
 
           <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Mini manual de uso</h2>
-              <p className="text-sm text-on-surface-variant">Um caminho simples para usar o MOS sem se perder.</p>
+              <p className="text-sm text-on-surface-variant">Um caminho simples para usar o MOS! sem se perder.</p>
             </div>
             <div className="space-y-3">
               ${[
@@ -6061,7 +6092,7 @@ function App() {
         <main className="pt-24 px-4 max-w-md mx-auto space-y-5">
           <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-2">
             <span className="text-sm text-[#4558C8]">Changelog</span>
-            <h1 className="text-[1.8rem] font-bold text-jet-black leading-tight">Registro de atualizações do MOS</h1>
+            <h1 className="text-[1.8rem] font-bold text-jet-black leading-tight">Registro de atualizações do MOS!</h1>
             <p className="text-sm leading-relaxed text-on-surface-variant">Aqui você acompanha o que foi melhorado no app, com data e descrição das mudanças mais recentes.</p>
           </section>
 
@@ -6356,7 +6387,7 @@ function App() {
         <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
           <div className="max-w-sm w-full space-y-4 text-center">
             <${AuthWordmark} />
-            <p className="text-[1rem] text-[#6e7178]">Preparando autenticação do MOS valendo...</p>
+            <p className="text-[1rem] text-[#6e7178]">Preparando autenticação do MOS!...</p>
           </div>
         </div>
       `}
@@ -6888,7 +6919,7 @@ function App() {
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-jet-black">Mensagem</label>
-                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte com calma o que você sentiu, o que não funcionou bem ou o que gostaria de ver no MOS." required></textarea>
+                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte com calma o que você sentiu, o que não funcionou bem ou o que gostaria de ver no MOS!" required></textarea>
               </div>
               <button
                 className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
