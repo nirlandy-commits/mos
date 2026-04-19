@@ -3,6 +3,7 @@ import { createRoot } from "https://esm.sh/react-dom@18/client";
 import htm from "https://esm.sh/htm@3";
 import {
   createConsumedMealEntry,
+  createAppNotification,
   createFeedbackEntry,
   createPlanMealEntry,
   createSupplementEntry,
@@ -13,6 +14,7 @@ import {
   deletePlanMealEntry,
   deleteSupplementEntry,
   deleteWaterEntry,
+  fetchAppNotifications,
   getAuthenticatedUser,
   getCurrentAuthState,
   getSupabaseSetupMessage,
@@ -109,6 +111,7 @@ function navigateMosRoute(route = "landing", { replace = false } = {}) {
 const LOCAL_DEMO_MODE = Boolean(globalThis.MOS_LOCAL_DEMO);
 const STORAGE_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-state" : "mos-stitch-faithful";
 const FORCE_LOGIN_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-force-login" : "mos-force-login";
+const MOS_ADMIN_EMAILS = new Set(["nirlandy@gmail.com", "nirlandy@gmail.com.br", "nirlandy.pinheiro@gmail.com", "pinheironirla@gmail.com"]);
 const DEMO_TODAY_KEY = (() => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -146,6 +149,7 @@ const defaultState = {
     targetWeight: 0,
   },
   feedbackEntries: [],
+  appNotifications: [],
   measureEntries: [
     {
       id: "measure-2025-12-02",
@@ -845,6 +849,7 @@ function migrate(raw) {
       targetWeight: Number(raw.profile?.targetWeight || raw.profile?.target_weight) || 0,
     },
     feedbackEntries: Array.isArray(raw.feedbackEntries) ? raw.feedbackEntries : [],
+    appNotifications: Array.isArray(raw.appNotifications) ? raw.appNotifications : [],
     measureEntries: Array.isArray(raw.measureEntries)
       ? raw.measureEntries.map((entry, index) => normalizeMeasureEntry(entry, index))
       : defaultState.measureEntries,
@@ -1985,9 +1990,17 @@ function App() {
   const markedWaterDates = new Set(Object.entries(state.waterHistory || {}).filter(([, entries]) => Array.isArray(entries) && entries.length).map(([key]) => key));
   const waterViewDateLabel = waterHistoryDate === todayKey ? "Hoje" : formatDateLabel(waterHistoryDate);
   const isSignedIn = !["welcome", "signup", "login", "recover-password", "reset-password", "legal"].includes(screen);
-  const notifications = notificationsCleared
-    ? []
-    : [
+  const adminEmail = String(state.profile.email || state.auth.email || "").toLowerCase();
+  const isAdminUser = LOCAL_DEMO_MODE || MOS_ADMIN_EMAILS.has(adminEmail) || adminEmail.includes("nirlandy") || globalThis.localStorage?.getItem("mos-admin") === "1";
+  const adminNotifications = (state.appNotifications || []).map((item) => ({
+    id: `admin-${item.id}`,
+    icon: "campaign",
+    title: item.title || "Aviso do MOS!",
+    body: item.body || "",
+    tag: item.tag || "MOS!",
+    action: () => setScreen("home"),
+  }));
+  const systemNotifications = [
     state.supplements[0] && {
       id: "supplement-alert",
       icon: "notifications_active",
@@ -2013,6 +2026,7 @@ function App() {
       action: () => setScreen("app-news"),
     },
     ].filter(Boolean);
+  const notifications = notificationsCleared ? [] : [...adminNotifications, ...systemNotifications];
   const currentDayMeals = state.consumedMeals[date] || [];
   const profileInitial = (state.profile.name?.trim()?.[0] || state.profile.email?.trim()?.[0] || "M").toUpperCase();
   const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
@@ -2038,6 +2052,13 @@ function App() {
       behavior: "smooth",
     });
   }, [screen, selectedPlanId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(globalThis.location?.search || "");
+    if (params.get("admin") === "1" && isAdminUser && isSignedIn) {
+      setScreen("admin-notifications");
+    }
+  }, [isAdminUser, isSignedIn]);
 
   const recentActivities = [
     ...currentDayMeals.slice(0, 3).map((meal) => ({
@@ -2144,6 +2165,19 @@ function App() {
         setScreen("supplement-detail");
       },
     })),
+    ...(isAdminUser
+      ? [
+          {
+            id: "admin-notifications",
+            icon: "campaign",
+            title: "Admin de notificações",
+            subtitle: "Enviar aviso para usuários do MOS!",
+            meta: "Admin",
+            keywords: "admin notificações notificacao avisos mensagens usuários usuarios mos",
+            action: () => setScreen("admin-notifications"),
+          },
+        ]
+      : []),
   ];
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const searchResults = normalizedSearch
@@ -2197,6 +2231,7 @@ function App() {
       planMeals: Array.isArray(result.planMeals) ? result.planMeals : current.planMeals,
       consumedMeals: result.consumedMeals || current.consumedMeals,
       feedbackEntries: Array.isArray(result.feedbackEntries) ? result.feedbackEntries : current.feedbackEntries,
+      appNotifications: Array.isArray(result.appNotifications) ? result.appNotifications : current.appNotifications,
     }));
   }
 
@@ -2298,6 +2333,8 @@ function App() {
         return renderAboutApp();
       case "app-news":
         return renderAppNews();
+      case "admin-notifications":
+        return isAdminUser ? renderAdminNotifications() : renderHome();
       case "history":
         return renderHistory();
       case "search":
@@ -2774,6 +2811,70 @@ function App() {
     clearDraft("modal-feedback");
     setModal(null);
     setScreen("about-app");
+  }
+
+  async function sendAdminNotification(formData) {
+    if (!isAdminUser) {
+      showAuthNotice("Apenas o admin do MOS! pode enviar notificações.");
+      return false;
+    }
+
+    const title = String(formData.get("title") || "").trim();
+    const message = String(formData.get("message") || "").trim();
+    const type = String(formData.get("type") || "Aviso").trim() || "Aviso";
+    const audience = String(formData.get("audience") || "all");
+    const targetEmail = audience === "email" ? String(formData.get("targetEmail") || "").trim().toLowerCase() : "";
+
+    if (!title || !message) {
+      showAuthNotice("Preencha título e mensagem antes de enviar.");
+      return false;
+    }
+
+    if (audience === "email" && !targetEmail) {
+      showAuthNotice("Informe o e-mail do usuário que vai receber a mensagem.");
+      return false;
+    }
+
+    let nextNotification = {
+      id: uid("notification"),
+      title,
+      body: message,
+      tag: type,
+      createdAt: new Date().toISOString(),
+      audience,
+      targetEmail,
+    };
+
+    if (authConfigured) {
+      const user = await getAuthenticatedUser();
+      const result = await createAppNotification(user?.id || null, {
+        title,
+        message,
+        type,
+        audience,
+        targetEmail,
+      });
+
+      if (!result.ok) {
+        showAuthNotice(result.error?.message || "Não foi possível enviar a notificação. Verifique a tabela app_notifications no Supabase.");
+        return false;
+      }
+
+      nextNotification = result.notification;
+      const refreshed = await fetchAppNotifications(user?.id || null, state.profile.email || state.auth.email);
+      mutate((draft) => {
+        draft.appNotifications = refreshed.length ? refreshed : [nextNotification, ...(draft.appNotifications || [])].slice(0, 20);
+      });
+    } else {
+      mutate((draft) => {
+        draft.appNotifications = [nextNotification, ...(draft.appNotifications || [])].slice(0, 20);
+      });
+    }
+
+    setNotificationsCleared(false);
+    clearDraft("admin-notification");
+    showAuthNotice("Notificação criada. Ela já aparece na central do MOS! para testes.");
+    return true;
   }
 
   async function saveProfile(formData) {
@@ -5743,7 +5844,7 @@ function App() {
     const latestDateLabel = parseDateKey(latestMeasure.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
     return html`
-      <div className="bg-[#eef6fb] text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-32">
         <${TopBar}
           title="Minhas medidas"
           leftIcon="arrow_back"
@@ -5899,7 +6000,7 @@ function App() {
     ];
 
     return html`
-      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-32">
         <${TopBar}
           title="Meu perfil"
           leftIcon="arrow_back"
@@ -5909,7 +6010,7 @@ function App() {
           onRight=${openNotifications}
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
+          <section className="mos-info-card space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="text-sm text-[#4558C8]">Dados pessoais</span>
@@ -5922,11 +6023,11 @@ function App() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-3 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
+          <section className="mos-info-grid">
             ${profileItems.map(
               (item) => html`
-                <div className="rounded-[10px] bg-surface-container-low p-4 flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-[10px] bg-white flex items-center justify-center shrink-0">
+                <div className="mos-info-tile">
+                  <div className="mos-info-icon">
                     <${Icon} name=${item.icon} className="text-[#4558C8]" />
                   </div>
                   <div className="min-w-0">
@@ -5961,7 +6062,7 @@ function App() {
     ];
 
     return html`
-      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-32">
         <${TopBar}
           title="Sobre o app"
           leftIcon="arrow_back"
@@ -5971,13 +6072,13 @@ function App() {
           onRight=${openNotifications}
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
+          <section className="mos-info-card space-y-4">
             <span className="text-sm text-[#4558C8]">Bem-vinda ao MOS!</span>
             <h1 className="text-[1.85rem] font-bold text-jet-black leading-tight">Um guia rápido para usar o app com clareza e leveza</h1>
             <p className="text-sm leading-relaxed text-on-surface-variant">O MOS! foi pensado para acompanhar rotina, alimentação, treino, água e evolução corporal sem complicar sua vida. Aqui você entende o que cada parte faz e como aproveitar melhor o app no dia a dia.</p>
           </section>
 
-          <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
+          <section className="mos-info-card space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Mini manual de uso</h2>
               <p className="text-sm text-on-surface-variant">Um caminho simples para usar o MOS! sem se perder.</p>
@@ -6001,7 +6102,7 @@ function App() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)]">
+          <section className="mos-info-card space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">O que cada área faz</h2>
               <p className="text-sm text-on-surface-variant">Assim fica mais fácil entender a linguagem do app.</p>
@@ -6009,7 +6110,7 @@ function App() {
             <div className="space-y-3">
               ${areas.map(
                 (area) => html`
-                  <div className="rounded-[10px] bg-surface-container-low p-4 space-y-1">
+                  <div className="mos-info-tile block space-y-1">
                     <h3 className="text-[1rem] font-bold text-jet-black">${area.name}</h3>
                     <p className="text-sm leading-relaxed text-on-surface-variant">${area.description}</p>
                   </div>
@@ -6018,7 +6119,7 @@ function App() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-4">
+          <section className="mos-info-card space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Nos ajude a melhorar</h2>
               <p className="text-sm leading-relaxed text-on-surface-variant">Se algo ficou confuso, se você sentiu falta de uma função ou se quer sugerir uma melhoria, pode mandar por aqui. A ideia é que o app evolua junto com sua rotina.</p>
@@ -6078,9 +6179,98 @@ function App() {
     `;
   }
 
+  function renderAdminNotifications() {
+    const recentAdminNotifications = state.appNotifications || [];
+
+    return html`
+      <div className="mos-screen text-on-surface min-h-screen pb-32">
+        <${TopBar}
+          title="Notificações"
+          leftIcon="arrow_back"
+          centerBold=${false}
+          onLeft=${() => setScreen("home")}
+          onSearch=${() => openSearch("home")}
+          onRight=${openNotifications}
+        />
+        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+          <section className="mos-info-card space-y-3">
+            <span className="text-sm font-bold text-[#0F172A]/60">Admin MOS!</span>
+            <h1 className="text-[1.9rem] font-black text-[#0F172A] leading-tight">Enviar aviso aos usuários</h1>
+            <p className="text-sm leading-relaxed text-[#526070]">Página secreta para criar mensagens simples na central de notificações. Use com texto curto e direto.</p>
+          </section>
+
+          <form
+            className="mos-info-card space-y-4"
+            onInput=${() => markDraftDirty("admin-notification")}
+            onChange=${() => markDraftDirty("admin-notification")}
+            onSubmit=${(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              sendAdminNotification(new FormData(form)).then((ok) => {
+                if (ok) form.reset();
+              });
+            }}
+          >
+            <div className="grid grid-cols-1 gap-3">
+              <label className="space-y-2">
+                <span className="text-[0.78rem] font-bold text-[#526070]">Título</span>
+                <input className="w-full h-14 px-4 rounded-[14px] border border-[rgba(11,16,32,0.08)] bg-white/70 text-[#0F172A]" name="title" placeholder="Ex: Novo ajuste no plano" required />
+              </label>
+              <label className="space-y-2">
+                <span className="text-[0.78rem] font-bold text-[#526070]">Mensagem</span>
+                <textarea className="w-full min-h-28 px-4 py-3 rounded-[14px] border border-[rgba(11,16,32,0.08)] bg-white/70 text-[#0F172A] resize-none" name="message" placeholder="Escreva uma mensagem curta para aparecer na central." required></textarea>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-2">
+                  <span className="text-[0.78rem] font-bold text-[#526070]">Tipo</span>
+                  <input className="w-full h-14 px-4 rounded-[14px] border border-[rgba(11,16,32,0.08)] bg-white/70 text-[#0F172A]" name="type" placeholder="Aviso" defaultValue="Aviso" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-[0.78rem] font-bold text-[#526070]">Público</span>
+                  <select className="w-full h-14 px-4 rounded-[14px] border border-[rgba(11,16,32,0.08)] bg-white/70 text-[#0F172A]" name="audience" defaultValue="all">
+                    <option value="all">Todos</option>
+                    <option value="email">Um e-mail</option>
+                  </select>
+                </label>
+              </div>
+              <label className="space-y-2">
+                <span className="text-[0.78rem] font-bold text-[#526070]">E-mail específico</span>
+                <input className="w-full h-14 px-4 rounded-[14px] border border-[rgba(11,16,32,0.08)] bg-white/70 text-[#0F172A]" name="targetEmail" type="email" placeholder="Opcional, se o público for um e-mail" />
+              </label>
+            </div>
+            <button className="w-full h-14 rounded-[16px] bg-[#0B1020] text-white font-black transition-transform active:scale-[0.98]" type="submit">
+              Enviar notificação
+            </button>
+          </form>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black text-[#0F172A]">Últimas mensagens</h2>
+              <span className="text-[0.78rem] font-bold text-[#526070]">${recentAdminNotifications.length}</span>
+            </div>
+            <div className="space-y-3">
+              ${recentAdminNotifications.length
+                ? recentAdminNotifications.slice(0, 8).map((item) => html`
+                    <article className="mos-info-card py-4 space-y-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <strong className="text-[#0F172A]">${item.title}</strong>
+                        <span className="text-[0.72rem] font-bold text-[#526070]">${item.tag || "MOS!"}</span>
+                      </div>
+                      <p className="text-sm leading-relaxed text-[#526070]">${item.body}</p>
+                    </article>
+                  `)
+                : html`<p className="text-sm text-[#526070]">Nenhuma mensagem criada ainda.</p>`}
+            </div>
+          </section>
+        </main>
+        <${BottomNav} active=${null} onChange=${setScreen} />
+      </div>
+    `;
+  }
+
   function renderAppNews() {
     return html`
-      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-24">
+      <div className="mos-screen text-on-surface min-h-screen pb-24">
         <${TopBar}
           title="Novidades do app"
           leftIcon="arrow_back"
@@ -6353,7 +6543,7 @@ function App() {
     <div>
       <style>
         body {
-          background: #f4f7ff;
+          background: #ebf5f2;
         }
         .text-jet-black { color: #0F172A; }
         .text-on-surface { color: #0F172A; }
@@ -6362,7 +6552,7 @@ function App() {
         section.bg-white:not([class*="shadow"]),
         div.bg-white:not([class*="shadow"]) {
           border: 1px solid #e2e8f0;
-          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+          box-shadow: none;
           border-radius: 20px;
         }
         nav.fixed.bottom-0 {

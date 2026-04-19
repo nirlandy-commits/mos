@@ -127,6 +127,7 @@ export async function getCurrentAuthState() {
       planMeals: [],
       consumedMeals: {},
       feedbackEntries: [],
+      appNotifications: [],
       error: null,
     };
   }
@@ -138,7 +139,7 @@ export async function getCurrentAuthState() {
 
   const session = sessionData?.session || null;
   const user = userData?.user || null;
-  const [profile, measureEntries, supplements, waterState, planMeals, consumedMeals, feedbackEntries] = user
+  const [profile, measureEntries, supplements, waterState, planMeals, consumedMeals, feedbackEntries, appNotifications] = user
     ? await Promise.all([
         fetchProfile(user.id),
         fetchMeasureEntries(user.id),
@@ -147,8 +148,9 @@ export async function getCurrentAuthState() {
         fetchPlanMeals(user.id),
         fetchConsumedMeals(user.id),
         fetchFeedbackEntries(user.id),
+        fetchAppNotifications(user.id, user.email),
       ])
-    : [null, [], [], { history: {}, totals: {} }, [], {}, []];
+    : [null, [], [], { history: {}, totals: {} }, [], {}, [], []];
 
   return {
     configured: true,
@@ -162,6 +164,7 @@ export async function getCurrentAuthState() {
     planMeals,
     consumedMeals,
     feedbackEntries,
+    appNotifications,
     error: sessionError || userError || null,
   };
 }
@@ -909,4 +912,77 @@ export async function createFeedbackEntry(userId, entry) {
       createdAt: data.created_at,
     },
   };
+}
+
+function normalizeAppNotification(item = {}) {
+  return {
+    id: item.id,
+    title: item.title || "Mensagem do MOS!",
+    body: item.message || item.body || "",
+    tag: item.type || item.tag || "MOS!",
+    createdAt: item.created_at || new Date().toISOString(),
+    audience: item.audience || "all",
+    targetEmail: item.target_email || "",
+  };
+}
+
+export async function fetchAppNotifications(userId, email = "") {
+  const client = getSupabaseClient();
+  if (!client) return [];
+
+  const queries = [
+    client
+      .from("app_notifications")
+      .select("*")
+      .eq("audience", "all")
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ];
+
+  if (userId) {
+    queries.push(
+      client
+        .from("app_notifications")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    );
+  }
+
+  if (email) {
+    queries.push(
+      client
+        .from("app_notifications")
+        .select("*")
+        .eq("target_email", email)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    );
+  }
+
+  const results = await Promise.all(queries);
+  const items = results.flatMap(({ data, error }) => (error || !Array.isArray(data) ? [] : data));
+  const unique = new Map();
+  items.forEach((item) => unique.set(item.id, normalizeAppNotification(item)));
+  return [...unique.values()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 20);
+}
+
+export async function createAppNotification(userId, entry) {
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, error: new Error("Supabase não configurado.") };
+
+  const payload = {
+    created_by: userId || null,
+    audience: entry.audience || "all",
+    user_id: entry.userId || null,
+    target_email: entry.targetEmail || null,
+    title: entry.title || "Mensagem do MOS!",
+    message: entry.message || "",
+    type: entry.type || "Aviso",
+  };
+
+  const { data, error } = await client.from("app_notifications").insert(payload).select().single();
+  if (error) return { ok: false, error };
+  return { ok: true, notification: normalizeAppNotification(data) };
 }
