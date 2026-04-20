@@ -122,6 +122,8 @@ function buildFeedbackEmailUrl({ section = "Geral", message = "", profile = {}, 
   const name = profile.name || "Usuário MOS!";
   const email = profile.email || auth.email || "Não informado";
   const sentAt = new Date().toLocaleString("pt-BR");
+  const pageUrl = globalThis.location?.href || "Não informado";
+  const userAgent = globalThis.navigator?.userAgent || "Não informado";
   const subject = `Feedback MOS! - ${section}`;
   const body = [
     "Novo feedback enviado pelo MOS!",
@@ -130,9 +132,14 @@ function buildFeedbackEmailUrl({ section = "Geral", message = "", profile = {}, 
     `Email: ${email}`,
     `Seção: ${section}`,
     `Data: ${sentAt}`,
+    `Página: ${pageUrl}`,
+    `Navegador: ${userAgent}`,
     "",
     "Mensagem:",
     message,
+    "",
+    "Observação:",
+    "Este feedback também foi salvo dentro do MOS! quando a conexão com o banco estava disponível.",
   ].join("\n");
 
   return `mailto:${MOS_FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -2853,18 +2860,21 @@ function App() {
     clearDraft("modal-feedback");
     setModal(null);
     setScreen("about-app");
+    showAuthNotice("Feedback salvo. Seu app de e-mail vai abrir com a mensagem pronta; confirme o envio por lá.", {
+      tone: "success",
+      title: "Feedback registrado",
+    });
     if (typeof window !== "undefined" && MOS_FEEDBACK_EMAIL) {
-      window.location.href = buildFeedbackEmailUrl({
+      const feedbackEmailUrl = buildFeedbackEmailUrl({
         section,
         message,
         profile: state.profile,
         auth: state.auth,
       });
+      window.setTimeout(() => {
+        window.location.href = feedbackEmailUrl;
+      }, 120);
     }
-    showAuthNotice("Feedback salvo. Também abrimos um e-mail pronto para enviar ao admin.", {
-      tone: "success",
-      title: "Feedback registrado",
-    });
   }
 
   async function sendAdminNotification(formData) {
@@ -6148,13 +6158,26 @@ function App() {
           <section className="mos-info-card space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Nos ajude a melhorar</h2>
-              <p className="text-sm leading-relaxed text-on-surface-variant">Se algo ficou confuso ou faltou no MOS!, mande por aqui. O feedback fica salvo no app e também abre um e-mail pronto para o admin.</p>
+              <p className="text-sm leading-relaxed text-on-surface-variant">Se algo ficou confuso ou faltou no MOS!, mande por aqui. O feedback fica salvo no app e abre um e-mail pronto para o admin.</p>
             </div>
             ${latestFeedback
               ? html`
-                  <div className="rounded-[10px] bg-[#fff6f2] border border-[#f5ddd5] p-4">
-                    <p className="text-sm font-bold text-jet-black">Último feedback salvo</p>
-                    <p className="text-sm text-on-surface-variant mt-1">${latestFeedback.section} · ${new Date(latestFeedback.createdAt).toLocaleDateString("pt-BR")}</p>
+                  <div className="rounded-[18px] bg-[#fff6f2] border border-[#f5ddd5] p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-bold text-jet-black">Último feedback salvo</p>
+                      <p className="text-sm text-on-surface-variant mt-1">${latestFeedback.section} · ${new Date(latestFeedback.createdAt).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <a
+                      className="inline-flex h-10 px-4 items-center justify-center rounded-full bg-white border border-[#f5ddd5] text-sm font-bold text-jet-black"
+                      href=${buildFeedbackEmailUrl({
+                        section: latestFeedback.section,
+                        message: latestFeedback.message,
+                        profile: state.profile,
+                        auth: state.auth,
+                      })}
+                    >
+                      Abrir e-mail novamente
+                    </a>
                   </div>
                 `
               : null}
@@ -7122,8 +7145,12 @@ function App() {
                 saveFeedback(new FormData(e.currentTarget));
               }}
             >
+              <div className="rounded-[18px] bg-[#F2F8EE] border border-[#dfe9df] p-4 space-y-1">
+                <p className="text-sm font-bold text-jet-black">Como isso chega até mim</p>
+                <p className="text-sm leading-relaxed text-on-surface-variant">O MOS! salva sua mensagem e abre um e-mail pronto. Depois é só confirmar o envio.</p>
+              </div>
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-jet-black">Seção</label>
+                <label className="text-sm font-medium text-jet-black">Área do app</label>
                 <select className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg text-jet-black" name="section" defaultValue="Geral">
                   <option>Geral</option>
                   <option>Início</option>
@@ -7137,11 +7164,11 @@ function App() {
                 </select>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-jet-black">Mensagem</label>
-                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte o que não ficou claro, o que falhou ou o que você gostaria de melhorar no MOS!" required></textarea>
+                <label className="text-sm font-medium text-jet-black">O que você quer contar?</label>
+                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte o que não ficou claro, o que falhou ou o que podemos melhorar." required></textarea>
               </div>
               <p className="text-xs leading-relaxed text-on-surface-variant">
-                Ao enviar, o MOS! salva o feedback e abre um rascunho de e-mail para ${MOS_FEEDBACK_EMAIL}.
+                O e-mail será enviado para ${MOS_FEEDBACK_EMAIL}. Se o app de e-mail não abrir, use o botão “Abrir e-mail novamente” em Sobre o app.
               </p>
               <button
                 className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
@@ -7150,7 +7177,7 @@ function App() {
                 type="submit"
                 disabled=${!isDraftDirty("modal-feedback")}
               >
-                Enviar feedback
+                Salvar e abrir e-mail
               </button>
             </form>
           </${Modal}>
