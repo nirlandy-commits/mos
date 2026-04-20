@@ -3647,7 +3647,7 @@ function App() {
                   <${Icon} name=${nextAction.icon} className="text-[1.35rem] text-[#0F172A]" filled=${nextAction.icon === "water_drop"} />
                 </div>
                 <div className="min-w-0">
-                  <span className="home-panel-eyebrow">Próxima ação</span>
+                  <span className="home-panel-eyebrow">Agora</span>
                   <strong>${nextAction.title}</strong>
                   <p>${nextAction.detail}</p>
                 </div>
@@ -3676,11 +3676,11 @@ function App() {
           <section className="home-panel">
             <div className="space-y-4">
               <div className="space-y-2">
-                <span className="home-panel-eyebrow">Dados do perfil</span>
+                <span className="home-panel-eyebrow">Base do dia</span>
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <div className="text-[1.9rem] font-black leading-tight text-[#0F172A]">${profileGoal}</div>
-                    <p className="text-sm text-[#64748b]">base para o MOS! orientar seu dia</p>
+                    <p className="text-sm text-[#64748b]">parâmetros que guiam o MOS! hoje</p>
                   </div>
                   <div className="home-inline-insight">${profileInsight}</div>
                 </div>
@@ -4432,6 +4432,47 @@ function App() {
     `;
   }
 
+  function renderPlanModeTabs({ activeMode }) {
+    const isPlan = activeMode === "plan";
+    return html`
+      <div className="plan-mode-tabs" role="tablist" aria-label="Navegação do plano">
+        <button
+          className=${`plan-subnav-tab ${isPlan ? "plan-subnav-tab--active" : ""}`}
+          type="button"
+          role="tab"
+          aria-selected=${isPlan}
+          onClick=${() => !isPlan && setScreen("plan")}
+        >
+          Plano alimentar
+        </button>
+        <button
+          className=${`plan-subnav-tab ${!isPlan ? "plan-subnav-tab--active" : ""}`}
+          type="button"
+          role="tab"
+          aria-selected=${!isPlan}
+          onClick=${() => isPlan && setScreen("supplements")}
+        >
+          Suplementação
+        </button>
+      </div>
+    `;
+  }
+
+  function renderPlanModeHeader({ activeMode, headline, support, nowHour, profileName }) {
+    return html`
+      <section className="plan-mode-header">
+        <${renderPlanModeTabs} activeMode=${activeMode} />
+        <div className="plan-mode-copy">
+          <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
+          <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+            ${headline}
+          </h1>
+          ${support ? html`<p className="text-[0.95rem] text-[#334155]">${support}</p>` : null}
+        </div>
+      </section>
+    `;
+  }
+
   function renderPlan() {
     const nowHour = new Date().getHours();
     const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
@@ -4457,18 +4498,12 @@ function App() {
       <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
         <main className="pt-24 pb-64 px-6 max-w-md mx-auto space-y-8">
-          <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
-              ${planHeadline}
-            </h1>
-          </section>
-          <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta plan-fixed-tabs">
-            <div className="pointer-events-auto plan-subnav-shell">
-              <button className="plan-subnav-tab plan-subnav-tab--active">Cardápio</button>
-              <button className="plan-subnav-tab" onClick=${() => setScreen("supplements")}>Suplementos</button>
-            </div>
-          </div>
+          <${renderPlanModeHeader}
+            activeMode="plan"
+            headline=${planHeadline}
+            nowHour=${nowHour}
+            profileName=${profileName}
+          />
           <section className="space-y-5">
             <div className="space-y-0.5">
               <h2 className="text-xl font-bold text-[#0F172A]">Roteiro do dia</h2>
@@ -4958,18 +4993,10 @@ function App() {
       <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
         <${TopBar} title="Treino" leftIcon="menu" centerBold=${false} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("training")} onRight=${openNotifications} />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="space-y-2">
-            <span className="text-sm text-[#EF5F37]">Sua jornada</span>
+          <section className="space-y-3">
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <div className="flex items-end justify-between gap-4">
-              <h1 className="text-[1.95rem] font-bold text-jet-black leading-tight">Meus treinos</h1>
-              <div className="${TRAINING_THEME.surface} rounded-[10px] px-4 py-3">
-                <p className="text-[0.75rem] ${TRAINING_THEME.accentText}">Treinos</p>
-                <strong className="text-[1.1rem] font-bold text-jet-black">${trainingPlans.length}</strong>
-              </div>
-            </div>
-            <p className="text-[0.95rem] text-[#475569]">Todo treino é um passo adiante. <span className="emoji-badge emoji-badge--training" aria-hidden="true">💪</span></p>
-            <p className="text-sm text-on-surface-variant">Abra um treino para ver os exercícios, ajustar a rotina ou iniciar a sessão de hoje.</p>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>Meus treinos</h1>
+            <p className="text-[0.95rem] text-[#334155]">Abra um treino para ver exercícios e registrar a sessão.</p>
           </section>
 
           <section className="space-y-3">
@@ -5512,6 +5539,8 @@ function App() {
   }
 
   function renderSupplements() {
+    const nowHour = new Date().getHours();
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const groupedSupplements = state.supplements.reduce((groups, supplement) => {
       const category = supplement.category || "Geral";
       if (!groups[category]) groups[category] = [];
@@ -5524,17 +5553,13 @@ function App() {
       <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("supplements")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-8 pb-64">
-          <div className="space-y-2">
-            <span className="font-label text-[0.6875rem] font-medium text-secondary">Suplementos</span>
-            <h2 className="font-headline text-[1.75rem] font-bold text-custom-jet leading-tight">Sua rotina de hoje</h2>
-            <p className="text-[0.95rem] text-[#475569]">Veja horários, uso e ações em um só lugar.</p>
-          </div>
-          <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta plan-fixed-tabs">
-            <div className="pointer-events-auto plan-subnav-shell">
-              <button className="plan-subnav-tab" onClick=${() => setScreen("plan")}>Cardápio</button>
-              <button className="plan-subnav-tab plan-subnav-tab--active">Suplementos</button>
-            </div>
-          </div>
+          <${renderPlanModeHeader}
+            activeMode="supplements"
+            headline="Sua rotina de hoje"
+            support="Veja horários, uso e ações em um só lugar."
+            nowHour=${nowHour}
+            profileName=${profileName}
+          />
           <div className="space-y-6">
             ${sortedCategories.map((category) => html`
               <section className="space-y-3">
@@ -5624,14 +5649,10 @@ function App() {
   }
 
   function renderWater() {
+    const nowHour = new Date().getHours();
+    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const waterProgress = Math.min(100, (water / waterGoal) * 100);
     const remainingWater = Math.max(0, waterGoal - water);
-    const waterFillHeight = Math.max(20, Math.min(72, waterProgress));
-    const waterTextOnFill = waterFillHeight >= 52;
-    const waterPercentClass = waterTextOnFill
-      ? "text-white drop-shadow-[0_6px_18px_rgba(15,23,42,0.28)]"
-      : "text-[#292B2D] drop-shadow-[0_2px_8px_rgba(255,255,255,0.55)]";
-    const waterCaptionClass = waterTextOnFill ? "text-white/88" : "text-[#292B2D]/70";
     const quickWaterOptions = [200, 300, 500];
     const selectedEntriesCount = waterEntries.length;
     const waterInsight = generateMosOperationalInsight(
@@ -5647,53 +5668,33 @@ function App() {
       <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
-          <section className="space-y-2">
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2rem, 7vw, 2.8rem)", lineHeight: "1.05" }}>
+          <section className="space-y-3">
+            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
               Água hoje
             </h1>
+            <p className="text-[0.95rem] text-[#334155]">Veja quanto entrou e quanto falta para a meta.</p>
           </section>
-          <section className="space-y-4">
-            <div className="mos-hero mos-hero-transparent rounded-[10px] p-6 relative overflow-hidden">
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-white/80 bg-white/72 p-4">
-                    <span className="text-[0.78rem] font-medium text-[#292B2D]/55">Consumido</span>
-                    <div className="mt-2 flex items-baseline gap-1">
-                      <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${Math.round(water)}</strong>
-                      <span className="text-[0.82rem] font-medium text-[#292B2D]/62">ml</span>
-                    </div>
+          <section className="water-focus-hero">
+            <div className="space-y-2">
+              <span className="text-[0.78rem] font-bold text-[#64748B]">Status</span>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <strong className="text-[3.6rem] font-black leading-none text-[#0F172A]">${Math.round(water)}</strong>
+                    <span className="text-[1rem] font-bold text-[#475569]">ml</span>
                   </div>
-                  <div className="rounded-xl border border-white/80 bg-white/72 p-4">
-                    <span className="text-[0.78rem] font-medium text-[#292B2D]/55">Meta</span>
-                    <div className="mt-2 flex items-baseline gap-1">
-                      <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${waterGoal}</strong>
-                      <span className="text-[0.82rem] font-medium text-[#292B2D]/62">ml</span>
-                    </div>
-                  </div>
+                  <p className="text-[0.95rem] font-semibold text-[#475569]">de ${waterGoal} ml</p>
                 </div>
-
-                <div className="rounded-xl border border-[rgba(148,163,184,0.18)] bg-white/65 px-4 py-3">
-                  <p className="text-[0.92rem] font-semibold text-[#334155]">${remainingWater} ml faltando</p>
-                  <p className="text-[0.82rem] text-[#64748b] mt-1">${waterInsight}</p>
-                </div>
-
-                <div className="mos-water-shell mx-auto scale-[0.88] origin-top">
-                  <div className="mos-water-fill" style=${{ height: `${waterFillHeight}%` }}></div>
-                  <div className="mos-water-glow"></div>
-                  <div className="mos-water-markers">
-                    <span>500</span>
-                    <span>400</span>
-                    <span>300</span>
-                    <span>200</span>
-                    <span>100</span>
-                    <span>0</span>
-                  </div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none">
-                    <strong className=${`text-[3rem] font-black leading-none transition-colors duration-200 ${waterPercentClass}`}>${Math.round(waterProgress)}%</strong>
-                    <span className=${`mt-2 text-[0.85rem] font-medium transition-colors duration-200 ${waterCaptionClass}`}>da meta diária</span>
-                  </div>
-                </div>
+                <span className="water-progress-chip">${Math.round(waterProgress)}%</span>
               </div>
+              <div className="water-progress-track" aria-hidden="true">
+                <div className="water-progress-fill" style=${{ width: `${waterProgress}%` }}></div>
+              </div>
+            </div>
+            <div className="water-remaining-panel">
+              <p className="text-[1.25rem] font-black text-[#0F172A]">${remainingWater > 0 ? `Faltam ${remainingWater} ml` : "Meta batida"}</p>
+              <p className="text-[0.9rem] text-[#475569]">${waterInsight}</p>
             </div>
             ${waterHistoryDate !== todayKey
               ? html`
@@ -5710,72 +5711,59 @@ function App() {
               : null}
           </section>
 
-          <section className="grid grid-cols-1 gap-3">
-            <div className="bg-white rounded-xl p-4 shadow-[0_10px_22px_rgba(41,43,45,0.04)] border border-white/80">
-              <span className="text-[0.78rem] font-medium text-[#292B2D]/55">${waterHistoryDate === todayKey ? "Registros hoje" : "Registros na data"}</span>
-              <div className="mt-2 flex items-baseline gap-1">
-                <strong className="text-[1.9rem] font-black leading-none text-[#292B2D]">${selectedEntriesCount}</strong>
-                <span className="text-[0.82rem] font-medium text-[#292B2D]/62">${selectedEntriesCount === 1 ? "registro" : "registros"}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="bg-white rounded-xl p-4 md:p-5 space-y-4 shadow-[0_12px_24px_rgba(41,43,45,0.04)] border border-white/80">
+          <section className="water-action-panel">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-[1rem] font-bold text-[#292B2D]">Registro rápido</h3>
-                <p className="text-sm text-[#292B2D]/60">Toque para somar água na data ${waterViewDateLabel.toLowerCase()}.</p>
+                <h2 className="text-[1.15rem] font-black text-[#0F172A]">Adicionar água</h2>
+                <p className="text-sm text-[#475569]">Toque uma vez para somar no dia.</p>
               </div>
-              <button className="h-11 px-4 rounded-[10px] bg-[#EF5F37] text-white font-bold whitespace-nowrap shrink-0 active:scale-95 transition-transform" onClick=${() => setModal("water")}>
-                Outro valor
-              </button>
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory">
+            <div className="grid grid-cols-2 gap-3">
               ${quickWaterOptions.map(
                 (amount) => html`
                   <button
-                    className="min-w-[108px] bg-white border border-[#dbe5fb] rounded-[10px] py-4 px-3 flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform shadow-[0_8px_24px_rgba(69,88,200,0.06)] snap-start"
+                    className="water-quick-button"
                     onClick=${() => appendWaterAmount(amount)}
                   >
-                    <div className="w-10 h-10 rounded-full bg-[#edf2ff] flex items-center justify-center">
-                      <${Icon} name="water_drop" className="text-[#4558C8]" filled=${true} />
-                    </div>
-                    <span className="text-[0.95rem] font-bold text-[#292B2D]">${amount} ml</span>
+                    <${Icon} name="water_drop" className="text-[1.15rem]" filled=${true} />
+                    <span>${amount} ml</span>
                   </button>
                 `,
               )}
+              <button className="water-quick-button water-quick-button--custom" onClick=${() => setModal("water")}>
+                <${Icon} name="add_circle" className="text-[1.15rem]" />
+                <span>Outro valor</span>
+              </button>
             </div>
           </section>
 
-          <section className="space-y-4">
+          <section className="water-support-panel">
             <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-[#292B2D]">${waterHistoryDate === todayKey ? "Histórico de hoje" : `Histórico de ${waterViewDateLabel}`}</h3>
-              <button className="min-h-10 px-3 rounded-[10px] bg-white border border-[#dbe5fb] text-[0.875rem] font-medium text-secondary shadow-[0_8px_18px_rgba(69,88,200,0.05)]" onClick=${openWaterHistory}>Ver tudo</button>
+              <h3 className="text-base font-black text-[#0F172A]">
+                ${waterHistoryDate === todayKey
+                  ? `Hoje você já registrou ${selectedEntriesCount} ${selectedEntriesCount === 1 ? "vez" : "vezes"}`
+                  : `Registros de ${waterViewDateLabel}`}
+              </h3>
+              <button className="water-history-link" onClick=${openWaterHistory}>Ver tudo</button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               ${waterEntries.length
-                ? waterEntries.map(
+                ? waterEntries.slice(0, 4).map(
                     (entry) => html`
-                      <div className="w-full bg-white rounded-xl p-4 flex items-center justify-between border-l-4 border-secondary text-left shadow-[0_10px_18px_rgba(41,43,45,0.03)] border border-white/80">
+                      <div className="water-history-row">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
-                            <${Icon} name="local_drink" className="text-lg text-secondary" />
-                          </div>
                           <div className="flex flex-col gap-1">
                             <div className="flex items-baseline gap-2">
-                              <span className="text-[1.35rem] font-black leading-none text-[#292B2D]">${entry.amount}</span>
-                              <span className="text-[0.75rem] font-bold text-[#292B2D]/55">ml</span>
+                              <span className="text-[1.05rem] font-black leading-none text-[#0F172A]">${entry.amount}</span>
+                              <span className="text-[0.75rem] font-bold text-[#64748B]">ml</span>
                             </div>
-                            <p className="text-[0.82rem] text-[#292B2D]/55">${entry.label}</p>
+                            <p className="text-[0.82rem] text-[#64748B]">${entry.label}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="text-[1rem] font-bold leading-none text-[#292B2D]">${entry.time}</span>
-                            <span className="text-[0.6875rem] font-medium text-[#292B2D]/40">registrado</span>
-                          </div>
+                          <span className="text-[0.9rem] font-bold text-[#475569]">${entry.time}</span>
                           <button
-                            className="w-10 h-10 rounded-full bg-[#fff4ef] text-[#EF5F37] flex items-center justify-center active:scale-95 transition-transform"
+                            className="w-9 h-9 rounded-full text-[#EF5F37] flex items-center justify-center active:scale-95 transition-transform"
                             onClick=${() => askDeleteConfirm({
                               title: "Apagar registro de água",
                               message: "Tem certeza que deseja apagar este item?",
@@ -5806,30 +5794,14 @@ function App() {
                     `,
                   )
                 : html`
-                    <div className="bg-surface-container-low rounded-xl p-6 text-center space-y-2">
-                      <p className="font-bold text-jet-black">Nenhum registro nesse dia</p>
-                      <p className="text-sm text-on-surface-variant">Escolha outra data no calendário ou registre água para começar o histórico.</p>
+                    <div className="water-empty-state">
+                      <p className="font-bold text-[#0F172A]">Nenhum registro nesse dia</p>
+                      <p className="text-sm text-[#64748B]">Adicione água para começar o histórico.</p>
                     </div>
                   `}
             </div>
           </section>
-
-          <section>
-            <div className="bg-[#fff6f2] border border-[#f5ddd5] rounded-xl p-6 relative overflow-hidden shadow-[0_12px_22px_rgba(239,95,55,0.08)]">
-              <div className="z-10 relative">
-                <h4 className="text-[#292B2D] text-lg font-bold">Dica de Performance</h4>
-                <p className="text-[#292B2D]/70 text-sm mt-1 max-w-[70%]">Beber água logo ao acordar ajuda a ativar a rotina e melhorar a consistência da hidratação ao longo do dia.</p>
-              </div>
-              <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-[8rem] text-[#EF5F37]/10 rotate-12">lightbulb</span>
-            </div>
-          </section>
         </main>
-        <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
-          <button className="mos-fixed-cta-button font-headline" onClick=${() => setModal("water")}>
-            <${Icon} name="add_circle" />
-            Registrar água
-          </button>
-        </div>
         <${BottomNav} active="water" onChange=${setScreen} />
       </div>
     `;
