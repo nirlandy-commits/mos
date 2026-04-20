@@ -656,9 +656,9 @@ body *::after {
     margin-bottom: 4.25rem;
     padding: 2rem 2.1rem 2.4rem !important;
     min-height: auto;
-    border-radius: 42px;
+    border-radius: 50px;
     background: #ffffff;
-    box-shadow: 0 24px 58px rgba(11, 16, 32, 0.06);
+    box-shadow: 0 28px 70px rgba(11, 16, 32, 0.075);
   }
 
   .mos-desktop-main .plan-subnav-tab {
@@ -2293,8 +2293,9 @@ body *::after {
 
 @media (min-width: 1024px) {
   .mos-desktop-main main:not(.home-main) {
-    background: var(--mos-surface);
-    border: 1px solid rgba(11, 16, 32, 0.045);
-    box-shadow: var(--mos-soft-shadow);
+    background: #ffffff;
+    border: 0;
+    border-radius: 50px;
+    box-shadow: 0 28px 70px rgba(11, 16, 32, 0.075);
   }
 }

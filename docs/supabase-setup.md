@@ -12,12 +12,13 @@ No Supabase:
 
 No SQL Editor:
 
-1. rode o conteúdo de [/Users/npl0/Documents/APPs/MOS valendo/supabase/schema.sql](/Users/npl0/Documents/APPs/MOS%20valendo/supabase/schema.sql)
-2. depois rode o conteúdo de [/Users/npl0/Documents/APPs/MOS valendo/supabase/policies.sql](/Users/npl0/Documents/APPs/MOS%20valendo/supabase/policies.sql)
+1. rode o conteúdo de [/Users/npl0/Documents/APPs/MOS/supabase/schema.sql](/Users/npl0/Documents/APPs/MOS/supabase/schema.sql)
+2. depois rode o conteúdo de [/Users/npl0/Documents/APPs/MOS/supabase/policies.sql](/Users/npl0/Documents/APPs/MOS/supabase/policies.sql)
+3. para habilitar avisos enviados pelo admin, rode também [/Users/npl0/Documents/APPs/MOS/supabase/app_notifications.sql](/Users/npl0/Documents/APPs/MOS/supabase/app_notifications.sql)
 
 ## 3. Configurar o frontend
 
-Abra [/Users/npl0/Documents/APPs/MOS valendo/index.html](/Users/npl0/Documents/APPs/MOS%20valendo/index.html) e preencha:
+Abra [/Users/npl0/Documents/APPs/MOS/index.html](/Users/npl0/Documents/APPs/MOS/index.html) e preencha:
 
 ```html
 <script>
@@ -43,6 +44,7 @@ Com essa configuração, o MOS valendo já fica preparado para:
 - salvar plano alimentar
 - salvar comida consumida
 - salvar feedback
+- criar e ler notificações do admin
 
 ## 5. Próxima camada
 
@@ -57,6 +59,7 @@ Depois da auth funcionando, esta é a base de dados que o app já usa:
 - `supplements`
 - `water_entries`
 - `feedback_entries`
+- `app_notifications`
 
 ## 6. Se você já tinha rodado o schema antes
 
@@ -65,7 +68,7 @@ Se o projeto Supabase foi criado usando uma versão anterior do schema, confira 
 - `plan_focus`
 - `plan_notes`
 
-Se ainda não tiver, rode novamente o conteúdo atualizado de [/Users/npl0/Documents/APPs/MOS valendo/supabase/schema.sql](/Users/npl0/Documents/APPs/MOS%20valendo/supabase/schema.sql).
+Se ainda não tiver, rode novamente o conteúdo atualizado de [/Users/npl0/Documents/APPs/MOS/supabase/schema.sql](/Users/npl0/Documents/APPs/MOS/supabase/schema.sql).
 
 ## Observação
 

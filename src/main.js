@@ -112,10 +112,31 @@ const LOCAL_DEMO_MODE = Boolean(globalThis.MOS_LOCAL_DEMO);
 const STORAGE_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-state" : "mos-stitch-faithful";
 const FORCE_LOGIN_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-force-login" : "mos-force-login";
 const MOS_ADMIN_EMAILS = new Set(["nirlandy@gmail.com", "nirlandy@gmail.com.br", "nirlandy.pinheiro@gmail.com", "pinheironirla@gmail.com"]);
+const MOS_FEEDBACK_EMAIL = "nirlanddy@gmail.com";
 const DEMO_TODAY_KEY = (() => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 })();
+
+function buildFeedbackEmailUrl({ section = "Geral", message = "", profile = {}, auth = {} } = {}) {
+  const name = profile.name || "Usuário MOS!";
+  const email = profile.email || auth.email || "Não informado";
+  const sentAt = new Date().toLocaleString("pt-BR");
+  const subject = `Feedback MOS! - ${section}`;
+  const body = [
+    "Novo feedback enviado pelo MOS!",
+    "",
+    `Nome: ${name}`,
+    `Email: ${email}`,
+    `Seção: ${section}`,
+    `Data: ${sentAt}`,
+    "",
+    "Mensagem:",
+    message,
+  ].join("\n");
+
+  return `mailto:${MOS_FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 const planImages = {
   breakfast:
@@ -1173,13 +1194,14 @@ function ContextNav({ items }) {
   `;
 }
 
-function MenuDrawer({ onClose, onSelect }) {
+function MenuDrawer({ onClose, onSelect, isAdmin = false }) {
   const items = [
     { label: "Início", icon: "home" },
     { label: "Configurar plano", icon: "settings" },
     { label: "Meu perfil", icon: "person" },
     { label: "Minhas Medidas", icon: "straighten" },
     { label: "Sobre o App", icon: "info" },
+    ...(isAdmin ? [{ label: "Admin de notificações", icon: "notifications_active" }] : []),
     { label: "Sair", icon: "logout" },
   ];
   return html`
@@ -1265,7 +1287,7 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
   `;
 }
 
-function DesktopSidebar({ active, onChange, onOpenProfile, onOpenMeasures, onOpenSettings, onOpenAbout, onSignOut }) {
+function DesktopSidebar({ active, onChange, onOpenProfile, onOpenMeasures, onOpenSettings, onOpenAbout, onOpenAdminNotifications, onSignOut, isAdmin = false }) {
   const items = [
     { key: "home", label: "Início", icon: "home" },
     { key: "food", label: "Comida", icon: "restaurant" },
@@ -1278,6 +1300,7 @@ function DesktopSidebar({ active, onChange, onOpenProfile, onOpenMeasures, onOpe
     { label: "Meu perfil", icon: "person", onClick: onOpenProfile },
     { label: "Minhas medidas", icon: "straighten", onClick: onOpenMeasures },
     { label: "Sobre o app", icon: "info", onClick: onOpenAbout },
+    ...(isAdmin ? [{ label: "Admin de notificações", icon: "notifications_active", onClick: onOpenAdminNotifications }] : []),
     { label: "Sair", icon: "logout", onClick: onSignOut, danger: true },
   ];
 
@@ -2406,6 +2429,10 @@ function App() {
         setScreen("about-app");
         return;
       }
+      if (title === "Admin de notificações") {
+        setScreen("admin-notifications");
+        return;
+      }
       if (title === "Sair") {
         askDeleteConfirm({
           title: "Ir para o login",
@@ -2811,6 +2838,18 @@ function App() {
     clearDraft("modal-feedback");
     setModal(null);
     setScreen("about-app");
+    if (typeof window !== "undefined" && MOS_FEEDBACK_EMAIL) {
+      window.location.href = buildFeedbackEmailUrl({
+        section,
+        message,
+        profile: state.profile,
+        auth: state.auth,
+      });
+    }
+    showAuthNotice("Feedback salvo. Também abrimos um e-mail pronto para enviar ao admin.", {
+      tone: "success",
+      title: "Feedback registrado",
+    });
   }
 
   async function sendAdminNotification(formData) {
@@ -6094,7 +6133,7 @@ function App() {
           <section className="mos-info-card space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Nos ajude a melhorar</h2>
-              <p className="text-sm leading-relaxed text-on-surface-variant">Se algo ficou confuso, se você sentiu falta de uma função ou se quer sugerir uma melhoria, pode mandar por aqui. A ideia é que o app evolua junto com sua rotina.</p>
+              <p className="text-sm leading-relaxed text-on-surface-variant">Se algo ficou confuso ou faltou no MOS!, mande por aqui. O feedback fica salvo no app e também abre um e-mail pronto para o admin.</p>
             </div>
             ${latestFeedback
               ? html`
@@ -6168,7 +6207,7 @@ function App() {
           <section className="mos-info-card space-y-3">
             <span className="text-sm font-bold text-[#0F172A]/60">Admin MOS!</span>
             <h1 className="text-[1.9rem] font-black text-[#0F172A] leading-tight">Enviar aviso aos usuários</h1>
-            <p className="text-sm leading-relaxed text-[#526070]">Página secreta para criar mensagens simples na central de notificações. Use com texto curto e direto.</p>
+            <p className="text-sm leading-relaxed text-[#526070]">Página secreta para criar mensagens simples na central de notificações. Para funcionar online, rode o arquivo supabase/app_notifications.sql no Supabase uma vez.</p>
           </section>
 
           <form
@@ -6575,7 +6614,9 @@ function App() {
             onOpenMeasures=${() => setScreen("measures")}
             onOpenSettings=${openDesktopSettings}
             onOpenAbout=${() => setScreen("about-app")}
+            onOpenAdminNotifications=${() => setScreen("admin-notifications")}
             onSignOut=${() => openMenuItem("Sair")}
+            isAdmin=${isAdminUser}
           />
           <${DesktopRightRail}
             onSearch=${openDesktopSearch}
@@ -6613,7 +6654,7 @@ function App() {
           : null}
       `}
 
-      ${appRoute === "app" && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} />`}
+      ${appRoute === "app" && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} isAdmin=${isAdminUser} />`}
       ${appRoute === "app" && authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
       ${
         authReady &&
@@ -7081,8 +7122,11 @@ function App() {
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-jet-black">Mensagem</label>
-                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte com calma o que você sentiu, o que não funcionou bem ou o que gostaria de ver no MOS!" required></textarea>
+                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte o que não ficou claro, o que falhou ou o que você gostaria de melhorar no MOS!" required></textarea>
               </div>
+              <p className="text-xs leading-relaxed text-on-surface-variant">
+                Ao enviar, o MOS! salva o feedback e abre um rascunho de e-mail para ${MOS_FEEDBACK_EMAIL}.
+              </p>
               <button
                 className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
                   isDraftDirty("modal-feedback") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
