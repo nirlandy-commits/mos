@@ -4486,7 +4486,6 @@ function App() {
   function renderPlanModeHeader({ activeMode, headline, support, nowHour, profileName }) {
     return html`
       <section className="plan-mode-header">
-        <${renderPlanModeTabs} activeMode=${activeMode} />
         <div className="plan-mode-copy">
           <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
           <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
@@ -4494,6 +4493,7 @@ function App() {
           </h1>
           ${support ? html`<p className="text-[0.95rem] text-[#334155]">${support}</p>` : null}
         </div>
+        <${renderPlanModeTabs} activeMode=${activeMode} />
       </section>
     `;
   }
@@ -5580,12 +5580,15 @@ function App() {
         <main className="pt-24 px-6 max-w-md mx-auto space-y-8 pb-64">
           <${renderPlanModeHeader}
             activeMode="supplements"
-            headline="Sua rotina de hoje"
-            support="Veja horários, uso e ações em um só lugar."
+            headline="Seu plano, organizado pra você"
             nowHour=${nowHour}
             profileName=${profileName}
           />
           <div className="space-y-6">
+            <section className="space-y-1">
+              <h2 className="text-xl font-bold text-[#0F172A]">Suplementação</h2>
+              <p className="text-[0.95rem] text-[#526070]">Horários, doses e ações em um só lugar.</p>
+            </section>
             ${sortedCategories.map((category) => html`
               <section className="space-y-3">
                 <div className="space-y-1">
@@ -5851,7 +5854,7 @@ function App() {
           onRight=${openNotifications}
         />
         <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="bg-white rounded-xl p-6 border border-[#dde8f3] space-y-5">
+          <section className="mos-info-card mos-info-card--hero space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="text-sm text-[#4558C8]">Dados atuais</span>
@@ -5864,24 +5867,24 @@ function App() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#292B2D] text-white rounded-[10px] p-4">
-                <span className="text-sm text-white/65 block mb-2">Peso atual</span>
-                <strong className="text-[2rem] font-bold leading-none">${latestMeasure.weight}</strong>
-                <span className="text-sm text-white/72 ml-1">kg</span>
-                <p className="text-sm text-white/65 mt-3">${formatMetricDelta(latestMeasure.weight, previousMeasure.weight, " kg")}</p>
+              <div className="mos-info-tile mos-info-tile--metric block">
+                <span className="text-sm text-on-surface-variant block mb-2">Peso atual</span>
+                <strong className="text-[2rem] font-bold leading-none text-jet-black">${latestMeasure.weight}</strong>
+                <span className="text-sm text-on-surface-variant ml-1">kg</span>
+                <p className="text-sm text-on-surface-variant mt-3">${formatMetricDelta(latestMeasure.weight, previousMeasure.weight, " kg")}</p>
               </div>
-              <div className="bg-[#eef2ff] rounded-[10px] p-4">
+              <div className="mos-info-tile mos-info-tile--metric block">
                 <span className="text-sm text-[#4558C8] block mb-2">IMC</span>
                 <strong className="text-[2rem] font-bold leading-none text-jet-black">${latestBmi}</strong>
                 <p className="text-sm text-on-surface-variant mt-3">${formatMetricDelta(latestBmi, previousBmi)}</p>
               </div>
-              <div className="bg-white border border-[#dde8f3] rounded-[10px] p-4">
+              <div className="mos-info-tile mos-info-tile--metric block">
                 <span className="text-sm text-on-surface-variant block mb-2">Gordura corporal</span>
                 <strong className="text-[1.75rem] font-bold leading-none text-jet-black">${latestMeasure.bodyFat}</strong>
                 <span className="text-sm text-on-surface-variant ml-1">%</span>
                 <p className="text-sm text-[#EF5F37] mt-3">${formatMetricDelta(latestMeasure.bodyFat, previousMeasure.bodyFat, "%")}</p>
               </div>
-              <div className="bg-white border border-[#dde8f3] rounded-[10px] p-4">
+              <div className="mos-info-tile mos-info-tile--metric block">
                 <span className="text-sm text-on-surface-variant block mb-2">Massa muscular</span>
                 <strong className="text-[1.75rem] font-bold leading-none text-jet-black">${latestMeasure.muscleMass}</strong>
                 <span className="text-sm text-on-surface-variant ml-1">kg</span>
@@ -5891,7 +5894,7 @@ function App() {
           </section>
 
           <section className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl p-4 border border-[#dde8f3] space-y-4 shadow-[0_12px_30px_rgba(69,88,200,0.06)]">
+            <div className="mos-info-tile block space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-jet-black">Peso</h2>
                 <span className="text-sm text-on-surface-variant">${latestMeasure.weight} kg</span>
@@ -5913,7 +5916,7 @@ function App() {
               </svg>
               <p className="text-sm text-on-surface-variant">Evolução entre as últimas atualizações.</p>
             </div>
-            <div className="bg-white rounded-xl p-4 border border-[#dde8f3] space-y-4 shadow-[0_12px_30px_rgba(239,95,55,0.06)]">
+            <div className="mos-info-tile block space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-jet-black">Gordura</h2>
                 <span className="text-sm text-on-surface-variant">${latestMeasure.bodyFat}%</span>
@@ -5937,7 +5940,7 @@ function App() {
             </div>
           </section>
 
-          <section className="bg-white rounded-xl p-6 border border-[#dde8f3] space-y-5">
+          <section className="mos-info-card space-y-5">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-jet-black">Composição atual</h2>
               <p className="text-sm text-on-surface-variant">Os indicadores abaixo ajudam a acompanhar o que mais importa para o MOS!</p>
