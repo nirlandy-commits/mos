@@ -260,6 +260,7 @@ select {
 }
 
 .mos-desktop-utility {
+  position: relative;
   width: 2.85rem;
   height: 2.85rem;
   border-radius: 999px;
@@ -269,6 +270,51 @@ select {
   align-items: center;
   justify-content: center;
   box-shadow: 0 10px 24px rgba(11, 16, 32, 0.045);
+}
+
+.mos-notification-button {
+  position: relative;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mos-notification-badge {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.48rem;
+  min-width: 1.18rem;
+  height: 1.18rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: var(--mos-lime);
+  color: #000000;
+  border: 2px solid var(--mos-page-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  box-shadow: 0 8px 16px rgba(11, 16, 32, 0.14);
+  pointer-events: none;
+}
+
+.mos-notification-count-pill {
+  min-width: 1.65rem;
+  height: 1.45rem;
+  padding: 0 0.48rem;
+  border-radius: 999px;
+  background: var(--mos-lime);
+  color: #000000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 950;
 }
 
 .mos-desktop-account-menu {

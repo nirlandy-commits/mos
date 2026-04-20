@@ -954,7 +954,15 @@ function MosWordmark({ className = "" }) {
   `;
 }
 
-function TopBar({ title = "MOS!", leftIcon = "menu", onLeft, onSearch, onRight, centerBold = true, rightSlot = null }) {
+function NotificationBadge({ count = 0 }) {
+  const value = Number(count) || 0;
+  if (value <= 0) return null;
+  return html`<span className="mos-notification-badge">${value > 9 ? "9+" : value}</span>`;
+}
+
+function TopBar({ title = "MOS!", leftIcon = "menu", onLeft, onSearch, onRight, centerBold = true, rightSlot = null, notificationCount }) {
+  const activeNotificationCount = Number(notificationCount ?? globalThis.MOS_NOTIFICATION_COUNT ?? 0) || 0;
+
   return html`
     <header className="top-bar headroom headroom--pinned fixed top-0 w-full z-50 bg-transparent">
       <div className="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto backdrop-blur-sm bg-white/0">
@@ -970,8 +978,9 @@ function TopBar({ title = "MOS!", leftIcon = "menu", onLeft, onSearch, onRight, 
             <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onSearch}>
               <${Icon} name="search" className="text-[#292B2D]" />
             </button>
-            <button type="button" className="hover:opacity-80 transition-opacity active:scale-95" onClick=${onRight}>
+            <button type="button" className="mos-notification-button hover:opacity-80 transition-opacity active:scale-95" onClick=${onRight} aria-label=${activeNotificationCount > 0 ? `${activeNotificationCount} notificações` : "Notificações"}>
               <${Icon} name="notifications" className="text-[#292B2D]" />
+              <${NotificationBadge} count=${activeNotificationCount} />
             </button>
           </div>`
         }
@@ -987,7 +996,10 @@ function NotificationsPanel({ items, onClose, onOpen, onClear }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <span className="text-[0.6875rem] font-medium text-royal-blue">Central</span>
-            <h2 className="text-[1.5rem] font-bold text-jet-black">Notificações</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[1.5rem] font-bold text-jet-black">Notificações</h2>
+              ${items.length ? html`<span className="mos-notification-count-pill">${items.length > 9 ? "9+" : items.length}</span>` : null}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button type="button" className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95" onClick=${onClear} title="Limpar notificações">
@@ -1379,6 +1391,7 @@ function DesktopSearchPanel({ query, results, onQueryChange, onClose, onPick }) 
 function DesktopRightRail({
   onSearch,
   onOpenNotifications,
+  notificationCount = 0,
   avatarLabel,
   accountMenuOpen,
   onToggleAccountMenu,
@@ -1409,6 +1422,7 @@ function DesktopRightRail({
           </button>
           <button type="button" className="mos-desktop-utility" onClick=${onOpenNotifications}>
             <${Icon} name="notifications" className="text-[1.1rem] text-[#334155]" />
+            <${NotificationBadge} count=${notificationCount} />
           </button>
           <div className="relative">
             <button type="button" className="mos-desktop-avatar" onClick=${onToggleAccountMenu}>
@@ -2050,6 +2064,7 @@ function App() {
     },
     ].filter(Boolean);
   const notifications = notificationsCleared ? [] : [...adminNotifications, ...systemNotifications];
+  globalThis.MOS_NOTIFICATION_COUNT = notifications.length;
   const currentDayMeals = state.consumedMeals[date] || [];
   const profileInitial = (state.profile.name?.trim()?.[0] || state.profile.email?.trim()?.[0] || "M").toUpperCase();
   const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
@@ -6621,6 +6636,7 @@ function App() {
           <${DesktopRightRail}
             onSearch=${openDesktopSearch}
             onOpenNotifications=${openNotifications}
+            notificationCount=${notifications.length}
             avatarLabel=${profileInitial}
             accountMenuOpen=${desktopAccountMenuOpen}
             onToggleAccountMenu=${() => setDesktopAccountMenuOpen((current) => !current)}
