@@ -5701,25 +5701,25 @@ function App() {
             <p className="text-[0.95rem] text-[#334155]">Veja quanto entrou e quanto falta para a meta.</p>
           </section>
           <section className="water-focus-hero">
-            <div className="space-y-2">
-              <span className="text-[0.78rem] font-bold text-[#64748B]">Status</span>
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <div className="flex items-baseline gap-2">
-                    <strong className="text-[3.6rem] font-black leading-none text-[#0F172A]">${Math.round(water)}</strong>
-                    <span className="text-[1rem] font-bold text-[#475569]">ml</span>
-                  </div>
-                  <p className="text-[0.95rem] font-semibold text-[#475569]">de ${waterGoal} ml</p>
-                </div>
-                <span className="water-progress-chip">${Math.round(waterProgress)}%</span>
+            <div className="water-status-head">
+              <span className="text-[0.78rem] font-black text-[#64748B]">Status da água</span>
+              <span className="water-progress-chip">${Math.round(waterProgress)}%</span>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <h2 className="water-primary-number">
+                  ${remainingWater > 0 ? `Faltam ${remainingWater}` : "Meta batida"}
+                  ${remainingWater > 0 ? html`<span>ml</span>` : null}
+                </h2>
+                <p className="water-status-copy">${Math.round(water)} de ${waterGoal} ml consumidos hoje</p>
               </div>
               <div className="water-progress-track" aria-hidden="true">
                 <div className="water-progress-fill" style=${{ width: `${waterProgress}%` }}></div>
               </div>
             </div>
-            <div className="water-remaining-panel">
-              <p className="text-[1.25rem] font-black text-[#0F172A]">${remainingWater > 0 ? `Faltam ${remainingWater} ml` : "Meta batida"}</p>
-              <p className="text-[0.9rem] text-[#475569]">${waterInsight}</p>
+            <div className="water-insight-line">
+              <${Icon} name="water_drop" className="text-[1.05rem]" filled=${true} />
+              <p>${waterInsight}</p>
             </div>
             ${waterHistoryDate !== todayKey
               ? html`
