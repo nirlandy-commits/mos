@@ -5695,7 +5695,7 @@ function App() {
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
           <section className="space-y-3">
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2rem, 6.5vw, 3rem)", lineHeight: "1.06" }}>
               Água hoje
             </h1>
             <p className="text-[0.95rem] text-[#334155]">Veja quanto entrou e quanto falta para a meta.</p>
