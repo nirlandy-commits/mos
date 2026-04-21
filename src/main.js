@@ -3881,8 +3881,8 @@ function App() {
       {
         id: "comida",
         eyebrow: "Comida",
-        title: "Registre o que entrou. Veja o que ainda cabe.",
-        copy: "O MOS! transforma refeições em leitura rápida: consumido, meta, restante e onde ajustar.",
+        title: "Comida registrada sem perder o rumo.",
+        copy: "Veja o que já entrou, quanto ainda cabe e onde ajustar a próxima refeição.",
         stat: "903 kcal",
         statLabel: "livres hoje",
         color: "orange",
@@ -3891,8 +3891,8 @@ function App() {
       {
         id: "agua",
         eyebrow: "Água",
-        title: "Um clique para somar água. Sem planilha mental.",
-        copy: "A meta fica clara, o que falta aparece em destaque e os registros do dia ficam no lugar certo.",
+        title: "Água clara, meta visível.",
+        copy: "Registre em um toque e veja quanto falta para fechar a meta do dia.",
         stat: "550 ml",
         statLabel: "faltando",
         color: "cyan",
@@ -3901,8 +3901,8 @@ function App() {
       {
         id: "treino",
         eyebrow: "Treino",
-        title: "Abra o treino definido e registre a sessão.",
-        copy: "O foco não é inventar moda. É executar o treino certo, marcar progresso e seguir a rotina.",
+        title: "Treino definido, execução simples.",
+        copy: "Abra o treino, registre a sessão e mantenha o histórico no mesmo lugar.",
         stat: "1 sessão",
         statLabel: "próxima ação",
         color: "lime",
@@ -3911,8 +3911,8 @@ function App() {
       {
         id: "plano",
         eyebrow: "Plano",
-        title: "Seu plano alimentar organizado para o dia.",
-        copy: "O que foi definido por um profissional vira roteiro: horários, alimentos, suplementos e trocas.",
+        title: "Seu plano organizado para hoje.",
+        copy: "Horários, alimentos, suplementos e trocas ficam claros para você seguir com segurança.",
         stat: "4 passos",
         statLabel: "no roteiro",
         color: "blue",
@@ -3964,10 +3964,9 @@ function App() {
           <section className="mos-landing-hero">
             <div className="mos-landing-hero-copy">
               <span className="mos-landing-kicker">Rotina definida. Execução clara.</span>
-              <h1>O app para seguir o que já foi pensado pra você.</h1>
+              <h1>Siga sua rotina com clareza.</h1>
               <p>
-                Dieta, água, treino e plano alimentar em um painel simples. O MOS! não substitui seu nutri ou personal:
-                ele organiza o dia para você executar melhor.
+                MOS! organiza comida, água, treino e plano em um painel simples para você executar o que já foi definido.
               </p>
               <div className="mos-landing-actions">
                 <button className="mos-landing-primary" onClick=${openApp}>
@@ -4025,9 +4024,9 @@ function App() {
           </section>
 
           <section className="mos-landing-manifest">
-            <span>O MOS! existe para uma coisa:</span>
-            <h2>tirar sua rotina da cabeça e colocar no lugar certo.</h2>
-            <p>Você já tem um plano. O que faltava era uma forma simples de acompanhar e executar sem se perder no dia.</p>
+            <span>Por que existe</span>
+            <h2>Menos improviso. Mais execução.</h2>
+            <p>Você já sabe o que precisa seguir. O MOS! organiza o dia para a próxima decisão ficar mais simples.</p>
           </section>
 
           <section className="mos-landing-sections">
@@ -4056,8 +4055,8 @@ function App() {
           <section className="mos-landing-brain" id="cerebro">
             <div className="mos-landing-brain-copy">
               <span className="mos-landing-kicker">Cérebro MOS!</span>
-              <h2>Uma leitura objetiva do dia. Sem conselho genérico.</h2>
-              <p>O MOS! olha para calorias restantes, água e treino registrado para sugerir o próximo passo com clareza.</p>
+              <h2>O MOS! lê o dia e mostra o próximo passo.</h2>
+              <p>Regras simples analisam calorias restantes, água e treino para gerar uma orientação direta.</p>
             </div>
             <div className="mos-landing-brain-panel">
               <div className="mos-landing-brain-tabs">
@@ -4083,7 +4082,7 @@ function App() {
 
           <section className="mos-landing-final">
             <span>Pronto para testar?</span>
-            <h2>Acesse o MOS! e veja seu dia com clareza.</h2>
+            <h2>Entre e organize seu dia em poucos segundos.</h2>
             <button className="mos-landing-primary" onClick=${openApp}>
               <span>Acessar o MOS!</span>
               <${Icon} name="arrow_forward" />
