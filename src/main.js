@@ -316,6 +316,53 @@ const defaultState = {
   },
 };
 
+const emptyUserState = {
+  ...structuredClone(defaultState),
+  auth: {
+    registered: false,
+    signedIn: false,
+    email: "",
+    password: "",
+  },
+  profile: {
+    ...structuredClone(defaultState.profile),
+    activeGoal: "",
+    planFocus: "",
+    planNotes: "",
+    name: "",
+    email: "",
+    city: "",
+    birthday: "",
+    weight: 0,
+    height: 0,
+    age: 0,
+    targetWeight: 0,
+  },
+  feedbackEntries: [],
+  appNotifications: [],
+  measureEntries: [],
+  consumedMeals: {},
+  planMeals: [],
+  supplements: [],
+  trainingPlans: [],
+  trainingHistory: [],
+  water: {},
+  waterHistory: {},
+};
+
+const initialState = LOCAL_DEMO_MODE ? defaultState : emptyUserState;
+
+const emptyMeasureEntry = {
+  id: "measure-empty",
+  date: DEMO_TODAY_KEY,
+  weight: 0,
+  height: 0,
+  bodyFat: 0,
+  muscleMass: 0,
+  bodyWater: 0,
+  metabolicAge: 0,
+};
+
 function uid(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -825,7 +872,86 @@ function normalizeSupplement(item = {}, index = 0) {
   };
 }
 
+const legacyDemoProfileNames = new Set([defaultState.profile.name, "Nirlandy Leitão Pinheiro"]);
+const legacyDemoActiveGoals = new Set(["Plano atual: Perder 5kg"]);
+const legacyDemoMeasureIds = new Set(defaultState.measureEntries.map((entry) => entry.id));
+const legacyDemoPlanMealIds = new Set(defaultState.planMeals.map((meal) => meal.id));
+const legacyDemoSupplementIds = new Set(defaultState.supplements.map((item) => item.id));
+const legacyDemoTrainingIds = new Set(defaultState.trainingPlans.map((plan) => plan.id));
+
+function isLegacyDemoId(item = {}, prefix = "") {
+  return String(item.id || "").startsWith(prefix);
+}
+
+function stripLegacyDemoList(items = [], legacyIds = new Set(), prefix = "") {
+  if (LOCAL_DEMO_MODE || !Array.isArray(items)) return items;
+  return items.filter((item) => {
+    const id = String(item?.id || "");
+    if (legacyIds.has(id)) return false;
+    if (prefix && id.startsWith(prefix)) return false;
+    return true;
+  });
+}
+
+function stripLegacyDemoConsumedMeals(mealsByDate = {}) {
+  if (LOCAL_DEMO_MODE || !mealsByDate || typeof mealsByDate !== "object") return mealsByDate || {};
+
+  return Object.fromEntries(
+    Object.entries(mealsByDate)
+      .map(([key, meals]) => [
+        key,
+        Array.isArray(meals) ? meals.filter((meal) => !isLegacyDemoId(meal, "meal-demo")) : [],
+      ])
+      .filter(([, meals]) => meals.length),
+  );
+}
+
+function stripLegacyDemoWaterHistory(entriesByDate = {}) {
+  if (LOCAL_DEMO_MODE || !entriesByDate || typeof entriesByDate !== "object") return entriesByDate || {};
+
+  return Object.fromEntries(
+    Object.entries(entriesByDate)
+      .map(([key, entries]) => [
+        key,
+        Array.isArray(entries) ? entries.filter((entry) => !isLegacyDemoId(entry, "water-demo")) : [],
+      ])
+      .filter(([, entries]) => entries.length),
+  );
+}
+
+function stripLegacyDemoWaterTotals(waterTotals = {}) {
+  if (LOCAL_DEMO_MODE || !waterTotals || typeof waterTotals !== "object") return waterTotals || {};
+  return Object.fromEntries(
+    Object.entries(waterTotals).filter(([key, value]) => !(key === DEMO_TODAY_KEY && Number(value) === defaultState.water[DEMO_TODAY_KEY])),
+  );
+}
+
+function cleanProductionText(value = "", forbiddenValues = new Set()) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (!LOCAL_DEMO_MODE && forbiddenValues.has(text)) return "";
+  return text;
+}
+
 function migrate(raw) {
+  const rawPlanMeals = raw.planMeals || raw.mealPlan;
+  const rawConsumedMeals = raw.consumedMeals || raw.foodLog || {};
+  const normalizedMeasures = Array.isArray(raw.measureEntries)
+    ? stripLegacyDemoList(raw.measureEntries, legacyDemoMeasureIds).map((entry, index) => normalizeMeasureEntry(entry, index))
+    : initialState.measureEntries;
+  const normalizedConsumedMeals = stripLegacyDemoConsumedMeals(rawConsumedMeals);
+  const normalizedPlanMeals = Array.isArray(rawPlanMeals)
+    ? stripLegacyDemoList(rawPlanMeals, legacyDemoPlanMealIds).map((meal, index) => normalizeMeal(meal, index))
+    : initialState.planMeals;
+  const normalizedSupplements = Array.isArray(raw.supplements)
+    ? stripLegacyDemoList(raw.supplements, legacyDemoSupplementIds).map((item, index) => normalizeSupplement(item, index))
+    : initialState.supplements;
+  const normalizedTrainingPlans = Array.isArray(raw.trainingPlans)
+    ? stripLegacyDemoList(raw.trainingPlans, legacyDemoTrainingIds).map((plan, index) => normalizeTrainingPlan(plan, index))
+    : initialState.trainingPlans;
+  const normalizedWater = stripLegacyDemoWaterTotals(raw.water || {});
+  const normalizedWaterHistory = stripLegacyDemoWaterHistory(raw.waterHistory || {});
+
   return {
     auth: {
       registered: raw.auth?.registered ?? Boolean(raw.profile?.email),
@@ -836,13 +962,13 @@ function migrate(raw) {
     profile: {
       calorieTarget: Number(raw.profile?.calorieTarget) || 2400,
       waterTargetMl: Number(raw.profile?.waterTargetMl) || 3000,
-      activeGoal: raw.profile?.activeGoal || "Plano atual: Perder 5kg",
-      planFocus: raw.profile?.planFocus || defaultState.profile.planFocus,
-      planNotes: raw.profile?.planNotes || defaultState.profile.planNotes,
-      name: raw.profile?.name || defaultState.profile.name,
-      email: raw.profile?.email || defaultState.profile.email,
-      city: raw.profile?.city || defaultState.profile.city,
-      birthday: raw.profile?.birthday || defaultState.profile.birthday,
+      activeGoal: cleanProductionText(raw.profile?.activeGoal, legacyDemoActiveGoals) || initialState.profile.activeGoal,
+      planFocus: raw.profile?.planFocus || initialState.profile.planFocus,
+      planNotes: raw.profile?.planNotes || initialState.profile.planNotes,
+      name: cleanProductionText(raw.profile?.name, legacyDemoProfileNames) || initialState.profile.name,
+      email: raw.profile?.email || initialState.profile.email,
+      city: raw.profile?.city || initialState.profile.city,
+      birthday: raw.profile?.birthday || initialState.profile.birthday,
       weight: Number(raw.profile?.weight) || 0,
       height: Number(raw.profile?.height) || 0,
       age: Number(raw.profile?.age) || 0,
@@ -850,35 +976,30 @@ function migrate(raw) {
     },
     feedbackEntries: Array.isArray(raw.feedbackEntries) ? raw.feedbackEntries : [],
     appNotifications: Array.isArray(raw.appNotifications) ? raw.appNotifications : [],
-    measureEntries: Array.isArray(raw.measureEntries)
-      ? raw.measureEntries.map((entry, index) => normalizeMeasureEntry(entry, index))
-      : defaultState.measureEntries,
+    measureEntries: normalizedMeasures,
     consumedMeals: (() => {
-      const nextConsumedMeals = raw.consumedMeals || raw.foodLog || {};
-      if (!LOCAL_DEMO_MODE) return nextConsumedMeals;
+      if (!LOCAL_DEMO_MODE) return normalizedConsumedMeals;
       return {
-        ...defaultState.consumedMeals,
-        ...nextConsumedMeals,
+        ...initialState.consumedMeals,
+        ...normalizedConsumedMeals,
       };
     })(),
-    planMeals: Array.isArray(raw.planMeals || raw.mealPlan) ? (raw.planMeals || raw.mealPlan).map((meal, index) => normalizeMeal(meal, index)) : defaultState.planMeals,
-    supplements: Array.isArray(raw.supplements) ? raw.supplements.map((item, index) => normalizeSupplement(item, index)) : defaultState.supplements,
-    trainingPlans: Array.isArray(raw.trainingPlans) ? raw.trainingPlans.map((plan, index) => normalizeTrainingPlan(plan, index)) : defaultState.trainingPlans,
+    planMeals: normalizedPlanMeals,
+    supplements: normalizedSupplements,
+    trainingPlans: normalizedTrainingPlans,
     trainingHistory: Array.isArray(raw.trainingHistory) ? raw.trainingHistory : [],
     water: (() => {
-      const nextWater = raw.water || {};
-      if (!LOCAL_DEMO_MODE) return nextWater;
+      if (!LOCAL_DEMO_MODE) return normalizedWater;
       return {
-        ...defaultState.water,
-        ...nextWater,
+        ...initialState.water,
+        ...normalizedWater,
       };
     })(),
     waterHistory: (() => {
-      const nextWaterHistory = raw.waterHistory || {};
-      if (!LOCAL_DEMO_MODE) return nextWaterHistory;
+      if (!LOCAL_DEMO_MODE) return normalizedWaterHistory;
       return {
-        ...defaultState.waterHistory,
-        ...nextWaterHistory,
+        ...initialState.waterHistory,
+        ...normalizedWaterHistory,
       };
     })(),
   };
@@ -891,7 +1012,7 @@ function loadState() {
   } catch (error) {
     console.error(error);
   }
-  return structuredClone(defaultState);
+  return structuredClone(initialState);
 }
 
 function shouldOpenLoginAfterReload() {
@@ -1897,9 +2018,9 @@ function App() {
         if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
       } else {
         setState((current) => ({
-          ...structuredClone(defaultState),
+          ...structuredClone(initialState),
           auth: {
-            ...structuredClone(defaultState).auth,
+            ...structuredClone(initialState).auth,
             registered: current.auth?.registered ?? false,
             signedIn: false,
             email: current.auth?.email || current.profile?.email || "",
@@ -1966,7 +2087,7 @@ function App() {
   const water = state.water[waterHistoryDate] ?? 0;
   const waterGoal = Number(state.profile.waterTargetMl) || 3000;
   const measureEntries = [...(state.measureEntries || [])].sort((a, b) => a.date.localeCompare(b.date));
-  const latestMeasure = measureEntries[measureEntries.length - 1] || defaultState.measureEntries[defaultState.measureEntries.length - 1];
+  const latestMeasure = measureEntries[measureEntries.length - 1] || emptyMeasureEntry;
   const previousMeasure = measureEntries[measureEntries.length - 2] || latestMeasure;
   const latestBmi = computeBmi(latestMeasure.weight, latestMeasure.height);
   const previousBmi = computeBmi(previousMeasure.weight, previousMeasure.height);
@@ -2008,7 +2129,10 @@ function App() {
   const isSignedIn = !["welcome", "signup", "login", "recover-password", "reset-password", "legal"].includes(screen);
   const adminEmail = String(state.profile.email || state.auth.email || "").toLowerCase();
   const isAdminUser = LOCAL_DEMO_MODE || MOS_ADMIN_EMAILS.has(adminEmail) || adminEmail.includes("nirlandy") || globalThis.localStorage?.getItem("mos-admin") === "1";
-  const adminNotifications = (state.appNotifications || []).map((item) => ({
+  const markerNotificationPattern = /(teste|aqui eu envio|test mos)/i;
+  const adminNotifications = (state.appNotifications || [])
+    .filter((item) => !markerNotificationPattern.test(`${item.title || ""} ${item.body || ""}`))
+    .map((item) => ({
     id: `admin-${item.id}`,
     icon: "campaign",
     title: item.title || "Aviso do MOS!",
@@ -2024,22 +2148,6 @@ function App() {
       body: `Hora de revisar o lembrete de ${state.supplements[0].name.toLowerCase()} e manter a rotina em dia.`,
       tag: "Suplementos",
       action: () => setScreen("supplements"),
-    },
-    {
-      id: "measures-update",
-      icon: "monitor_weight",
-      title: "Dados pessoais desatualizados",
-      body: "Atualize peso e medidas para o MOS! calcular seu progresso com mais precisão.",
-      tag: "Perfil",
-      action: () => setScreen("measures"),
-    },
-    {
-      id: "app-news",
-      icon: "tips_and_updates",
-      title: "Melhorias no app",
-      body: "A Home e a central de notificações receberam ajustes para o uso diário ficar mais claro.",
-      tag: "Novidades",
-      action: () => setScreen("app-news"),
     },
     ].filter(Boolean);
   const notifications = notificationsCleared ? [] : [...adminNotifications, ...systemNotifications];
@@ -2461,9 +2569,9 @@ function App() {
             }
 
             const nextState = {
-              ...structuredClone(defaultState),
+              ...structuredClone(initialState),
               auth: {
-                ...structuredClone(defaultState).auth,
+                ...structuredClone(initialState).auth,
                 registered: true,
                 signedIn: false,
                 email: nextEmail,
@@ -3835,7 +3943,7 @@ function App() {
               <input className="w-full h-14 px-4 rounded-[10px] mos-auth-input" value=${signupForm.name} onInput=${(e) => {
                 const value = e?.currentTarget?.value ?? e?.target?.value ?? "";
                 setSignupForm((current) => ({ ...current, name: value }));
-              }} placeholder="Ex.: Nirlandy" />
+              }} placeholder="Ex.: Seu nome" />
             </div>
             <div className="space-y-2">
               <label className="text-[0.8rem] font-bold text-[#111]">E-mail</label>
