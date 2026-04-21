@@ -1661,6 +1661,7 @@ function App() {
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
   const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
+  const [landingSignal, setLandingSignal] = useState("comida");
   const [searchOpenFrom, setSearchOpenFrom] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [foodDate, setFoodDate] = useState(getTodayKey());
@@ -3862,24 +3863,239 @@ function App() {
   }
 
   function renderLanding() {
+    const openApp = () => {
+      navigateMosRoute("app");
+      setAppRoute("app");
+      setScreen(state.auth?.signedIn ? "home" : "welcome");
+    };
+
+    const navItems = [
+      ["Início", "#inicio"],
+      ["Comida", "#comida"],
+      ["Água", "#agua"],
+      ["Treino", "#treino"],
+      ["Plano", "#plano"],
+    ];
+
+    const landingSections = [
+      {
+        id: "comida",
+        eyebrow: "Comida",
+        title: "Registre o que entrou. Veja o que ainda cabe.",
+        copy: "O MOS! transforma refeições em leitura rápida: consumido, meta, restante e onde ajustar.",
+        stat: "903 kcal",
+        statLabel: "livres hoje",
+        color: "orange",
+        icon: "restaurant",
+      },
+      {
+        id: "agua",
+        eyebrow: "Água",
+        title: "Um clique para somar água. Sem planilha mental.",
+        copy: "A meta fica clara, o que falta aparece em destaque e os registros do dia ficam no lugar certo.",
+        stat: "550 ml",
+        statLabel: "faltando",
+        color: "cyan",
+        icon: "water_drop",
+      },
+      {
+        id: "treino",
+        eyebrow: "Treino",
+        title: "Abra o treino definido e registre a sessão.",
+        copy: "O foco não é inventar moda. É executar o treino certo, marcar progresso e seguir a rotina.",
+        stat: "1 sessão",
+        statLabel: "próxima ação",
+        color: "lime",
+        icon: "fitness_center",
+      },
+      {
+        id: "plano",
+        eyebrow: "Plano",
+        title: "Seu plano alimentar organizado para o dia.",
+        copy: "O que foi definido por um profissional vira roteiro: horários, alimentos, suplementos e trocas.",
+        stat: "4 passos",
+        statLabel: "no roteiro",
+        color: "blue",
+        icon: "article",
+      },
+    ];
+
+    const landingBrain = {
+      comida: {
+        label: "Comida",
+        input: { caloriesConsumed: 1497, calorieTarget: 2400, waterConsumedMl: 2450, waterTargetMl: 3000, trainingDone: false },
+      },
+      agua: {
+        label: "Água",
+        input: { caloriesConsumed: 900, calorieTarget: 2400, waterConsumedMl: 500, waterTargetMl: 3000, trainingDone: false },
+      },
+      treino: {
+        label: "Treino",
+        input: { caloriesConsumed: 1600, calorieTarget: 2400, waterConsumedMl: 2600, waterTargetMl: 3000, trainingDone: false },
+      },
+      plano: {
+        label: "Plano",
+        input: { caloriesConsumed: 1800, calorieTarget: 2400, waterConsumedMl: 3000, waterTargetMl: 3000, trainingDone: true },
+      },
+    };
+    const selectedBrain = landingBrain[landingSignal] || landingBrain.comida;
+    const selectedBrainState = calculateMosState(selectedBrain.input);
+    const selectedBrainSignals = calculateMosExecutionSignals(selectedBrain.input);
+    const selectedBrainMessage = generateMosMainMessage(selectedBrainState);
+    const selectedBrainRecommendation = generateMosShortRecommendation(selectedBrainState);
+    const selectedBrainInsight = generateMosOperationalInsight(selectedBrainSignals);
+
     return html`
-      <div className="min-h-screen bg-background text-on-surface">
-        <main className="min-h-screen px-6 max-w-md mx-auto flex flex-col items-start justify-center gap-8">
-          <div className="space-y-4">
+      <div className="mos-landing" id="inicio">
+        <header className="mos-landing-nav">
+          <a className="mos-landing-brand" href="#inicio" aria-label="MOS!">
             <${MosWordmark} className="mos-wordmark--landing" />
-            <h1 className="text-[2.8rem] leading-[0.94] font-black text-[#0F172A]">Tudo que você precisa para seguir sua rotina, em um só lugar.</h1>
-          </div>
-          <button
-            className="w-full h-14 rounded-[10px] bg-[#111] text-white font-bold text-base active:scale-95 transition-transform"
-            onClick=${() => {
-              navigateMosRoute("app");
-              setAppRoute("app");
-              setScreen(state.auth?.signedIn ? "home" : "welcome");
-            }}
-          >
-            Acessar o MOS!
+          </a>
+          <nav className="mos-landing-links" aria-label="Navegação da landing">
+            ${navItems.map(([label, href]) => html`<a href=${href}>${label}</a>`)}
+          </nav>
+          <button className="mos-landing-nav-cta" onClick=${openApp}>
+            <span>Acessar o MOS!</span>
+            <${Icon} name="arrow_forward" />
           </button>
+        </header>
+
+        <main>
+          <section className="mos-landing-hero">
+            <div className="mos-landing-hero-copy">
+              <span className="mos-landing-kicker">Rotina definida. Execução clara.</span>
+              <h1>O app para seguir o que já foi pensado pra você.</h1>
+              <p>
+                Dieta, água, treino e plano alimentar em um painel simples. O MOS! não substitui seu nutri ou personal:
+                ele organiza o dia para você executar melhor.
+              </p>
+              <div className="mos-landing-actions">
+                <button className="mos-landing-primary" onClick=${openApp}>
+                  <span>Começar agora</span>
+                  <${Icon} name="arrow_forward" />
+                </button>
+                <a className="mos-landing-secondary" href="#cerebro">Ver como funciona</a>
+              </div>
+            </div>
+
+            <div className="mos-landing-stage" aria-label="Prévia do painel do MOS!">
+              <span className="mos-landing-bigword">MOS!</span>
+              <div className="mos-landing-phone">
+                <div className="mos-landing-phone-top">
+                  <span></span>
+                  <strong>MOS!</strong>
+                  <span></span>
+                </div>
+                <div className="mos-landing-phone-panel">
+                  <span>Painel do dia</span>
+                  <strong>903</strong>
+                  <p>kcal livres hoje</p>
+                  <small>Você ainda tem margem hoje</small>
+                </div>
+                <div className="mos-landing-phone-action">
+                  <${Icon} name="fitness_center" />
+                  <div>
+                    <strong>Próximo passo</strong>
+                    <span>Fazer treino de hoje</span>
+                  </div>
+                </div>
+                <div className="mos-landing-phone-grid">
+                  <span>Comida</span>
+                  <span>Água</span>
+                  <span>Treino</span>
+                  <span>Plano</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="mos-landing-strip" aria-label="Resumo do produto">
+            <div>
+              <strong>4 sinais</strong>
+              <span>comida, água, treino e plano</span>
+            </div>
+            <div>
+              <strong>1 painel</strong>
+              <span>para decidir a próxima ação</span>
+            </div>
+            <div>
+              <strong>0 achismo</strong>
+              <span>regras simples, sem IA inventando</span>
+            </div>
+          </section>
+
+          <section className="mos-landing-manifest">
+            <span>O MOS! existe para uma coisa:</span>
+            <h2>tirar sua rotina da cabeça e colocar no lugar certo.</h2>
+            <p>Você já tem um plano. O que faltava era uma forma simples de acompanhar e executar sem se perder no dia.</p>
+          </section>
+
+          <section className="mos-landing-sections">
+            ${landingSections.map(
+              (item, index) => html`
+                <article className=${`mos-landing-feature mos-landing-feature--${item.color}`} id=${item.id}>
+                  <div className="mos-landing-feature-copy">
+                    <span className="mos-landing-feature-index">${String(index + 1).padStart(2, "0")} · ${item.eyebrow}</span>
+                    <h2>${item.title}</h2>
+                    <p>${item.copy}</p>
+                    <button className="mos-landing-inline-cta" onClick=${openApp}>
+                      <span>Usar no MOS!</span>
+                      <${Icon} name="arrow_forward" />
+                    </button>
+                  </div>
+                  <div className="mos-landing-feature-card">
+                    <${Icon} name=${item.icon} />
+                    <strong>${item.stat}</strong>
+                    <span>${item.statLabel}</span>
+                  </div>
+                </article>
+              `,
+            )}
+          </section>
+
+          <section className="mos-landing-brain" id="cerebro">
+            <div className="mos-landing-brain-copy">
+              <span className="mos-landing-kicker">Cérebro MOS!</span>
+              <h2>Uma leitura objetiva do dia. Sem conselho genérico.</h2>
+              <p>O MOS! olha para calorias restantes, água e treino registrado para sugerir o próximo passo com clareza.</p>
+            </div>
+            <div className="mos-landing-brain-panel">
+              <div className="mos-landing-brain-tabs">
+                ${Object.entries(landingBrain).map(
+                  ([key, item]) => html`
+                    <button
+                      className=${`mos-landing-brain-tab ${landingSignal === key ? "mos-landing-brain-tab--active" : ""}`}
+                      onClick=${() => setLandingSignal(key)}
+                    >
+                      ${item.label}
+                    </button>
+                  `,
+                )}
+              </div>
+              <div className="mos-landing-brain-result">
+                <span>Leitura do MOS!</span>
+                <strong>${selectedBrainMessage}</strong>
+                <p>${selectedBrainRecommendation}</p>
+                <small>${selectedBrainInsight}</small>
+              </div>
+            </div>
+          </section>
+
+          <section className="mos-landing-final">
+            <span>Pronto para testar?</span>
+            <h2>Acesse o MOS! e veja seu dia com clareza.</h2>
+            <button className="mos-landing-primary" onClick=${openApp}>
+              <span>Acessar o MOS!</span>
+              <${Icon} name="arrow_forward" />
+            </button>
+          </section>
         </main>
+
+        <footer className="mos-landing-footer">
+          <${MosWordmark} className="mos-wordmark--landing" />
+          <p>MOS! organiza a execução da sua rotina. Não substitui orientação profissional.</p>
+          <button onClick=${openApp}>Entrar no app</button>
+        </footer>
       </div>
     `;
   }
