@@ -1660,6 +1660,7 @@ function App() {
   const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
+  const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
   const [searchOpenFrom, setSearchOpenFrom] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [foodDate, setFoodDate] = useState(getTodayKey());
@@ -1996,6 +1997,7 @@ function App() {
         }));
         setScreen("home");
       }
+      setHasVerifiedSession(LOCAL_DEMO_MODE);
       setAuthReady(true);
       return () => {
         active = false;
@@ -2008,15 +2010,18 @@ function App() {
 
       if (result.error) {
         showAuthNotice("Não foi possível validar sua sessão agora. Tente novamente ou faça login outra vez.");
+        setHasVerifiedSession(false);
         setAuthReady(true);
         return;
       }
 
       if (result.session && result.user) {
+        setHasVerifiedSession(true);
         applyHydratedAuthState(result);
         setScreen(recoveryFlowRef.current ? "reset-password" : "home");
         if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
       } else {
+        setHasVerifiedSession(false);
         setState((current) => ({
           ...structuredClone(initialState),
           auth: {
@@ -2069,6 +2074,13 @@ function App() {
     globalThis.addEventListener?.("popstate", syncRoute);
     return () => globalThis.removeEventListener?.("popstate", syncRoute);
   }, []);
+
+  useEffect(() => {
+    if (!authReady || appRoute !== "landing" || !hasVerifiedSession || recoveryFlowRef.current) return;
+    navigateMosRoute("app", { replace: true });
+    setAppRoute("app");
+    setScreen("home");
+  }, [appRoute, authReady, hasVerifiedSession]);
 
   useEffect(() => {
     setDesktopAccountMenuOpen(false);
@@ -2553,6 +2565,7 @@ function App() {
             setShowSignupConfirmPassword(false);
             setShowResetPassword(false);
             setShowResetPasswordConfirm(false);
+            setHasVerifiedSession(false);
             setRecoverEmail("");
             setResetPasswordForm({ password: "", confirmPassword: "" });
             setSignupForm({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
@@ -2678,6 +2691,7 @@ function App() {
       } else {
         const hydrated = await getCurrentAuthState();
         if (hydrated.session && hydrated.user) {
+          setHasVerifiedSession(true);
           applyHydratedAuthState(hydrated, email);
         }
         clearAuthNotice();
@@ -2713,6 +2727,7 @@ function App() {
 
       const hydrated = await getCurrentAuthState();
       if (hydrated.session && hydrated.user) {
+        setHasVerifiedSession(true);
         applyHydratedAuthState(hydrated, email);
       } else {
         mutate((draft) => {
@@ -6679,7 +6694,16 @@ function App() {
           color: inherit;
         }
       </style>
-      ${appRoute === "landing" && renderLanding()}
+      ${appRoute === "landing" && !authReady &&
+      html`
+        <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
+          <div className="max-w-sm w-full space-y-4 text-center">
+            <${AuthWordmark} />
+            <p className="text-[1rem] text-[#6e7178]">Preparando autenticação do MOS!...</p>
+          </div>
+        </div>
+      `}
+      ${appRoute === "landing" && authReady && !hasVerifiedSession && renderLanding()}
       ${appRoute === "app" && !authReady &&
       html`
         <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
