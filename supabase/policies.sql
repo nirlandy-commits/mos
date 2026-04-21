@@ -7,6 +7,8 @@ alter table public.plan_food_items enable row level security;
 alter table public.plan_food_swaps enable row level security;
 alter table public.supplements enable row level security;
 alter table public.water_entries enable row level security;
+alter table public.training_plans enable row level security;
+alter table public.training_sessions enable row level security;
 alter table public.feedback_entries enable row level security;
 
 create policy "profiles select own" on public.profiles
@@ -55,6 +57,12 @@ create policy "supplements own" on public.supplements
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "water entries own" on public.water_entries
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "training plans own" on public.training_plans
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "training sessions own" on public.training_sessions
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "feedback own" on public.feedback_entries

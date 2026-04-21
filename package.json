@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.cjs -i ./src/tailwind.input.css -o ./src/tailwind.generated.css --minify",
+    "check": "node --check src/main.js && node --check src/lib/auth.js && node --check src/lib/routes.js && node --check sw.js && git diff --check"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

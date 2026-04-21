@@ -139,7 +139,7 @@ export async function getCurrentAuthState() {
 
   const session = sessionData?.session || null;
   const user = userData?.user || null;
-  const [profile, measureEntries, supplements, waterState, planMeals, consumedMeals, feedbackEntries, appNotifications] = user
+  const [profile, measureEntries, supplements, waterState, planMeals, consumedMeals, trainingState, feedbackEntries, appNotifications] = user
     ? await Promise.all([
         fetchProfile(user.id),
         fetchMeasureEntries(user.id),
@@ -147,10 +147,11 @@ export async function getCurrentAuthState() {
         fetchWaterEntries(user.id),
         fetchPlanMeals(user.id),
         fetchConsumedMeals(user.id),
+        fetchTrainingState(user.id),
         fetchFeedbackEntries(user.id),
         fetchAppNotifications(user.id, user.email),
       ])
-    : [null, [], [], { history: {}, totals: {} }, [], {}, [], []];
+    : [null, [], [], { history: {}, totals: {} }, [], {}, { plans: [], history: [] }, [], []];
 
   return {
     configured: true,
@@ -163,6 +164,8 @@ export async function getCurrentAuthState() {
     waterTotals: waterState.totals,
     planMeals,
     consumedMeals,
+    trainingPlans: trainingState.plans,
+    trainingHistory: trainingState.history,
     feedbackEntries,
     appNotifications,
     error: sessionError || userError || null,
@@ -817,6 +820,127 @@ export async function deleteConsumedFoodItem(userId, foodId) {
   const { error } = await client.from("consumed_food_items").delete().eq("id", foodId).eq("user_id", userId);
   if (error) return { ok: false, error };
   return { ok: true };
+}
+
+function normalizeTrainingExercise(item = {}, index = 0) {
+  return {
+    id: item.id || `training-exercise-${index + 1}`,
+    name: item.name || `Exercício ${index + 1}`,
+    focus: item.focus || "",
+    sets: Number(item.sets) || 3,
+    reps: item.reps || "10-12",
+    targetReps: Number(item.targetReps) || 12,
+    restSeconds: Number(item.restSeconds) || 60,
+    suggestedLoadKg: Number(item.suggestedLoadKg) || 0,
+    loadDelta: item.loadDelta || "",
+  };
+}
+
+function normalizeTrainingPlanRecord(item = {}, index = 0) {
+  const exercises = Array.isArray(item.exercises) ? item.exercises : [];
+  return {
+    id: item.id,
+    name: item.name || `Treino ${index + 1}`,
+    estimatedMinutes: Number(item.estimated_minutes ?? item.estimatedMinutes) || 45,
+    exercises: exercises.map((exercise, exerciseIndex) => normalizeTrainingExercise(exercise, exerciseIndex)),
+  };
+}
+
+function normalizeTrainingSessionRecord(item = {}) {
+  const exercises = Array.isArray(item.exercises) ? item.exercises : [];
+  return {
+    id: item.id,
+    date: item.entry_date,
+    completedAt: item.completed_at || item.created_at,
+    planId: item.plan_id,
+    planName: item.plan_name || "Treino",
+    durationSeconds: Number(item.duration_seconds) || 0,
+    exercisesCompleted: Number(item.exercises_completed) || 0,
+    seriesCompleted: Number(item.series_completed) || 0,
+    volumeTotal: Number(item.volume_total) || 0,
+    exercises: exercises.map((exercise, index) => normalizeTrainingExercise(exercise, index)),
+  };
+}
+
+export async function fetchTrainingState(userId) {
+  const client = getSupabaseClient();
+  if (!client || !userId) return { plans: [], history: [] };
+
+  const [{ data: plans, error: plansError }, { data: sessions, error: sessionsError }] = await Promise.all([
+    client
+      .from("training_plans")
+      .select("*")
+      .eq("user_id", userId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+    client
+      .from("training_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("entry_date", { ascending: false })
+      .order("completed_at", { ascending: false })
+      .limit(50),
+  ]);
+
+  if (plansError || sessionsError) {
+    return {
+      plans: null,
+      history: null,
+      error: plansError || sessionsError,
+    };
+  }
+
+  return {
+    plans: Array.isArray(plans) ? plans.map(normalizeTrainingPlanRecord) : [],
+    history: Array.isArray(sessions) ? sessions.map(normalizeTrainingSessionRecord) : [],
+  };
+}
+
+export async function saveTrainingPlanEntry(userId, plan, sortOrder = 0) {
+  const client = getSupabaseClient();
+  if (!client || !userId) return { ok: false, error: new Error("Usuário não autenticado.") };
+
+  const payload = {
+    user_id: userId,
+    name: plan.name || "Treino",
+    estimated_minutes: Number(plan.estimatedMinutes) || 45,
+    exercises: Array.isArray(plan.exercises) ? plan.exercises.map((exercise, index) => normalizeTrainingExercise(exercise, index)) : [],
+    sort_order: sortOrder,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (plan.id && !String(plan.id).startsWith("training-plan")) payload.id = plan.id;
+
+  const { data, error } = await client
+    .from("training_plans")
+    .upsert(payload, { onConflict: "id" })
+    .select()
+    .single();
+
+  if (error) return { ok: false, error };
+  return { ok: true, plan: normalizeTrainingPlanRecord(data, sortOrder) };
+}
+
+export async function createTrainingSessionEntry(userId, session) {
+  const client = getSupabaseClient();
+  if (!client || !userId) return { ok: false, error: new Error("Usuário não autenticado.") };
+
+  const payload = {
+    user_id: userId,
+    entry_date: session.date,
+    completed_at: session.completedAt || new Date().toISOString(),
+    plan_id: session.planId && !String(session.planId).startsWith("training-plan") ? session.planId : null,
+    plan_name: session.planName || "Treino",
+    duration_seconds: Number(session.durationSeconds) || 0,
+    exercises_completed: Number(session.exercisesCompleted) || 0,
+    series_completed: Number(session.seriesCompleted) || 0,
+    volume_total: Number(session.volumeTotal) || 0,
+    exercises: Array.isArray(session.exercises) ? session.exercises.map((exercise, index) => normalizeTrainingExercise(exercise, index)) : [],
+  };
+
+  const { data, error } = await client.from("training_sessions").insert(payload).select().single();
+  if (error) return { ok: false, error };
+  return { ok: true, session: normalizeTrainingSessionRecord(data) };
 }
 
 export async function upsertProfile(profile) {

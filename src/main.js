@@ -8,6 +8,7 @@ import {
   createPlanMealEntry,
   createSupplementEntry,
   createWaterEntry,
+  createTrainingSessionEntry,
   deleteConsumedFoodItem,
   deleteConsumedMealEntry,
   deletePlanFoodItem,
@@ -15,6 +16,7 @@ import {
   deleteSupplementEntry,
   deleteWaterEntry,
   fetchAppNotifications,
+  saveTrainingPlanEntry,
   getAuthenticatedUser,
   getCurrentAuthState,
   getSupabaseSetupMessage,
@@ -39,8 +41,17 @@ import {
   generateMosOperationalInsight,
   generateMosShortRecommendation,
 } from "./lib/mos-brain.js";
+import { getMosRoute, navigateMosRoute } from "./lib/routes.js";
 
 const html = htm.bind(React.createElement);
+
+if ("serviceWorker" in navigator && !globalThis.MOS_LOCAL_DEMO) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("MOS! PWA indisponível:", error);
+    });
+  });
+}
 
 const TRAINING_MUSCLE_GROUPS = [
   {
@@ -82,30 +93,6 @@ function isRecoveryRedirect() {
   } catch {
     return false;
   }
-}
-
-function normalizeMosPath(pathname = globalThis.location?.pathname || "/") {
-  return pathname.replace(/\/index\.html$/, "").replace(/\/+$/, "") || "/";
-}
-
-function getMosRoute(pathname = globalThis.location?.pathname || "/") {
-  const normalizedPath = normalizeMosPath(pathname);
-  return normalizedPath.endsWith("/app") ? "app" : "landing";
-}
-
-function buildMosPath(route = "landing") {
-  const pathname = normalizeMosPath(globalThis.location?.pathname || "/");
-  const segments = pathname.split("/").filter(Boolean);
-  const baseSegments = segments[segments.length - 1] === "app" ? segments.slice(0, -1) : segments;
-  const basePath = `/${baseSegments.join("/")}`.replace(/\/+/g, "/");
-  if (route === "app") return `${basePath === "/" ? "" : basePath}/app`;
-  return basePath === "" ? "/" : basePath;
-}
-
-function navigateMosRoute(route = "landing", { replace = false } = {}) {
-  const nextPath = buildMosPath(route);
-  const method = replace ? "replaceState" : "pushState";
-  globalThis.history?.[method]?.({}, "", nextPath);
 }
 
 const LOCAL_DEMO_MODE = Boolean(globalThis.MOS_LOCAL_DEMO);
@@ -1712,6 +1699,7 @@ function App() {
   const [authNoticeTitle, setAuthNoticeTitle] = useState("");
   const [authNoticeTone, setAuthNoticeTone] = useState("error");
   const [authBusy, setAuthBusy] = useState(false);
+  const [toast, setToast] = useState(null);
   const planTimelineRef = useRef(null);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
@@ -1772,6 +1760,25 @@ function App() {
     setAuthNoticeTitle(title);
     setAuthNoticeTone(tone);
   }
+
+  function showToast(message, { tone = "success" } = {}) {
+    setToast({
+      id: Date.now(),
+      message: normalizeAppMessage(message),
+      tone,
+    });
+  }
+
+  function isMissingTrainingTableError(error) {
+    const message = String(error?.message || "");
+    return error?.code === "42P01" || message.includes("training_plans") || message.includes("training_sessions");
+  }
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   function renderAuthNoticeCard() {
     if (!authNotice) return null;
@@ -2368,6 +2375,8 @@ function App() {
       water: result.waterTotals || current.water,
       planMeals: Array.isArray(result.planMeals) ? result.planMeals : current.planMeals,
       consumedMeals: result.consumedMeals || current.consumedMeals,
+      trainingPlans: Array.isArray(result.trainingPlans) ? result.trainingPlans.map((plan, index) => normalizeTrainingPlan(plan, index, { allowEmptyExercises: true })) : current.trainingPlans,
+      trainingHistory: Array.isArray(result.trainingHistory) ? result.trainingHistory : current.trainingHistory,
       feedbackEntries: Array.isArray(result.feedbackEntries) ? result.feedbackEntries : current.feedbackEntries,
       appNotifications: Array.isArray(result.appNotifications) ? result.appNotifications : current.appNotifications,
     }));
@@ -2873,6 +2882,7 @@ function App() {
       draft.consumedMeals[foodDate] = [...(draft.consumedMeals[foodDate] || (foodDate === todayKey ? consumedMeals : [])), meal];
     });
     clearDraft("modal-food");
+    showToast("Refeição registrada.");
     setScreen("food");
   }
 
@@ -2922,6 +2932,7 @@ function App() {
     });
     clearDraft("modal-measures");
     setModal(null);
+    showToast("Medidas salvas.");
     setScreen("measures");
   }
 
@@ -2956,10 +2967,7 @@ function App() {
     clearDraft("modal-feedback");
     setModal(null);
     setScreen("about-app");
-    showAuthNotice("Feedback enviado. Obrigado por ajudar a melhorar o MOS!", {
-      tone: "success",
-      title: "Feedback recebido",
-    });
+    showToast("Feedback enviado.");
   }
 
   async function sendAdminNotification(formData) {
@@ -3022,7 +3030,7 @@ function App() {
 
     setNotificationsCleared(false);
     clearDraft("admin-notification");
-    showAuthNotice("Notificação criada. Ela já aparece na central do MOS! para testes.");
+    showToast("Notificação criada.");
     return true;
   }
 
@@ -3070,6 +3078,7 @@ function App() {
     });
     clearDraft("modal-profile");
     setModal(null);
+    showToast("Perfil salvo.");
     setScreen("profile");
   }
 
@@ -3107,6 +3116,7 @@ function App() {
       draft.water[dateKey] = (draft.water[dateKey] || 0) + amount;
       draft.waterHistory[dateKey] = [nextEntry, ...(draft.waterHistory[dateKey] || waterEntries)];
     });
+    showToast(`${amount} ml adicionados.`);
   }
 
   async function createPlanMeal(formData) {
@@ -3140,6 +3150,7 @@ function App() {
     });
     clearDraft("modal-plan");
     setModal(null);
+    showToast("Refeição do plano criada.");
   }
 
   async function savePlanConfig(formData) {
@@ -3168,6 +3179,7 @@ function App() {
       draft.profile.planNotes = planNotes;
     });
     clearDraft("plan-config");
+    showToast("Plano atualizado.");
     setScreen("plan");
   }
 
@@ -3203,6 +3215,7 @@ function App() {
     });
     clearDraft("register-supplement");
     setModal(null);
+    showToast("Suplemento salvo.");
     setScreen("supplements");
   }
 
@@ -3244,6 +3257,7 @@ function App() {
     });
     clearDraft("modal-edit-supplement");
     setModal(null);
+    showToast("Suplemento atualizado.");
   }
 
   async function saveFood(formData) {
@@ -3287,6 +3301,7 @@ function App() {
     });
     clearDraft("editor-food");
     setEditor(null);
+    showToast(editor?.food ? "Alimento atualizado." : "Alimento adicionado.");
   }
 
   async function removeFood(target, mealId, foodId) {
@@ -3377,7 +3392,7 @@ function App() {
     setModal(null);
   }
 
-  function completeTrainingSession(session = activeTraining) {
+  async function completeTrainingSession(session = activeTraining) {
     const plan = trainingPlans.find((item) => item.id === session?.planId);
     if (!plan || !session) return;
     const finishedAt = Date.now();
@@ -3409,12 +3424,35 @@ function App() {
       })),
     };
 
+    let savedEntry = historyEntry;
+    if (authConfigured) {
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar o treino.");
+        return;
+      }
+      const result = await createTrainingSessionEntry(user.id, historyEntry);
+      if (!result.ok) {
+        if (isMissingTrainingTableError(result.error)) {
+          showAuthNotice("Treino salvo neste aparelho. Para sincronizar online, rode o arquivo supabase/training.sql no Supabase.", {
+            tone: "success",
+            title: "Sincronização de treino pendente",
+          });
+        } else {
+          showAuthNotice(result.error?.message || "Não foi possível registrar o treino agora.");
+          return;
+        }
+      }
+      if (result.ok) savedEntry = result.session;
+    }
+
     mutate((draft) => {
-      draft.trainingHistory = [historyEntry, ...(draft.trainingHistory || [])].slice(0, 20);
+      draft.trainingHistory = [savedEntry, ...(draft.trainingHistory || [])].slice(0, 20);
     });
-    setCompletedTraining(historyEntry);
+    setCompletedTraining(savedEntry);
     setActiveTraining(null);
     setModal(null);
+    showToast("Treino registrado.");
     setScreen("training-summary");
   }
 
@@ -3613,18 +3651,42 @@ function App() {
     });
   }
 
-  function saveTrainingDraft(event) {
+  async function saveTrainingDraft(event) {
     event.preventDefault();
     if (!trainingDraft) return;
-    const normalizedPlan = normalizeTrainingPlan({
+    let normalizedPlan = normalizeTrainingPlan({
       ...trainingDraft,
       exercises: trainingDraft.exercises.map((exercise) => normalizeTrainingExercise(exercise)),
     }, trainingPlans.length, { allowEmptyExercises: true });
+
+    if (authConfigured) {
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar o treino.");
+        return;
+      }
+
+      const result = await saveTrainingPlanEntry(user.id, normalizedPlan, trainingPlans.length);
+      if (!result.ok) {
+        if (isMissingTrainingTableError(result.error)) {
+          showAuthNotice("Treino salvo neste aparelho. Para sincronizar online, rode o arquivo supabase/training.sql no Supabase.", {
+            tone: "success",
+            title: "Sincronização de treino pendente",
+          });
+        } else {
+          showAuthNotice(result.error?.message || "Não foi possível salvar o treino agora.");
+          return;
+        }
+      }
+      if (result.ok) normalizedPlan = normalizeTrainingPlan(result.plan, trainingPlans.length, { allowEmptyExercises: true });
+    }
+
     mutate((draft) => {
       const existingIndex = draft.trainingPlans.findIndex((item) => item.id === normalizedPlan.id);
       if (existingIndex >= 0) draft.trainingPlans[existingIndex] = normalizedPlan;
       else draft.trainingPlans.push(normalizedPlan);
     });
+    showToast("Treino salvo.");
     clearDraft("training-edit");
     setSelectedTrainingId(normalizedPlan.id);
     setTrainingDraft(null);
@@ -6993,6 +7055,28 @@ function App() {
 
       ${appRoute === "app" && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} isAdmin=${isAdminUser} />`}
       ${appRoute === "app" && authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
+      ${
+        authReady &&
+        isSignedIn &&
+        toast &&
+        html`
+          <div className="fixed top-6 left-0 w-full px-4 z-[75] pointer-events-none">
+            <div className=${`max-w-sm mx-auto pointer-events-auto rounded-[18px] px-5 py-4 flex items-center gap-3 ${
+              toast.tone === "error" ? "bg-[#fff6f2] text-[#7a2d1b]" : "bg-[#0b1020] text-white"
+            }`}>
+              <div className=${`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                toast.tone === "error" ? "bg-[#ffe6dc]" : "bg-[#DAFF00]"
+              }`}>
+                <${Icon} name=${toast.tone === "error" ? "error" : "check"} className=${toast.tone === "error" ? "text-[#EF5F37] text-[1rem]" : "text-[#0b1020] text-[1rem]"} />
+              </div>
+              <p className="text-sm font-bold leading-relaxed">${toast.message}</p>
+              <button className="ml-auto active:scale-95 transition-transform opacity-70 hover:opacity-100" onClick=${() => setToast(null)} aria-label="Fechar aviso">
+                <${Icon} name="close" className="text-[1rem]" />
+              </button>
+            </div>
+          </div>
+        `
+      }
       ${
         authReady &&
         isSignedIn &&
