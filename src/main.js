@@ -1480,13 +1480,6 @@ function DesktopRightRail({
   onOpenNotifications,
   notificationCount = 0,
   avatarLabel,
-  accountMenuOpen,
-  onToggleAccountMenu,
-  onCloseAccountMenu,
-  onOpenProfile,
-  onOpenMeasures,
-  onOpenSettings,
-  onSignOut,
   caloriesConsumed,
   calorieTarget,
   waterConsumedMl,
@@ -1511,20 +1504,8 @@ function DesktopRightRail({
             <${Icon} name="notifications" className="text-[1.1rem] text-[#334155]" />
             <${NotificationBadge} count=${notificationCount} />
           </button>
-          <div className="relative">
-            <button type="button" className="mos-desktop-avatar" onClick=${onToggleAccountMenu}>
-              <span>${avatarLabel}</span>
-            </button>
-            ${accountMenuOpen
-              ? html`
-                  <div className="mos-desktop-account-menu">
-                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenProfile(); }}>Meu perfil</button>
-                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenMeasures(); }}>Minhas medidas</button>
-                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenSettings(); }}>Configurações</button>
-                    <button type="button" className="mos-desktop-account-item mos-desktop-account-item--danger" onClick=${() => { onCloseAccountMenu(); onSignOut(); }}>Sair</button>
-                  </div>
-                `
-              : null}
+          <div className="mos-desktop-avatar" aria-label="Usuário">
+            <span>${avatarLabel}</span>
           </div>
         </div>
         <div className="space-y-2">
@@ -1644,7 +1625,6 @@ function App() {
   const [screen, setScreen] = useState(() => (shouldOpenLoginAfterReload() ? "login" : loadState().auth?.signedIn ? "home" : "welcome"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
   const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
@@ -2091,12 +2071,7 @@ function App() {
   }, [appRoute, authReady, hasVerifiedSession]);
 
   useEffect(() => {
-    setDesktopAccountMenuOpen(false);
-  }, [screen]);
-
-  useEffect(() => {
     if (!desktopSearchOpen) return;
-    setDesktopAccountMenuOpen(false);
     setNotificationsOpen(false);
   }, [desktopSearchOpen]);
 
@@ -6755,15 +6730,7 @@ function App() {
           color: inherit;
         }
       </style>
-      ${appRoute === "landing" && !authReady &&
-      html`
-        <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
-          <div className="max-w-sm w-full space-y-4 text-center">
-            <${AuthWordmark} />
-            <p className="text-[1rem] text-[#6e7178]">Preparando autenticação do MOS!...</p>
-          </div>
-        </div>
-      `}
+      ${appRoute === "landing" && !authReady && renderLanding()}
       ${appRoute === "landing" && authReady && (!hasVerifiedSession || LOCAL_DEMO_MODE) && renderLanding()}
       ${appRoute === "app" && !authReady &&
       html`
@@ -6787,7 +6754,6 @@ function App() {
       authReady &&
       isSignedIn &&
       html`
-        ${desktopAccountMenuOpen ? html`<button className="mos-desktop-menu-backdrop" onClick=${() => setDesktopAccountMenuOpen(false)} aria-label="Fechar menu da conta"></button>` : null}
         <div className="mos-desktop-shell">
           <${DesktopSidebar}
             active=${screen}
@@ -6805,13 +6771,6 @@ function App() {
             onOpenNotifications=${openNotifications}
             notificationCount=${notifications.length}
             avatarLabel=${profileInitial}
-            accountMenuOpen=${desktopAccountMenuOpen}
-            onToggleAccountMenu=${() => setDesktopAccountMenuOpen((current) => !current)}
-            onCloseAccountMenu=${() => setDesktopAccountMenuOpen(false)}
-            onOpenProfile=${() => setScreen("profile")}
-            onOpenMeasures=${() => setScreen("measures")}
-            onOpenSettings=${openDesktopSettings}
-            onSignOut=${() => openMenuItem("Sair")}
             caloriesConsumed=${summary.calories}
             calorieTarget=${state.profile.calorieTarget}
             waterConsumedMl=${state.water[todayKey] ?? 0}
