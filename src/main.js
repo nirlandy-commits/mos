@@ -3825,9 +3825,7 @@ function App() {
     `;
   }
 
-  function renderPlanModeTabs() {
-    return null;
-  }) {
+  function renderPlanModeTabs({ activeMode }) {
     const isPlan = activeMode === "plan";
     return html`
       <div className="plan-mode-tabs" role="tablist" aria-label="Navegação do plano">
@@ -3853,9 +3851,7 @@ function App() {
     `;
   }
 
-  function renderPlanModeHeader() {
-    return null;
-  }) {
+  function renderPlanModeHeader({ activeMode, headline, support = "", nowHour, profileName }) {
     return html`
       <section className="plan-mode-header">
         <div className="plan-mode-copy">
