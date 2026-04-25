@@ -34,14 +34,42 @@ import {
   updatePassword,
   updateSupplementEntry,
 } from "./lib/auth.js";
+import { buildSignedOutState, hydrateAuthenticatedState } from "./lib/auth-state.js";
 import {
-  calculateMosState,
-  calculateMosExecutionSignals,
-  generateMosMainMessage,
-  generateMosOperationalInsight,
-  generateMosShortRecommendation,
-} from "./lib/mos-brain.js";
+  resolveInitialScreen,
+  resolveSignedInScreen,
+  resolveSignedOutScreen,
+  getStateEmail,
+} from "./lib/auth-flow.js";
+import {
+  createDefaultLoginForm,
+  createDefaultResetPasswordForm,
+  createDefaultSignupForm,
+} from "./lib/auth-forms.js";
+import { createMosStateStorage } from "./lib/app-state-storage.js";
+import { appNewsEntries } from "./lib/app-news.js";
+import { createAuthHandlers } from "./handlers/auth-handlers.js";
+import { createDomainHandlers } from "./handlers/domain-handlers.js";
+import {
+  evaluateMosBrain,
+} from "./lib/mos-brain-engine.js";
+import {
+  getProfileAvatarLabel,
+  normalizeProfile,
+} from "./lib/profile.js";
 import { getMosRoute, navigateMosRoute } from "./lib/routes.js";
+import { renderSignedInScreen as renderSignedInScreenFromRouter, getMenuTargetScreen } from "./lib/screen-router.js";
+import { mosRuntime } from "./lib/runtime.js";
+import { renderLandingScreen } from "./screens/landing-screen.js";
+import { createInternalScreenRenderers } from "./screens/internal-screen-renderers.js";
+import { renderHomeScreen } from "./screens/home-screen.js";
+import { renderFoodScreen } from "./screens/food-screen.js";
+import { renderPlanScreen } from "./screens/plan-screen.js";
+import { renderTrainingScreen } from "./screens/training-screen.js";
+import { renderWaterScreen } from "./screens/water-screen.js";
+import { renderProfileScreen } from "./screens/profile-screen.js";
+import { createInitialUiState } from "./lib/ui-state.js";
+import { createMosUserStateSeeds } from "./lib/user-state.js";
 
 const html = htm.bind(React.createElement);
 
@@ -113,242 +141,16 @@ const planImages = {
     "https://lh3.googleusercontent.com/aida-public/AB6AXuDSsQd9b6R7ydCOhMjf5-yJC4eO5QFwE4GWEixizAnpur_z8iJZZBJnVzqBCU7ANy41Lm7VvNIVNiWF9DesmSklA_sWseARUK33CkQU6cbE9I7mjrHQATWsdIY2aMmi-pKbTyEw8RbnzK_dDBiVXoqz7g1eQEJLg7XW_HMl8bzcfW0BCTn5icC2TFpu7RYxhI9CYaLNU7XWnjT1Yv-J-M1p3Eix-SGoYivIJa3wjIkNKZ5_QdURFebnnvxSxvUfxDEKRFUw19mrEdc",
 };
 
-const defaultState = {
-  auth: {
-    registered: LOCAL_DEMO_MODE,
-    signedIn: LOCAL_DEMO_MODE,
-    email: "",
-    password: "",
-  },
-  profile: {
-    calorieTarget: 2400,
-    waterTargetMl: 3000,
-    activeGoal: "",
-    planFocus: "",
-    planNotes: "",
-    name: "Nirlandy Leitão Pinheiro",
-    email: "",
-    city: "",
-    birthday: "",
-    weight: 0,
-    height: 0,
-    age: 0,
-    targetWeight: 0,
-  },
-  feedbackEntries: [],
-  appNotifications: [],
-  measureEntries: [
-    {
-      id: "measure-2025-12-02",
-      date: "2025-12-02",
-      weight: 82.9,
-      height: 170,
-      bodyFat: 25.2,
-      muscleMass: 58.7,
-      bodyWater: 53.2,
-      metabolicAge: 54,
-    },
-    {
-      id: "measure-2026-01-06",
-      date: "2026-01-06",
-      weight: 77.7,
-      height: 170,
-      bodyFat: 24.5,
-      muscleMass: 55.7,
-      bodyWater: 53.8,
-      metabolicAge: 50,
-    },
-  ],
-  consumedMeals: {
-    [DEMO_TODAY_KEY]: [
-      {
-        id: "meal-demo-breakfast",
-        name: "Café da manhã",
-        icon: "light_mode",
-        description: "Ovos, pão integral e café sem açúcar",
-        foods: [
-          { id: "meal-demo-breakfast-1", name: "Ovos mexidos", quantity: "2 ovos", calories: 180, protein: 14, carbs: 2, fat: 12, benefit: "Ajuda a manter saciedade pela manhã." },
-          { id: "meal-demo-breakfast-2", name: "Pão integral", quantity: "2 fatias", calories: 140, protein: 6, carbs: 24, fat: 2, benefit: "Entrega energia equilibrada para começar o dia." },
-          { id: "meal-demo-breakfast-3", name: "Café", quantity: "200 ml", calories: 5, protein: 0, carbs: 1, fat: 0, benefit: "Ajuda na rotina matinal sem pesar na refeição." },
-        ],
-      },
-      {
-        id: "meal-demo-lunch",
-        name: "Almoço",
-        icon: "restaurant",
-        description: "Frango, arroz, feijão e salada",
-        foods: [
-          { id: "meal-demo-lunch-1", name: "Peito de frango grelhado", quantity: "140g", calories: 230, protein: 34, carbs: 0, fat: 8, benefit: "Boa base de proteína para o plano." },
-          { id: "meal-demo-lunch-2", name: "Arroz integral", quantity: "120g", calories: 150, protein: 3, carbs: 31, fat: 1, benefit: "Fornece energia com boa saciedade." },
-          { id: "meal-demo-lunch-3", name: "Feijão", quantity: "80g", calories: 90, protein: 6, carbs: 15, fat: 1, benefit: "Ajuda no equilíbrio nutricional da refeição." },
-          { id: "meal-demo-lunch-4", name: "Salada verde", quantity: "1 prato", calories: 25, protein: 1, carbs: 4, fat: 0, benefit: "Aumenta volume e leveza do prato." },
-        ],
-      },
-      {
-        id: "meal-demo-snack",
-        name: "Lanche da tarde",
-        icon: "eco",
-        description: "Iogurte, banana e aveia",
-        foods: [
-          { id: "meal-demo-snack-1", name: "Iogurte natural", quantity: "1 pote", calories: 110, protein: 9, carbs: 8, fat: 4, benefit: "Ajuda a sustentar a tarde com praticidade." },
-          { id: "meal-demo-snack-2", name: "Banana", quantity: "1 un", calories: 89, protein: 1, carbs: 23, fat: 0, benefit: "Boa opção de energia rápida antes da rotina seguir." },
-          { id: "meal-demo-snack-3", name: "Aveia", quantity: "20g", calories: 78, protein: 3, carbs: 13, fat: 2, benefit: "Acrescenta fibra e mais saciedade ao lanche." },
-        ],
-      },
-      {
-        id: "meal-demo-dinner",
-        name: "Jantar",
-        icon: "dark_mode",
-        description: "Tilápia, purê e legumes",
-        foods: [
-          { id: "meal-demo-dinner-1", name: "Tilápia grelhada", quantity: "160g", calories: 210, protein: 34, carbs: 0, fat: 7, benefit: "Fecha o dia com proteína leve e de boa digestão." },
-          { id: "meal-demo-dinner-2", name: "Purê de batata", quantity: "130g", calories: 142, protein: 3, carbs: 27, fat: 3, benefit: "Traz conforto e energia sem pesar demais." },
-          { id: "meal-demo-dinner-3", name: "Legumes no vapor", quantity: "1 porção", calories: 48, protein: 2, carbs: 9, fat: 0, benefit: "Ajuda no equilíbrio e no volume do prato." },
-        ],
-      },
-    ],
-  },
-  planMeals: [
-    {
-      id: "plan-breakfast",
-      name: "Café da manhã",
-      time: "08:30",
-      icon: "light_mode",
-      color: "border-[#DFF37D]",
-      accent: "#DFF37D",
-      image: planImages.breakfast,
-      title: "Ovos mexidos com Abacate",
-      description: "2 ovos, 50g de abacate, 1 fatia de pão integral",
-      foods: [
-        { id: "pf1", name: "Ovos mexidos", quantity: "2 ovos", calories: 180, protein: 14, carbs: 2, fat: 12, benefit: "Ajuda a manter saciedade pela manhã." },
-        { id: "pf2", name: "Abacate", quantity: "50g", calories: 80, protein: 1, carbs: 4, fat: 7, benefit: "Boa fonte de gordura e energia estável." },
-        { id: "pf3", name: "Pão integral", quantity: "1 fatia", calories: 75, protein: 3, carbs: 12, fat: 1, benefit: "Complementa com carboidrato simples para a rotina." },
-      ],
-    },
-    {
-      id: "plan-lunch",
-      name: "Almoço",
-      time: "12:30",
-      icon: "restaurant",
-      color: "border-[#4558C8]",
-      accent: "#4558C8",
-      image: planImages.lunch,
-      title: "Frango Grelhado com Brócolis",
-      description: "150g de frango, 100g arroz integral, legumes à vontade",
-      foods: [
-        { id: "pf4", name: "Arroz Integral Cozido", quantity: "150g", calories: 185, protein: 4, carbs: 38, fat: 1, benefit: "Entrega energia de forma equilibrada." },
-        { id: "pf5", name: "Peito de Frango Grelhado", quantity: "120g", calories: 198, protein: 36, carbs: 0, fat: 5, benefit: "Excelente fonte de proteína magra." },
-        { id: "pf6", name: "Mix de Salada Verde", quantity: "50g", calories: 15, protein: 1, carbs: 3, fat: 0, benefit: "Ajuda na digestão e micronutrientes." },
-        { id: "pf7", name: "Azeite de Oliva Extra Virgem", quantity: "10ml", calories: 88, protein: 0, carbs: 0, fat: 10, benefit: "Complementa a refeição com gordura boa." },
-      ],
-    },
-    {
-      id: "plan-snack",
-      name: "Lanche da tarde",
-      time: "16:00",
-      icon: "eco",
-      color: "border-[#EF5F37]",
-      accent: "#EF5F37",
-      image: planImages.snack,
-      title: "Mix de Nuts & Fruta",
-      description: "30g de castanhas, 1 maçã média",
-      foods: [
-        { id: "pf8", name: "Castanhas", quantity: "30g", calories: 170, protein: 5, carbs: 6, fat: 14, benefit: "Ajuda na saciedade e rotina entre refeições." },
-        { id: "pf9", name: "Maçã", quantity: "1 un", calories: 70, protein: 0, carbs: 18, fat: 0, benefit: "Boa opção leve e prática para o lanche." },
-      ],
-    },
-  ],
-  supplements: [
-    { id: "s1", period: "Pós-treino", category: "Performance", time: "18:00", name: "Creatina", dosage: "5 gramas", instruction: "Usar 1x por dia para consistência no treino.", card: "bg-old-flax text-custom-jet" },
-    { id: "s2", period: "Manhã", category: "Proteína", time: "08:00", name: "Whey Protein", dosage: "30 gramas", instruction: "Boa opção para subir proteína no café da manhã.", card: "bg-secondary text-white" },
-    { id: "s3", period: "Almoço", category: "Saúde", time: "12:30", name: "Ômega 3", dosage: "2 caps", instruction: "Consumir junto com refeição principal.", card: "bg-[#D9B8F3] text-custom-jet" },
-    { id: "s4", period: "Pré-treino", category: "Energia", time: "16:30", name: "Cafeína", dosage: "210 mg", instruction: "Usar somente quando fizer sentido na rotina.", card: "bg-[#EF5F37] text-white" },
-  ],
-  trainingPlans: [
-    {
-      id: "training-a",
-      name: "Peito + Ombro",
-      estimatedMinutes: 50,
-      exercises: [
-        { id: "training-a-1", name: "Supino reto", focus: "Peito", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 40, loadDelta: "+2kg" },
-        { id: "training-a-2", name: "Supino inclinado", focus: "Peito", sets: 4, reps: "8-10", targetReps: 10, restSeconds: 75, suggestedLoadKg: 36, loadDelta: "+2kg" },
-        { id: "training-a-3", name: "Crucifixo", focus: "Peito", sets: 3, reps: "12-15", targetReps: 15, restSeconds: 60, suggestedLoadKg: 12, loadDelta: "+1kg" },
-        { id: "training-a-4", name: "Desenvolvimento", focus: "Ombros", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 18, loadDelta: "+2kg" },
-      ],
-    },
-    {
-      id: "training-b",
-      name: "Costas + Bíceps",
-      estimatedMinutes: 55,
-      exercises: [
-        { id: "training-b-1", name: "Puxada frontal", focus: "Costas", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 75, suggestedLoadKg: 45, loadDelta: "+5kg" },
-        { id: "training-b-2", name: "Remada baixa", focus: "Costas", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 75, suggestedLoadKg: 40, loadDelta: "+2kg" },
-        { id: "training-b-3", name: "Rosca direta", focus: "Bíceps", sets: 3, reps: "8-10", targetReps: 10, restSeconds: 60, suggestedLoadKg: 20, loadDelta: "+2kg" },
-      ],
-    },
-  ],
-  trainingHistory: [],
-  water: {
-    [DEMO_TODAY_KEY]: 2450,
-  },
-  waterHistory: {
-    [DEMO_TODAY_KEY]: [
-      { id: "water-demo-1", amount: 300, label: "Ao acordar", time: "07:15" },
-      { id: "water-demo-2", amount: 500, label: "Após o café da manhã", time: "09:40" },
-      { id: "water-demo-3", amount: 450, label: "Antes do almoço", time: "12:10" },
-      { id: "water-demo-4", amount: 600, label: "Durante a tarde", time: "16:25" },
-      { id: "water-demo-5", amount: 350, label: "Após o treino", time: "19:05" },
-      { id: "water-demo-6", amount: 250, label: "No jantar", time: "20:20" },
-    ],
-  },
-};
-
-const emptyUserState = {
-  ...structuredClone(defaultState),
-  auth: {
-    registered: false,
-    signedIn: false,
-    email: "",
-    password: "",
-  },
-  profile: {
-    ...structuredClone(defaultState.profile),
-    activeGoal: "",
-    planFocus: "",
-    planNotes: "",
-    name: "",
-    email: "",
-    city: "",
-    birthday: "",
-    weight: 0,
-    height: 0,
-    age: 0,
-    targetWeight: 0,
-  },
-  feedbackEntries: [],
-  appNotifications: [],
-  measureEntries: [],
-  consumedMeals: {},
-  planMeals: [],
-  supplements: [],
-  trainingPlans: [],
-  trainingHistory: [],
-  water: {},
-  waterHistory: {},
-};
-
-const initialState = LOCAL_DEMO_MODE ? defaultState : emptyUserState;
-
-const emptyMeasureEntry = {
-  id: "measure-empty",
-  date: DEMO_TODAY_KEY,
-  weight: 0,
-  height: 0,
-  bodyFat: 0,
-  muscleMass: 0,
-  bodyWater: 0,
-  metabolicAge: 0,
-};
+const {
+  defaultState,
+  emptyUserState,
+  initialState,
+  emptyMeasureEntry,
+} = createMosUserStateSeeds({
+  localDemoMode: LOCAL_DEMO_MODE,
+  demoTodayKey: DEMO_TODAY_KEY,
+  planImages,
+});
 
 function uid(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -858,161 +660,19 @@ function normalizeSupplement(item = {}, index = 0) {
     card: item.card || "bg-old-flax text-custom-jet",
   };
 }
-
-const legacyDemoProfileNames = new Set([defaultState.profile.name, "Nirlandy Leitão Pinheiro"]);
-const legacyDemoActiveGoals = new Set(["Plano atual: Perder 5kg"]);
-const legacyDemoMeasureIds = new Set(defaultState.measureEntries.map((entry) => entry.id));
-const legacyDemoPlanMealIds = new Set(defaultState.planMeals.map((meal) => meal.id));
-const legacyDemoSupplementIds = new Set(defaultState.supplements.map((item) => item.id));
-const legacyDemoTrainingIds = new Set(defaultState.trainingPlans.map((plan) => plan.id));
-
-function isLegacyDemoId(item = {}, prefix = "") {
-  return String(item.id || "").startsWith(prefix);
-}
-
-function stripLegacyDemoList(items = [], legacyIds = new Set(), prefix = "") {
-  if (LOCAL_DEMO_MODE || !Array.isArray(items)) return items;
-  return items.filter((item) => {
-    const id = String(item?.id || "");
-    if (legacyIds.has(id)) return false;
-    if (prefix && id.startsWith(prefix)) return false;
-    return true;
-  });
-}
-
-function stripLegacyDemoConsumedMeals(mealsByDate = {}) {
-  if (LOCAL_DEMO_MODE || !mealsByDate || typeof mealsByDate !== "object") return mealsByDate || {};
-
-  return Object.fromEntries(
-    Object.entries(mealsByDate)
-      .map(([key, meals]) => [
-        key,
-        Array.isArray(meals) ? meals.filter((meal) => !isLegacyDemoId(meal, "meal-demo")) : [],
-      ])
-      .filter(([, meals]) => meals.length),
-  );
-}
-
-function stripLegacyDemoWaterHistory(entriesByDate = {}) {
-  if (LOCAL_DEMO_MODE || !entriesByDate || typeof entriesByDate !== "object") return entriesByDate || {};
-
-  return Object.fromEntries(
-    Object.entries(entriesByDate)
-      .map(([key, entries]) => [
-        key,
-        Array.isArray(entries) ? entries.filter((entry) => !isLegacyDemoId(entry, "water-demo")) : [],
-      ])
-      .filter(([, entries]) => entries.length),
-  );
-}
-
-function stripLegacyDemoWaterTotals(waterTotals = {}) {
-  if (LOCAL_DEMO_MODE || !waterTotals || typeof waterTotals !== "object") return waterTotals || {};
-  return Object.fromEntries(
-    Object.entries(waterTotals).filter(([key, value]) => !(key === DEMO_TODAY_KEY && Number(value) === defaultState.water[DEMO_TODAY_KEY])),
-  );
-}
-
-function cleanProductionText(value = "", forbiddenValues = new Set()) {
-  const text = String(value || "").trim();
-  if (!text) return "";
-  if (!LOCAL_DEMO_MODE && forbiddenValues.has(text)) return "";
-  return text;
-}
-
-function migrate(raw) {
-  const rawPlanMeals = raw.planMeals || raw.mealPlan;
-  const rawConsumedMeals = raw.consumedMeals || raw.foodLog || {};
-  const normalizedMeasures = Array.isArray(raw.measureEntries)
-    ? stripLegacyDemoList(raw.measureEntries, legacyDemoMeasureIds).map((entry, index) => normalizeMeasureEntry(entry, index))
-    : initialState.measureEntries;
-  const normalizedConsumedMeals = stripLegacyDemoConsumedMeals(rawConsumedMeals);
-  const normalizedPlanMeals = Array.isArray(rawPlanMeals)
-    ? stripLegacyDemoList(rawPlanMeals, legacyDemoPlanMealIds).map((meal, index) => normalizeMeal(meal, index))
-    : initialState.planMeals;
-  const normalizedSupplements = Array.isArray(raw.supplements)
-    ? stripLegacyDemoList(raw.supplements, legacyDemoSupplementIds).map((item, index) => normalizeSupplement(item, index))
-    : initialState.supplements;
-  const normalizedTrainingPlans = Array.isArray(raw.trainingPlans)
-    ? stripLegacyDemoList(raw.trainingPlans, legacyDemoTrainingIds).map((plan, index) => normalizeTrainingPlan(plan, index))
-    : initialState.trainingPlans;
-  const normalizedWater = stripLegacyDemoWaterTotals(raw.water || {});
-  const normalizedWaterHistory = stripLegacyDemoWaterHistory(raw.waterHistory || {});
-
-  return {
-    auth: {
-      registered: raw.auth?.registered ?? Boolean(raw.profile?.email),
-      signedIn: raw.auth?.signedIn ?? true,
-      email: raw.auth?.email || raw.profile?.email || "",
-      password: raw.auth?.password || "",
-    },
-    profile: {
-      calorieTarget: Number(raw.profile?.calorieTarget) || 2400,
-      waterTargetMl: Number(raw.profile?.waterTargetMl) || 3000,
-      activeGoal: cleanProductionText(raw.profile?.activeGoal, legacyDemoActiveGoals) || initialState.profile.activeGoal,
-      planFocus: raw.profile?.planFocus || initialState.profile.planFocus,
-      planNotes: raw.profile?.planNotes || initialState.profile.planNotes,
-      name: cleanProductionText(raw.profile?.name, legacyDemoProfileNames) || initialState.profile.name,
-      email: raw.profile?.email || initialState.profile.email,
-      city: raw.profile?.city || initialState.profile.city,
-      birthday: raw.profile?.birthday || initialState.profile.birthday,
-      weight: Number(raw.profile?.weight) || 0,
-      height: Number(raw.profile?.height) || 0,
-      age: Number(raw.profile?.age) || 0,
-      targetWeight: Number(raw.profile?.targetWeight || raw.profile?.target_weight) || 0,
-    },
-    feedbackEntries: Array.isArray(raw.feedbackEntries) ? raw.feedbackEntries : [],
-    appNotifications: Array.isArray(raw.appNotifications) ? raw.appNotifications : [],
-    measureEntries: normalizedMeasures,
-    consumedMeals: (() => {
-      if (!LOCAL_DEMO_MODE) return normalizedConsumedMeals;
-      return {
-        ...initialState.consumedMeals,
-        ...normalizedConsumedMeals,
-      };
-    })(),
-    planMeals: normalizedPlanMeals,
-    supplements: normalizedSupplements,
-    trainingPlans: normalizedTrainingPlans,
-    trainingHistory: Array.isArray(raw.trainingHistory) ? raw.trainingHistory : [],
-    water: (() => {
-      if (!LOCAL_DEMO_MODE) return normalizedWater;
-      return {
-        ...initialState.water,
-        ...normalizedWater,
-      };
-    })(),
-    waterHistory: (() => {
-      if (!LOCAL_DEMO_MODE) return normalizedWaterHistory;
-      return {
-        ...initialState.waterHistory,
-        ...normalizedWaterHistory,
-      };
-    })(),
-  };
-}
-
-function loadState() {
-  try {
-    const current = localStorage.getItem(STORAGE_KEY);
-    if (current) return migrate(JSON.parse(current));
-  } catch (error) {
-    console.error(error);
-  }
-  return structuredClone(initialState);
-}
-
-function shouldOpenLoginAfterReload() {
-  try {
-    if (sessionStorage.getItem(FORCE_LOGIN_KEY) === "1") {
-      sessionStorage.removeItem(FORCE_LOGIN_KEY);
-      return true;
-    }
-  } catch (error) {
-    console.error(error);
-  }
-  return false;
-}
+const stateStorage = createMosStateStorage({
+  storageKey: STORAGE_KEY,
+  forceLoginKey: FORCE_LOGIN_KEY,
+  localDemoMode: LOCAL_DEMO_MODE,
+  demoTodayKey: DEMO_TODAY_KEY,
+  defaultState,
+  initialState,
+  normalizeMeasureEntry,
+  normalizeMeal,
+  normalizeSupplement,
+  normalizeTrainingPlan,
+  normalizeProfile,
+});
 
 function summarizeFoods(foods = []) {
   return foods.reduce(
@@ -1620,76 +1280,68 @@ function AuthWordmark() {
 }
 
 function App() {
-  const [state, setState] = useState(loadState);
+  const todayKey = getTodayKey();
+  const initialUiState = createInitialUiState({
+    todayKey,
+    recoveryReady: isRecoveryRedirect(),
+  });
+  const [state, setState] = useState(stateStorage.loadState);
   const [appRoute, setAppRoute] = useState(getMosRoute());
-  const [screen, setScreen] = useState(() => (shouldOpenLoginAfterReload() ? "login" : loadState().auth?.signedIn ? "home" : "welcome"));
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
-  const [notificationsCleared, setNotificationsCleared] = useState(false);
-  const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
-  const [searchOpenFrom, setSearchOpenFrom] = useState("home");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [foodDate, setFoodDate] = useState(getTodayKey());
-  const [foodCalendarOpen, setFoodCalendarOpen] = useState(false);
-  const [foodCalendarMonth, setFoodCalendarMonth] = useState(parseDateKey(getTodayKey()));
-  const [waterHistoryOpen, setWaterHistoryOpen] = useState(false);
-  const [waterHistoryDate, setWaterHistoryDate] = useState(getTodayKey());
-  const [waterHistoryMonth, setWaterHistoryMonth] = useState(parseDateKey(getTodayKey()));
-  const [modal, setModal] = useState(null);
-  const [selectedPlanId, setSelectedPlanId] = useState(null);
-  const [selectedConsumedId, setSelectedConsumedId] = useState(null);
-  const [selectedFood, setSelectedFood] = useState(null);
-  const [selectedSupplementId, setSelectedSupplementId] = useState(null);
-  const [selectedTrainingId, setSelectedTrainingId] = useState(null);
-  const [activeTraining, setActiveTraining] = useState(null);
-  const [completedTraining, setCompletedTraining] = useState(null);
-  const [trainingDraft, setTrainingDraft] = useState(null);
-  const [trainingClock, setTrainingClock] = useState(Date.now());
-  const [newTrainingExerciseId, setNewTrainingExerciseId] = useState(null);
-  const [appNewsEntries] = useState([
-    {
-      id: "news-2026-03-30",
-      date: "2026-03-30",
-      title: "Melhorias de edição e navegação",
-      description: "Os botões de salvar agora começam desativados e só ativam quando existe alguma alteração real. Também adicionamos alertas antes de sair de páginas com edição não salva.",
-    },
-    {
-      id: "news-2026-03-29",
-      date: "2026-03-29",
-      title: "Nova página de água e ajustes visuais",
-      description: "A tela de água ganhou um visual mais forte de consumo diário, registro rápido por ml e uma leitura mais clara do histórico.",
-    },
-    {
-      id: "news-2026-03-28",
-      title: "Configurar plano ficou mais completo",
-      date: "2026-03-28",
-      description: "A área de configuração do plano passou a ter mais cara de painel administrativo, com resumo das refeições e fluxo melhor para criação e edição.",
-    },
-  ]);
-  const [editor, setEditor] = useState(null);
-  const [substituteFood, setSubstituteFood] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null);
-  const [draftGuard, setDraftGuard] = useState({ key: null, dirty: false });
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [signupForm, setSignupForm] = useState({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
-  const [recoverEmail, setRecoverEmail] = useState("");
-  const [authNotice, setAuthNotice] = useState("");
-  const [authNoticeTitle, setAuthNoticeTitle] = useState("");
-  const [authNoticeTone, setAuthNoticeTone] = useState("error");
-  const [authBusy, setAuthBusy] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [screen, setScreen] = useState(() => {
+    const persistedState = stateStorage.loadState();
+    return resolveInitialScreen({
+      persistedState,
+      shouldForceLogin: stateStorage.shouldOpenLoginAfterReload(),
+    });
+  });
+  const [drawerOpen, setDrawerOpen] = useState(initialUiState.drawerOpen);
+  const [notificationsOpen, setNotificationsOpen] = useState(initialUiState.notificationsOpen);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(initialUiState.desktopSearchOpen);
+  const [notificationsCleared, setNotificationsCleared] = useState(initialUiState.notificationsCleared);
+  const [hasVerifiedSession, setHasVerifiedSession] = useState(initialUiState.hasVerifiedSession);
+  const [searchOpenFrom, setSearchOpenFrom] = useState(initialUiState.searchOpenFrom);
+  const [searchQuery, setSearchQuery] = useState(initialUiState.searchQuery);
+  const [foodDate, setFoodDate] = useState(initialUiState.foodDate);
+  const [foodCalendarOpen, setFoodCalendarOpen] = useState(initialUiState.foodCalendarOpen);
+  const [foodCalendarMonth, setFoodCalendarMonth] = useState(parseDateKey(initialUiState.foodCalendarMonth));
+  const [waterHistoryOpen, setWaterHistoryOpen] = useState(initialUiState.waterHistoryOpen);
+  const [waterHistoryDate, setWaterHistoryDate] = useState(initialUiState.waterHistoryDate);
+  const [waterHistoryMonth, setWaterHistoryMonth] = useState(parseDateKey(initialUiState.waterHistoryMonth));
+  const [modal, setModal] = useState(initialUiState.modal);
+  const [importFlow, setImportFlow] = useState(initialUiState.importFlow);
+  const [selectedPlanId, setSelectedPlanId] = useState(initialUiState.selectedPlanId);
+  const [selectedConsumedId, setSelectedConsumedId] = useState(initialUiState.selectedConsumedId);
+  const [selectedFood, setSelectedFood] = useState(initialUiState.selectedFood);
+  const [selectedSupplementId, setSelectedSupplementId] = useState(initialUiState.selectedSupplementId);
+  const [selectedTrainingId, setSelectedTrainingId] = useState(initialUiState.selectedTrainingId);
+  const [activeTraining, setActiveTraining] = useState(initialUiState.activeTraining);
+  const [completedTraining, setCompletedTraining] = useState(initialUiState.completedTraining);
+  const [trainingDraft, setTrainingDraft] = useState(initialUiState.trainingDraft);
+  const [trainingClock, setTrainingClock] = useState(initialUiState.trainingClock);
+  const [newTrainingExerciseId, setNewTrainingExerciseId] = useState(initialUiState.newTrainingExerciseId);
+  const [editor, setEditor] = useState(initialUiState.editor);
+  const [substituteFood, setSubstituteFood] = useState(initialUiState.substituteFood);
+  const [confirmAction, setConfirmAction] = useState(initialUiState.confirmAction);
+  const [draftGuard, setDraftGuard] = useState(initialUiState.draftGuard);
+  const [loginForm, setLoginForm] = useState(createDefaultLoginForm);
+  const [signupForm, setSignupForm] = useState(createDefaultSignupForm);
+  const [recoverEmail, setRecoverEmail] = useState(initialUiState.recoverEmail);
+  const [authNotice, setAuthNotice] = useState(initialUiState.authNotice);
+  const [authNoticeTitle, setAuthNoticeTitle] = useState(initialUiState.authNoticeTitle);
+  const [authNoticeTone, setAuthNoticeTone] = useState(initialUiState.authNoticeTone);
+  const [authBusy, setAuthBusy] = useState(initialUiState.authBusy);
+  const [toast, setToast] = useState(initialUiState.toast);
   const planTimelineRef = useRef(null);
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
-  const [resetPasswordForm, setResetPasswordForm] = useState({ password: "", confirmPassword: "" });
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showResetPasswordConfirm, setShowResetPasswordConfirm] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(initialUiState.showLoginPassword);
+  const [showSignupPassword, setShowSignupPassword] = useState(initialUiState.showSignupPassword);
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(initialUiState.showSignupConfirmPassword);
+  const [resetPasswordForm, setResetPasswordForm] = useState(createDefaultResetPasswordForm);
+  const [showResetPassword, setShowResetPassword] = useState(initialUiState.showResetPassword);
+  const [showResetPasswordConfirm, setShowResetPasswordConfirm] = useState(initialUiState.showResetPasswordConfirm);
+  const [authReady, setAuthReady] = useState(initialUiState.authReady);
   const authConfigured = isSupabaseConfigured();
   const recoveryFlowRef = useRef(isRecoveryRedirect());
-  const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(recoveryFlowRef.current);
+  const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(initialUiState.passwordRecoveryReady);
   const passwordStrengthScore = useMemo(() => {
     const value = signupForm.password || "";
     let score = 0;
@@ -1712,6 +1364,30 @@ function App() {
                   signupForm.password !== signupForm.confirmPassword ? "As senhas precisam ser iguais." :
                     !signupForm.acceptedTerms ? "Aceite os termos para continuar." :
                       "";
+
+  function resetAuthForms({ email = "", keepRecoveryEmail = false } = {}) {
+    setLoginForm(createDefaultLoginForm(email));
+    setSignupForm(createDefaultSignupForm());
+    setResetPasswordForm(createDefaultResetPasswordForm());
+    if (!keepRecoveryEmail) setRecoverEmail("");
+  }
+
+  function resetAuthVisibility() {
+    setShowLoginPassword(false);
+    setShowSignupPassword(false);
+    setShowSignupConfirmPassword(false);
+    setShowResetPassword(false);
+    setShowResetPasswordConfirm(false);
+  }
+
+  function createSignedOutSnapshot(current, { email, registered } = {}) {
+    return buildSignedOutState({
+      initialState,
+      current,
+      email: email ?? getStateEmail(current),
+      registered: registered ?? current?.auth?.registered ?? false,
+    });
+  }
 
   function markDraftDirty(key) {
     setDraftGuard({ key, dirty: true });
@@ -1803,6 +1479,10 @@ function App() {
     return `w-full h-14 bg-surface-container-low text-jet-black rounded-[10px] font-bold text-base transition-all ${
       disabled ? "opacity-45 cursor-not-allowed" : "active:scale-[0.98]"
     }`;
+  }
+
+  function evaluateDailyBrain(input = {}) {
+    return evaluateMosBrain(input, mosRuntime.brain);
   }
 
   useEffect(() => {
@@ -1961,13 +1641,12 @@ function App() {
     };
   }, [screen]);
 
-  const todayKey = getTodayKey();
   const date = todayKey;
   const consumedMeals = state.consumedMeals[todayKey] || [];
 
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    stateStorage.saveState(state);
   }, [state]);
 
   useEffect(() => {
@@ -1996,8 +1675,14 @@ function App() {
       if (!active) return;
 
       if (result.error) {
-        showAuthNotice("Não foi possível validar sua sessão agora. Tente novamente ou faça login outra vez.");
+        const nextEmail = getStateEmail(state);
+        showAuthNotice("Não foi possível validar sua sessão. Entre novamente para continuar.", {
+          tone: "error",
+          title: "Sessão indisponível",
+        });
         setHasVerifiedSession(false);
+        setState((current) => createSignedOutSnapshot(current, { email: nextEmail }));
+        setScreen(resolveSignedOutScreen({ appRoute, inRecoveryFlow: recoveryFlowRef.current }));
         setAuthReady(true);
         return;
       }
@@ -2005,21 +1690,12 @@ function App() {
       if (result.session && result.user) {
         setHasVerifiedSession(true);
         applyHydratedAuthState(result);
-        setScreen(recoveryFlowRef.current ? "reset-password" : "home");
+        setScreen(resolveSignedInScreen({ inRecoveryFlow: recoveryFlowRef.current }));
         if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
       } else {
         setHasVerifiedSession(false);
-        setState((current) => ({
-          ...structuredClone(initialState),
-          auth: {
-            ...structuredClone(initialState).auth,
-            registered: current.auth?.registered ?? false,
-            signedIn: false,
-            email: current.auth?.email || current.profile?.email || "",
-            password: "",
-          },
-        }));
-        setScreen(recoveryFlowRef.current ? "reset-password" : "welcome");
+        setState((current) => createSignedOutSnapshot(current));
+        setScreen(resolveSignedOutScreen({ appRoute, inRecoveryFlow: recoveryFlowRef.current }));
         if (recoveryFlowRef.current) setPasswordRecoveryReady(true);
       }
 
@@ -2029,19 +1705,19 @@ function App() {
     return () => {
       active = false;
     };
-  }, [authConfigured]);
+  }, [appRoute, authConfigured, state.auth?.email, state.profile?.email]);
 
   useEffect(() => {
     if (!authConfigured) return undefined;
 
-    const unsubscribe = subscribeToAuthChanges((event) => {
+    const unsubscribe = subscribeToAuthChanges(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         recoveryFlowRef.current = true;
         if (globalThis.history?.replaceState) {
           globalThis.history.replaceState(null, "", `${globalThis.location?.pathname || "/"}${globalThis.location?.hash || ""}`);
         }
         clearAuthNotice();
-        setResetPasswordForm({ password: "", confirmPassword: "" });
+        setResetPasswordForm(createDefaultResetPasswordForm());
         setShowResetPassword(false);
         setShowResetPasswordConfirm(false);
         setPasswordRecoveryReady(true);
@@ -2050,11 +1726,37 @@ function App() {
           "Seu link de recuperação foi validado. Agora defina uma nova senha para voltar a entrar no MOS!",
           { tone: "info", title: "Criar nova senha" },
         );
+        return;
+      }
+
+      if (event === "SIGNED_OUT" || (!session && event === "INITIAL_SESSION")) {
+        const nextEmail = getStateEmail(state);
+        setHasVerifiedSession(false);
+        setState((current) => createSignedOutSnapshot(current, { email: nextEmail, registered: true }));
+        clearAuthNotice();
+        setScreen(resolveSignedOutScreen({ appRoute: "app", inRecoveryFlow: recoveryFlowRef.current }));
+        setNotificationsOpen(false);
+        setDrawerOpen(false);
+        setDesktopSearchOpen(false);
+        setModal(null);
+        setEditor(null);
+        setSubstituteFood(null);
+        setConfirmAction(null);
+        return;
+      }
+
+      if (session?.user && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED")) {
+        const hydrated = await getCurrentAuthState();
+        if (!hydrated.error && hydrated.session && hydrated.user) {
+          setHasVerifiedSession(true);
+          applyHydratedAuthState(hydrated);
+          setScreen(resolveSignedInScreen({ inRecoveryFlow: recoveryFlowRef.current }));
+        }
       }
     });
 
     return unsubscribe;
-  }, [authConfigured]);
+  }, [authConfigured, state.auth?.email, state.profile?.email]);
 
   useEffect(() => {
     const syncRoute = () => setAppRoute(getMosRoute());
@@ -2065,9 +1767,7 @@ function App() {
   useEffect(() => {
     if (!authReady || appRoute !== "landing" || !hasVerifiedSession || recoveryFlowRef.current) return;
     if (LOCAL_DEMO_MODE) return;
-    navigateMosRoute("app", { replace: true });
-    setAppRoute("app");
-    setScreen("home");
+    openSignedInApp("home", { replace: true });
   }, [appRoute, authReady, hasVerifiedSession]);
 
   useEffect(() => {
@@ -2121,7 +1821,11 @@ function App() {
   const markedFoodDates = new Set(Object.entries(state.consumedMeals).filter(([, meals]) => Array.isArray(meals) && meals.length).map(([key]) => key));
   const markedWaterDates = new Set(Object.entries(state.waterHistory || {}).filter(([, entries]) => Array.isArray(entries) && entries.length).map(([key]) => key));
   const waterViewDateLabel = waterHistoryDate === todayKey ? "Hoje" : formatDateLabel(waterHistoryDate);
-  const isSignedIn = !["welcome", "signup", "login", "recover-password", "reset-password", "legal"].includes(screen);
+  const isSignedIn =
+    authReady &&
+    hasVerifiedSession &&
+    Boolean(state.auth?.signedIn) &&
+    !["welcome", "signup", "login", "recover-password", "reset-password", "legal"].includes(screen);
   const adminEmail = String(state.profile.email || state.auth.email || "").toLowerCase();
   const isAdminUser = LOCAL_DEMO_MODE || MOS_ADMIN_EMAILS.has(adminEmail) || adminEmail.includes("nirlandy") || globalThis.localStorage?.getItem("mos-admin") === "1";
   const markerNotificationPattern = /(teste|aqui eu envio|test mos)/i;
@@ -2148,7 +1852,7 @@ function App() {
   const notifications = notificationsCleared ? [] : [...adminNotifications, ...systemNotifications];
   globalThis.MOS_NOTIFICATION_COUNT = notifications.length;
   const currentDayMeals = state.consumedMeals[date] || [];
-  const profileInitial = (state.profile.name?.trim()?.[0] || state.profile.email?.trim()?.[0] || "M").toUpperCase();
+  const profileInitial = getProfileAvatarLabel(state.profile);
   const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
 
   useEffect(() => {
@@ -2319,42 +2023,190 @@ function App() {
     });
   }
 
-  function applyHydratedAuthState(result, fallbackEmail = "") {
-    setState((current) => ({
+  function resetImportFlow() {
+    setImportFlow(structuredClone(initialUiState.importFlow));
+  }
+
+  function openImportFlow(target) {
+    confirmDiscard(() => {
+      setDrawerOpen(false);
+      setNotificationsOpen(false);
+      setEditor(null);
+      setSubstituteFood(null);
+      setConfirmAction(null);
+      setImportFlow({
+        ...structuredClone(initialUiState.importFlow),
+        target,
+      });
+      setModal(target === "training" ? "training-import" : "plan-import");
+    }, "Deseja sair da edição atual? As alterações não salvas serão perdidas.");
+  }
+
+  function closeImportFlow() {
+    resetImportFlow();
+    setModal(null);
+  }
+
+  function updateImportText(value) {
+    setImportFlow((current) => ({
       ...current,
-      auth: {
-        ...current.auth,
-        registered: true,
-        signedIn: true,
-        email: result.user?.email || fallbackEmail || current.auth?.email || "",
-        password: "",
-      },
-      profile: {
-        ...current.profile,
-        name: result.profile?.name || result.user?.user_metadata?.name || current.profile.name,
-        email: result.profile?.email || result.user?.email || fallbackEmail || current.profile.email,
-        city: result.profile?.city || current.profile.city,
-        birthday: result.profile?.birth_date || current.profile.birthday,
-        waterTargetMl: Number(result.profile?.water_target_ml) || current.profile.waterTargetMl,
-        activeGoal: result.profile?.goal || current.profile.activeGoal,
-        planFocus: result.profile?.plan_focus || current.profile.planFocus,
-        planNotes: result.profile?.plan_notes || current.profile.planNotes,
-        weight: Number(result.profile?.weight) || current.profile.weight,
-        height: Number(result.profile?.height) || current.profile.height,
-        age: Number(result.profile?.age) || current.profile.age,
-        targetWeight: Number(result.profile?.target_weight) || current.profile.targetWeight,
-      },
-      measureEntries: Array.isArray(result.measureEntries) ? result.measureEntries : current.measureEntries,
-      supplements: Array.isArray(result.supplements) ? result.supplements : current.supplements,
-      waterHistory: result.waterHistory || current.waterHistory,
-      water: result.waterTotals || current.water,
-      planMeals: Array.isArray(result.planMeals) ? result.planMeals : current.planMeals,
-      consumedMeals: result.consumedMeals || current.consumedMeals,
-      trainingPlans: Array.isArray(result.trainingPlans) ? result.trainingPlans.map((plan, index) => normalizeTrainingPlan(plan, index, { allowEmptyExercises: true })) : current.trainingPlans,
-      trainingHistory: Array.isArray(result.trainingHistory) ? result.trainingHistory : current.trainingHistory,
-      feedbackEntries: Array.isArray(result.feedbackEntries) ? result.feedbackEntries : current.feedbackEntries,
-      appNotifications: Array.isArray(result.appNotifications) ? result.appNotifications : current.appNotifications,
+      rawText: value,
+      preview: null,
+      error: "",
     }));
+  }
+
+  function updateImportFile(file) {
+    setImportFlow((current) => ({
+      ...current,
+      file: file || null,
+      fileName: file?.name || "",
+      preview: null,
+      error: "",
+    }));
+  }
+
+  async function analyzeImportFlow() {
+    if (!importFlow.target) return;
+    setImportFlow((current) => ({
+      ...current,
+      busy: true,
+      error: "",
+    }));
+
+    const result = await mosRuntime.imports.ingest({
+      target: importFlow.target,
+      file: importFlow.file,
+      text: importFlow.rawText,
+    });
+
+    setImportFlow((current) => ({
+      ...current,
+      busy: false,
+      preview: result.ok ? result.preview : null,
+      error: result.ok ? "" : result.message,
+    }));
+
+    if (result.ok) showToast(result.message);
+  }
+
+  async function applyImportedPlan() {
+    const meals = importFlow.preview?.meals || [];
+    if (!meals.length) return;
+
+    let importedMeals = meals.map((meal, index) =>
+      normalizeMeal({
+        id: uid("plan"),
+        name: meal.name || meal.title || `Refeição ${index + 1}`,
+        title: meal.title || meal.name || `Refeição ${index + 1}`,
+        description: meal.description || "",
+        time: meal.time || "12:00",
+        icon: "restaurant",
+        foods: (meal.foods || []).map((food) => normalizeFood(food)),
+        image:
+          /café|cafe|breakfast/i.test(meal.name || "") ? planImages.breakfast
+            : /lanche|snack/i.test(meal.name || "") ? planImages.snack
+              : planImages.lunch,
+      }, state.planMeals.length + index),
+    );
+
+    if (authConfigured) {
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para importar o plano.");
+        return;
+      }
+
+      const syncedMeals = [];
+      for (let index = 0; index < importedMeals.length; index += 1) {
+        const meal = importedMeals[index];
+        const mealResult = await createPlanMealEntry(user.id, meal, state.planMeals.length + index);
+        if (!mealResult.ok) {
+          showAuthNotice(mealResult.error?.message || "Não foi possível importar o plano agora.");
+          return;
+        }
+
+        const syncedMeal = normalizeMeal({
+          ...mealResult.meal,
+          time: meal.time,
+          description: meal.description,
+          foods: [],
+          image: meal.image,
+        }, state.planMeals.length + index);
+
+        for (const food of meal.foods) {
+          const foodResult = await savePlanFoodItem(user.id, syncedMeal.id, food);
+          if (!foodResult.ok) {
+            showAuthNotice(foodResult.error?.message || "Não foi possível salvar os itens do plano agora.");
+            return;
+          }
+          syncedMeal.foods.push(normalizeFood(foodResult.food));
+        }
+
+        syncedMeals.push(syncedMeal);
+      }
+
+      importedMeals = syncedMeals;
+    }
+
+    mutate((draft) => {
+      draft.planMeals.push(...importedMeals);
+    });
+    setSelectedPlanId(importedMeals[0]?.id || null);
+    closeImportFlow();
+    showToast(`${importedMeals.length} refeição(ões) adicionadas ao plano.`);
+    setScreen("plan");
+  }
+
+  async function applyImportedTraining() {
+    const plans = importFlow.preview?.plans || [];
+    if (!plans.length) return;
+
+    let importedPlans = plans.map((plan, index) =>
+      normalizeTrainingPlan({
+        id: uid("training-plan"),
+        name: plan.name || `Treino ${index + 1}`,
+        estimatedMinutes: plan.estimatedMinutes || 45,
+        exercises: plan.exercises || [],
+      }, trainingPlans.length + index, { allowEmptyExercises: true }),
+    );
+
+    if (authConfigured) {
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para importar o treino.");
+        return;
+      }
+
+      const syncedPlans = [];
+      for (let index = 0; index < importedPlans.length; index += 1) {
+        const plan = importedPlans[index];
+        const result = await saveTrainingPlanEntry(user.id, plan, trainingPlans.length + index);
+        if (!result.ok) {
+          showAuthNotice(result.error?.message || "Não foi possível importar o treino agora.");
+          return;
+        }
+        syncedPlans.push(normalizeTrainingPlan(result.plan, trainingPlans.length + index, { allowEmptyExercises: true }));
+      }
+      importedPlans = syncedPlans;
+    }
+
+    mutate((draft) => {
+      draft.trainingPlans.push(...importedPlans);
+    });
+    setSelectedTrainingId(importedPlans[0]?.id || null);
+    closeImportFlow();
+    showToast(`${importedPlans.length} treino(s) adicionados ao MOS!.`);
+    setScreen("training-detail");
+  }
+
+  function applyHydratedAuthState(result, fallbackEmail = "") {
+    setState((current) =>
+      hydrateAuthenticatedState(current, result, {
+        fallbackEmail,
+        normalizeTrainingPlan,
+      }),
+    );
   }
 
   function openNotifications() {
@@ -2414,56 +2266,37 @@ function App() {
   }
 
   function renderSignedInScreen() {
-    switch (screen) {
-      case "home":
-        return renderHome();
-      case "food":
-        return renderFood();
-      case "food-detail":
-        return renderFoodDetail();
-      case "ingredient-detail":
-        return renderIngredientDetail();
-      case "plan":
-        return renderPlan();
-      case "plan-config":
-        return renderPlanConfig();
-      case "plan-detail":
-        return renderPlanDetail();
-      case "supplements":
-        return renderSupplements();
-      case "register-supplement":
-        return renderRegisterSupplement();
-      case "supplement-detail":
-        return renderSupplementDetail();
-      case "water":
-        return renderWater();
-      case "training":
-        return renderTraining();
-      case "training-detail":
-        return renderTrainingDetail();
-      case "training-execution":
-        return renderTrainingExecution();
-      case "training-summary":
-        return renderTrainingSummary();
-      case "training-edit":
-        return renderTrainingEdit();
-      case "profile":
-        return renderProfile();
-      case "measures":
-        return renderMeasures();
-      case "about-app":
-        return renderAboutApp();
-      case "app-news":
-        return renderAppNews();
-      case "admin-notifications":
-        return isAdminUser ? renderAdminNotifications() : renderHome();
-      case "history":
-        return renderHistory();
-      case "search":
-        return renderSearch();
-      default:
-        return renderHome();
-    }
+    const internalScreenRenderers = createInternalScreenRenderers({
+      renderHome,
+      renderFood,
+      renderFoodDetail,
+      renderIngredientDetail,
+      renderPlan,
+      renderPlanConfig,
+      renderPlanDetail,
+      renderSupplements,
+      renderRegisterSupplement,
+      renderSupplementDetail,
+      renderWater,
+      renderTraining,
+      renderTrainingDetail,
+      renderTrainingExecution,
+      renderTrainingSummary,
+      renderTrainingEdit,
+      renderProfile,
+      renderMeasures,
+      renderAboutApp,
+      renderAppNews,
+      renderAdminNotifications,
+      renderHistory,
+      renderSearch,
+    });
+
+    return renderSignedInScreenFromRouter(
+      screen,
+      internalScreenRenderers,
+      { isAdminUser },
+    );
   }
 
   function openNotificationItem(item) {
@@ -2508,35 +2341,11 @@ function App() {
   function openMenuItem(title) {
     confirmDiscard(() => {
       setDrawerOpen(false);
-      if (title === "Início") {
-        setScreen("home");
-        return;
-      }
-      if (title === "Meu perfil") {
-        setScreen("profile");
-        return;
-      }
-      if (title === "Minhas Medidas") {
-        setScreen("measures");
-        return;
-      }
-      if (title === "Configurar plano") {
-        setScreen("plan-config");
-        return;
-      }
-      if (title === "Sobre o App") {
-        setScreen("about-app");
-        return;
-      }
-      if (title === "Admin de notificações") {
-        setScreen("admin-notifications");
-        return;
-      }
       if (title === "Sair") {
         askDeleteConfirm({
-          title: "Ir para o login",
-          message: "Deseja sair desta área e voltar para a tela de login?",
-          confirmLabel: "Confirmar",
+          title: "Sair do MOS!",
+          message: "Ao sair, você volta para a tela de login. Deseja continuar?",
+          confirmLabel: "Sair agora",
           onConfirm: async () => {
             setDrawerOpen(false);
             setNotificationsOpen(false);
@@ -2545,17 +2354,10 @@ function App() {
             clearAuthNotice();
             recoveryFlowRef.current = false;
             setPasswordRecoveryReady(false);
-            setShowLoginPassword(false);
-            setShowSignupPassword(false);
-            setShowSignupConfirmPassword(false);
-            setShowResetPassword(false);
-            setShowResetPasswordConfirm(false);
+            resetAuthVisibility();
             setHasVerifiedSession(false);
-            setRecoverEmail("");
-            setResetPasswordForm({ password: "", confirmPassword: "" });
-            setSignupForm({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
 
-            const nextEmail = state.auth?.email || state.profile?.email || "";
+            const nextEmail = getStateEmail(state);
             if (authConfigured) {
               setAuthBusy(true);
               const result = await signOutUser();
@@ -2567,31 +2369,24 @@ function App() {
             }
 
             const nextState = {
-              ...structuredClone(initialState),
-              auth: {
-                ...structuredClone(initialState).auth,
-                registered: true,
-                signedIn: false,
-                email: nextEmail,
-                password: "",
-              },
+              ...createSignedOutSnapshot(state, { email: nextEmail, registered: true }),
             };
 
             try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-              sessionStorage.setItem(FORCE_LOGIN_KEY, "1");
+              stateStorage.saveState(nextState);
+              stateStorage.markLoginAfterReload();
             } catch (error) {
               console.error(error);
             }
 
             setState(nextState);
-            setLoginForm({ email: nextEmail, password: "" });
+            resetAuthForms({ email: nextEmail });
             window.location.assign(`${window.location.origin}${window.location.pathname}`);
           },
         });
         return;
       }
-      setScreen("home");
+      setScreen(getMenuTargetScreen(title));
     }, "Deseja sair da edição atual? As alterações não salvas serão perdidas.");
   }
 
@@ -2602,347 +2397,77 @@ function App() {
     setScreen(nextScreen);
   }
 
-  async function handleSignupSubmit(event) {
-    event.preventDefault();
-    const name = signupForm.name.trim();
-    const email = signupForm.email.trim().toLowerCase();
-    const password = signupForm.password;
-    const confirmPassword = signupForm.confirmPassword;
-    const age = Number(signupForm.age) || 0;
-    const weight = Number(signupForm.weight) || 0;
-    const height = Number(signupForm.height) || 0;
-    const goal = signupForm.goal || "lose";
-    const calorieTarget = calculateSuggestedCalories({ weight, height, age, goal });
-    const goalMeta = getGoalMeta(goal);
-
-    if (!name || !email || !password || !confirmPassword || !signupForm.acceptedTerms || !age || !weight || !height) {
-      showAuthNotice("Preencha todos os campos obrigatórios para concluir o cadastro.");
-      return;
-    }
-    if (password.length < 6) {
-      showAuthNotice("A senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      showAuthNotice("As senhas precisam ser iguais para concluir o cadastro.");
-      return;
-    }
-
-    if (authConfigured) {
-      setAuthBusy(true);
-      const result = await signUpWithEmail({ name, email, password, age, weight, height, calorieTarget, goal: goalMeta.label, planFocus: goalMeta.focus });
-      setAuthBusy(false);
-
-      if (!result.ok) {
-        if (result.duplicateAccount) {
-          setLoginForm({ email, password: "" });
-          showAuthNotice(
-            "Já existe uma conta cadastrada com este e-mail. Se você já criou a conta antes, tente entrar ou redefinir sua senha.",
-            { tone: "info", title: "Conta já cadastrada" },
-          );
-          return;
-        }
-        showAuthNotice(result.error?.message || "Não foi possível criar sua conta agora.");
-        return;
-      }
-
-      mutate((draft) => {
-        draft.auth = {
-          registered: true,
-          signedIn: Boolean(result.session),
-          email,
-          password: "",
-        };
-        draft.profile.name = name;
-        draft.profile.email = email;
-        draft.profile.age = age;
-        draft.profile.weight = weight;
-        draft.profile.height = height;
-        draft.profile.targetWeight = goal === "lose" ? Math.max(0, weight - 5) : goal === "gain" ? weight + 3 : weight;
-        draft.profile.calorieTarget = calorieTarget || draft.profile.calorieTarget;
-        draft.profile.activeGoal = goalMeta.label;
-        draft.profile.planFocus = goalMeta.focus;
-      });
-
-      setLoginForm({ email, password: "" });
-      setSignupForm({ name: "", email: "", password: "", confirmPassword: "", age: "", weight: "", height: "", goal: "lose", acceptedTerms: false });
-
-      if (result.needsEmailConfirmation) {
-        showAuthNotice(
-          `Enviamos um link de confirmação para ${email}. Abra seu e-mail e confirme a conta antes de entrar no MOS! Se não encontrar a mensagem, verifique a pasta de spam ou promoções.`,
-          { tone: "info", title: "Confirme seu e-mail" }
-        );
-        setScreen("login");
-      } else {
-        const hydrated = await getCurrentAuthState();
-        if (hydrated.session && hydrated.user) {
-          setHasVerifiedSession(true);
-          applyHydratedAuthState(hydrated, email);
-        }
-        clearAuthNotice();
-        navigateMosRoute("app", { replace: true });
-        setAppRoute("app");
-        setScreen("home");
-      }
-      return;
-    }
-
-    showAuthNotice(getSupabaseSetupMessage(), {
-      tone: "error",
-      title: "Autenticação indisponível",
-    });
-    return;
+  function openSignedInApp(nextScreen = "home", { replace = true } = {}) {
+    navigateMosRoute("app", { replace });
+    setAppRoute("app");
+    setScreen(nextScreen);
   }
 
-  async function handleLoginSubmit() {
-    const email = loginForm.email.trim().toLowerCase();
-    const password = loginForm.password;
+  const {
+    handleSignupSubmit,
+    handleLoginSubmit,
+    handleRecoverSubmit,
+    handleResetPasswordSubmit,
+  } = createAuthHandlers({
+    authConfigured,
+    signupForm,
+    loginForm,
+    recoverEmail,
+    resetPasswordForm,
+    calculateSuggestedCalories,
+    getGoalMeta,
+    showAuthNotice,
+    setAuthBusy,
+    signUpWithEmail,
+    signInWithEmail,
+    sendRecoverEmail,
+    updatePassword,
+    mutate,
+    resetAuthForms,
+    setLoginForm,
+    setScreen,
+    getCurrentAuthState,
+    setHasVerifiedSession,
+    applyHydratedAuthState,
+    clearAuthNotice,
+    openSignedInApp,
+    getSupabaseSetupMessage,
+    setRecoverEmail,
+    setPasswordRecoveryReady,
+    recoveryFlowRef,
+    setResetPasswordForm,
+    createDefaultLoginForm,
+    createDefaultResetPasswordForm,
+  });
 
-    if (!email || !password) return;
-
-    if (authConfigured) {
-      setAuthBusy(true);
-      const result = await signInWithEmail({ email, password });
-      setAuthBusy(false);
-
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível entrar agora.");
-        return;
-      }
-
-      const hydrated = await getCurrentAuthState();
-      if (hydrated.session && hydrated.user) {
-        setHasVerifiedSession(true);
-        applyHydratedAuthState(hydrated, email);
-      } else {
-        mutate((draft) => {
-          draft.auth = {
-            ...draft.auth,
-            registered: true,
-            email,
-            password: "",
-            signedIn: true,
-          };
-          draft.profile.name = result.profile?.name || draft.profile.name;
-          draft.profile.email = result.profile?.email || email;
-          draft.profile.city = result.profile?.city || draft.profile.city;
-          draft.profile.birthday = result.profile?.birth_date || draft.profile.birthday;
-        });
-      }
-      clearAuthNotice();
-      navigateMosRoute("app", { replace: true });
-      setAppRoute("app");
-      setScreen("home");
-      return;
-    }
-
-    showAuthNotice(getSupabaseSetupMessage(), {
-      tone: "error",
-      title: "Autenticação indisponível",
-    });
-    return;
-  }
-
-  async function handleRecoverSubmit(event) {
-    event.preventDefault();
-    if (!recoverEmail.trim()) return;
-
-    const email = recoverEmail.trim().toLowerCase();
-    if (authConfigured) {
-      setAuthBusy(true);
-      const result = await sendRecoverEmail(email);
-      setAuthBusy(false);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível enviar o link agora.");
-        return;
-      }
-      showAuthNotice(
-        "Se existir uma conta com esse e-mail, enviaremos um link para redefinir a senha. Verifique sua caixa de entrada, spam e promoções.",
-        {
-          tone: "info",
-          title: "Verifique seu e-mail",
-        },
-      );
-    } else {
-      showAuthNotice(getSupabaseSetupMessage(), {
-        tone: "error",
-        title: "Autenticação indisponível",
-      });
-    }
-
-    setScreen("login");
-    setLoginForm((current) => ({ ...current, email }));
-    setRecoverEmail("");
-  }
-
-  async function handleResetPasswordSubmit(event) {
-    event.preventDefault();
-
-    const password = resetPasswordForm.password;
-    const confirmPassword = resetPasswordForm.confirmPassword;
-
-    if (!password || !confirmPassword) return;
-    if (password.length < 6) {
-      showAuthNotice("A senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      showAuthNotice("As senhas precisam ser iguais para continuar.");
-      return;
-    }
-
-    if (!authConfigured) {
-      showAuthNotice(getSupabaseSetupMessage(), {
-        tone: "error",
-        title: "Autenticação indisponível",
-      });
-      return;
-    }
-
-    setAuthBusy(true);
-    const result = await updatePassword(password);
-    setAuthBusy(false);
-
-    if (!result.ok) {
-      showAuthNotice(result.error?.message || "Não foi possível redefinir a senha agora.");
-      return;
-    }
-
-    recoveryFlowRef.current = false;
-    setPasswordRecoveryReady(false);
-    if (globalThis.history?.replaceState) {
-      globalThis.history.replaceState(null, "", globalThis.location?.pathname || "/");
-    }
-    setResetPasswordForm({ password: "", confirmPassword: "" });
-    setLoginForm((current) => ({ ...current, password: "" }));
-    showAuthNotice("Sua senha foi atualizada com sucesso. Agora você já pode entrar com a nova senha.", {
-      tone: "success",
-      title: "Senha redefinida",
-    });
-    setScreen("login");
-  }
+  const {
+    registerMeal,
+    registerWater,
+    saveMeasures,
+    saveFeedback,
+  } = createDomainHandlers({
+    uid,
+    authConfigured,
+    foodDate,
+    todayKey,
+    consumedMeals,
+    getAuthenticatedUser,
+    createConsumedMealEntry,
+    appendWaterAmount,
+    saveMeasureEntry,
+    createFeedbackEntry,
+    normalizeMeasureEntry,
+    mutate,
+    clearDraft,
+    setModal,
+    setScreen,
+    showToast,
+    showAuthNotice,
+  });
 
   function openFoodDetailItem(food, back) {
     setSelectedFood({ ...food, back });
     setScreen("ingredient-detail");
-  }
-
-  async function registerMeal(formData) {
-    const meal = {
-      id: uid("meal"),
-      name: formData.get("mealName"),
-      title: formData.get("mealName"),
-      description: formData.get("description"),
-      time: "Agora",
-      icon: "restaurant",
-      cardClass: "bg-[#EF5F37] text-white",
-      foods: [],
-    };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para registrar a refeição.");
-        return;
-      }
-      const result = await createConsumedMealEntry(user.id, foodDate, meal);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível registrar a refeição agora.");
-        return;
-      }
-      Object.assign(meal, result.meal);
-    }
-
-    mutate((draft) => {
-      draft.consumedMeals[foodDate] = [...(draft.consumedMeals[foodDate] || (foodDate === todayKey ? consumedMeals : [])), meal];
-    });
-    clearDraft("modal-food");
-    showToast("Refeição registrada.");
-    setScreen("food");
-  }
-
-  async function registerWater(formData) {
-    const amount = Number(formData.get("amount")) || 0;
-    if (amount <= 0) return;
-    await appendWaterAmount(amount);
-    clearDraft("modal-water");
-    setModal(null);
-  }
-
-  async function saveMeasures(formData) {
-    const entry = normalizeMeasureEntry({
-      id: `measure-${formData.get("date") || getTodayKey()}`,
-      date: formData.get("date") || getTodayKey(),
-      weight: formData.get("weight"),
-      height: formData.get("height"),
-      bodyFat: formData.get("bodyFat"),
-      muscleMass: formData.get("muscleMass"),
-      bodyWater: formData.get("bodyWater"),
-      metabolicAge: formData.get("metabolicAge"),
-    });
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para salvar suas medidas.");
-        return;
-      }
-
-      const result = await saveMeasureEntry(user.id, entry);
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível salvar suas medidas agora.");
-        return;
-      }
-    }
-
-    mutate((draft) => {
-      const entries = Array.isArray(draft.measureEntries) ? draft.measureEntries : [];
-      const existingIndex = entries.findIndex((item) => item.date === entry.date);
-      if (existingIndex >= 0) {
-        entries[existingIndex] = { ...entries[existingIndex], ...entry };
-      } else {
-        entries.push(entry);
-      }
-      draft.measureEntries = entries.sort((a, b) => a.date.localeCompare(b.date));
-    });
-    clearDraft("modal-measures");
-    setModal(null);
-    showToast("Medidas salvas.");
-    setScreen("measures");
-  }
-
-  async function saveFeedback(formData) {
-    const section = String(formData.get("section") || "Geral");
-    const message = String(formData.get("message") || "").trim();
-    if (!message) return;
-
-    let nextFeedback = {
-      id: uid("feedback"),
-      section,
-      message,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (authConfigured) {
-      const user = await getAuthenticatedUser();
-      const result = await createFeedbackEntry(user?.id || null, { section, message });
-      if (!result.ok) {
-        showAuthNotice(result.error?.message || "Não foi possível enviar o feedback agora.");
-        return;
-      }
-      nextFeedback = result.feedback;
-    }
-
-    mutate((draft) => {
-      draft.feedbackEntries = [
-        nextFeedback,
-        ...(draft.feedbackEntries || []),
-      ].slice(0, 10);
-    });
-    clearDraft("modal-feedback");
-    setModal(null);
-    setScreen("about-app");
-    showToast("Feedback enviado.");
   }
 
   async function sendAdminNotification(formData) {
@@ -3688,236 +3213,44 @@ function App() {
   }, [newTrainingExerciseId, trainingDraft]);
 
   function renderHome() {
-    const currentMeals = state.consumedMeals[date] || [];
-    const formattedConsumed = Math.round(summary.calories).toLocaleString("pt-BR");
-    const formattedRemaining = Math.max(0, Math.round(remaining)).toLocaleString("pt-BR");
-    const formattedTarget = Math.round(state.profile.calorieTarget).toLocaleString("pt-BR");
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
-    const nowHour = new Date().getHours();
-    const greeting = nowHour < 12 ? "Bom dia" : nowHour < 18 ? "Boa tarde" : "Boa noite";
-    const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
-    const waterRemaining = Math.max(0, waterGoal - water);
-    const executionSignals = calculateMosExecutionSignals({
-      caloriesConsumed: summary.calories,
-      calorieTarget: state.profile.calorieTarget,
-      waterConsumedMl: water,
-      waterTargetMl: waterGoal,
-      trainingDone: trainingDoneToday,
+    return renderHomeScreen({
+      html,
+      getSectionBackground,
+      TopBar,
+      BottomNav,
+      Icon,
+      state,
+      date,
+      summary,
+      remaining,
+      todayKey,
+      trainingHistory,
+      waterGoal,
+      water,
+      latestMeasure,
+      latestBmi,
+      executionSignals,
+      evaluateDailyBrain,
+      setScreen,
+      setDrawerOpen,
+      openSearch,
+      openNotifications,
+      setModal,
     });
-    const mosState = calculateMosState({
-      caloriesConsumed: summary.calories,
-      calorieTarget: state.profile.calorieTarget,
-      waterConsumedMl: water,
-      waterTargetMl: waterGoal,
-      trainingDone: trainingDoneToday,
-    });
-    const insight = generateMosOperationalInsight(executionSignals);
-    const profileInsight = generateMosShortRecommendation(mosState);
-    const latestWeight = Number(latestMeasure?.weight) || Number(state.profile.weight) || 0;
-    const targetWeight = Number(state.profile.targetWeight) || 0;
-    const profileGoal = String(state.profile.activeGoal || "Plano em acompanhamento").replace(/^Plano atual:\s*/i, "");
-    const profileStats = [
-      {
-        label: "Peso",
-        value: latestWeight ? `${latestWeight.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : "--",
-      },
-      {
-        label: "Meta",
-        value: targetWeight ? `${targetWeight.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg` : `${formattedTarget} kcal`,
-      },
-      {
-        label: "IMC",
-        value: latestBmi ? latestBmi.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "--",
-      },
-    ];
-    const nextAction = (() => {
-      if (!currentMeals.length) {
-        return {
-          label: "Registrar comida",
-          title: "Registrar primeira refeição",
-          detail: "Abra comida e marque o que já foi consumido.",
-          icon: "restaurant",
-          action: () => setModal("food"),
-        };
-      }
-      if (waterRemaining > 0 && executionSignals.waterPercent < 0.75) {
-        return {
-          label: "Registrar água",
-          title: `Beber ${Math.ceil(waterRemaining / 50) * 50} ml`,
-          detail: "Some água para aproximar sua meta do dia.",
-          icon: "water_drop",
-          action: () => setModal("water"),
-        };
-      }
-      if (!trainingDoneToday) {
-        return {
-          label: "Ver treino",
-          title: "Fazer treino de hoje",
-          detail: "Abra o treino definido e registre a sessão.",
-          icon: "fitness_center",
-          action: () => setScreen("training"),
-        };
-      }
-      if (!state.planMeals.length) {
-        return {
-          label: "Ajustar plano",
-          title: "Configurar roteiro",
-          detail: "Organize as refeições que já foram definidas.",
-          icon: "description",
-          action: () => setScreen("plan-config"),
-        };
-      }
-      return {
-        label: "Ver plano",
-        title: "Seguir o roteiro",
-        detail: "Abra o plano e veja a próxima refeição.",
-        icon: "description",
-        action: () => setScreen("plan"),
-      };
-    })();
-    const signalIcons = {
-      food: "restaurant",
-      water: "water_drop",
-      training: "fitness_center",
-      plan: "description",
-    };
-    const daySignals = [
-      {
-        key: "food",
-        label: "Comida",
-        status:
-          summary.calories <= 0 ? "Sem registro" : remaining <= 0 ? "Ajustar hoje" : "Dentro da meta",
-        detail: `${formattedConsumed} de ${formattedTarget} kcal`,
-      },
-      {
-        key: "water",
-        label: "Água",
-        status: waterRemaining > 0 ? `Faltam ${waterRemaining} ml` : "Meta batida",
-        detail: `${Math.round(water)} de ${Math.round(waterGoal)} ml`,
-      },
-      {
-        key: "training",
-        label: "Treino",
-        status: trainingDoneToday ? "Feito" : "Pendente",
-        detail: trainingDoneToday ? "Treino registrado hoje" : "Nenhum treino hoje",
-      },
-      {
-        key: "plan",
-        label: "Plano",
-        status: state.planMeals.length ? "Ativo" : "Sem plano",
-        detail: state.planMeals.length ? `${state.planMeals.length} refeições no roteiro` : "Defina um roteiro do dia",
-      },
-    ];
-    return html`
-      <div className="min-h-screen pb-32 ${getSectionBackground()}">
-        <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
-        <main className="home-main pt-24 px-6 max-w-md mx-auto space-y-5">
-          <section className="home-greeting-line">
-            <p>${greeting}, ${profileName}.</p>
-          </section>
-
-          <section className="home-signature">
-            <div className="home-signature-orb home-signature-orb--warm"></div>
-            <div className="home-signature-orb home-signature-orb--cool"></div>
-            <div className="home-signature-content">
-              <div className="space-y-3">
-                <span className="home-panel-eyebrow">Painel do dia</span>
-                <h1 className="home-hero-number">${formattedRemaining}</h1>
-                <div>
-                  <p className="home-hero-unit">kcal livres hoje</p>
-                  <p className="home-hero-insight">${insight}</p>
-                </div>
-              </div>
-              <button className="home-next-action" onClick=${nextAction.action}>
-                <div className="home-next-action-icon">
-                  <${Icon} name=${nextAction.icon} className="text-[1.35rem] text-[#0F172A]" filled=${nextAction.icon === "water_drop"} />
-                </div>
-                <div className="min-w-0">
-                  <span className="home-panel-eyebrow">Agora</span>
-                  <strong>${nextAction.title}</strong>
-                  <p>${nextAction.detail}</p>
-                </div>
-                <${Icon} name="arrow_forward" className="text-[1.2rem] text-white/70" />
-              </button>
-            </div>
-          </section>
-
-          <section className="home-signal-strip">
-            ${daySignals.map(
-              (signal) => html`
-                <button className="home-signal-pill" key=${signal.key} onClick=${() => setScreen(signal.key)}>
-                  <span className="home-signal-pill-icon">
-                    <${Icon} name=${signalIcons[signal.key]} className="text-[1.05rem]" filled=${signal.key === "water"} />
-                  </span>
-                  <div>
-                    <span>${signal.label}</span>
-                    <strong>${signal.status}</strong>
-                    <small>${signal.detail}</small>
-                  </div>
-                </button>
-              `
-            )}
-          </section>
-
-          <section className="home-panel">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <span className="home-panel-eyebrow">Base do dia</span>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-[1.9rem] font-black leading-tight text-[#0F172A]">${profileGoal}</div>
-                    <p className="text-sm text-[#64748b]">parâmetros que guiam o MOS! hoje</p>
-                  </div>
-                  <div className="home-inline-insight">${profileInsight}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                ${profileStats.map(
-                  (item) => html`
-                    <div className="home-summary-stat" key=${item.label}>
-                      <span className="home-summary-label">${item.label}</span>
-                      <span className="home-summary-value">${item.value}</span>
-                    </div>
-                  `
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button className="home-quick-action" onClick=${() => setModal("food")}>
-                  <${Icon} name="add_circle" className="text-[1.25rem] text-[#EF5F37]" filled=${true} />
-                  <span>Registrar comida</span>
-                </button>
-                <button className="home-quick-action" onClick=${() => setModal("water")}>
-                  <${Icon} name="water_drop" className="text-[1.25rem] text-[#4558C8]" filled=${true} />
-                  <span>Registrar água</span>
-                </button>
-              </div>
-            </div>
-          </section>
-        </main>
-        <${BottomNav} active="home" onChange=${setScreen} />
-      </div>
-    `;
   }
 
   function renderLanding() {
     const openApp = () => {
-      navigateMosRoute("app");
-      setAppRoute("app");
+      openSignedInApp("home", { replace: false });
       setScreen(state.auth?.signedIn ? "home" : "welcome");
     };
 
-    return html`
-      <main className="mos-landing mos-landing--hold">
-        <section className="mos-landing-hold-card" aria-label="Boas-vindas ao MOS!">
-          <${MosWordmark} className="mos-wordmark--landing mos-wordmark--landing-hold" />
-          <p>Bem-vindo ao MOS!</p>
-          <button className="mos-landing-access-button" onClick=${openApp}>
-            <span>ACESSAR AO MOS!</span>
-            <${Icon} name="login" />
-          </button>
-        </section>
-      </main>
-    `;
+    return renderLandingScreen({
+      html,
+      MosWordmark,
+      Icon,
+      onAccess: openApp,
+    });
   }
 
   function renderWelcome() {
@@ -4335,153 +3668,29 @@ function App() {
   }
 
   function renderFood() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
-    const consumedCalories = Math.round(summary.calories);
-    const calorieTarget = Math.round(state.profile.calorieTarget);
-    const remainingCalories = Math.max(0, Math.round(remaining));
-    const rawRemainingCalories = Math.round(remaining);
-    const percentRemaining = calorieTarget > 0 ? rawRemainingCalories / calorieTarget : 0;
-    const foodHeadline =
-      rawRemainingCalories <= 0
-        ? "Atenção ao excesso"
-        : percentRemaining > 0.3
-          ? "Ainda há margem hoje"
-          : percentRemaining >= 0.1
-            ? "Meta próxima"
-            : "Meta quase atingida";
-    const nextMealRecommendation =
-      rawRemainingCalories <= 0
-        ? "Evite consumir mais calorias hoje"
-        : percentRemaining > 0.3
-          ? "Você pode reforçar a próxima refeição"
-          : percentRemaining >= 0.1
-            ? "Mantenha refeições equilibradas"
-            : "Prefira algo leve na próxima refeição";
-    return html`
-      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-40">
-        <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("food")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-8">
-          <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
-              ${foodHeadline}
-            </h1>
-            <p className="text-[0.95rem] text-[#334155]">Veja rápido o que já entrou, o que falta e onde ajustar hoje. <span className="emoji-badge emoji-badge--food" aria-hidden="true">🍽️</span></p>
-          </section>
-          <section className="food-summary-card rounded-[28px] p-6 space-y-5">
-            <div className="space-y-2">
-              <span className="text-[0.82rem] font-semibold uppercase tracking-[0.08em] text-[#475569]">Resumo do dia</span>
-              <p className="text-[0.95rem] text-[#334155]">Uma leitura simples para seguir o dia com clareza.</p>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="food-summary-metric">
-                <span className="food-summary-label">Comidas</span>
-                <strong className="food-summary-value">${consumedCalories.toLocaleString("pt-BR")}</strong>
-                <span className="food-summary-unit">kcal</span>
-              </div>
-              <div className="food-summary-metric">
-                <span className="food-summary-label">Meta</span>
-                <strong className="food-summary-value">${calorieTarget.toLocaleString("pt-BR")}</strong>
-                <span className="food-summary-unit">kcal</span>
-              </div>
-              <div className="food-summary-metric">
-                <span className="food-summary-label">Restante</span>
-                <strong className="food-summary-value">${remainingCalories.toLocaleString("pt-BR")}</strong>
-                <span className="food-summary-unit">kcal</span>
-              </div>
-            </div>
-            <p className="text-[0.92rem] text-[#334155] leading-[1.45]">${nextMealRecommendation}</p>
-          </section>
-          <section className="w-full">
-            <button className="w-full food-hero-card food-calendar-card rounded-2xl p-6 flex justify-between items-center active:scale-98 transition-transform text-left" onClick=${openFoodCalendar}>
-              <div className="space-y-1">
-                <span className="font-label text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-[#475569]">Calendário</span>
-                <h2 className="font-headline text-[1.8rem] font-bold text-[#0F172A]">${foodDateLabel}</h2>
-                <p className="text-[0.9rem] text-[#334155]">Abra outra data ou volte para hoje quando quiser comparar.</p>
-              </div>
-              <div className="food-calendar-badge">
-                <${Icon} name="calendar_today" className="text-[#0F172A]" />
-              </div>
-            </button>
-            ${foodDate !== todayKey
-              ? html`
-                  <div className="flex justify-end pt-3">
-                    <button
-                      className="min-h-9 px-3 rounded-[10px] bg-[#EF5F37] text-white text-[0.85rem] font-bold flex items-center gap-2 active:scale-95 transition-transform shadow-[0_1px_0_rgba(0,0,0,0.03)]"
-                      onClick=${goToTodayFood}
-                    >
-                      <${Icon} name="today" className="text-[1rem] text-white" />
-                      <span>Ver hoje</span>
-                    </button>
-                  </div>
-                `
-              : null}
-          </section>
-          <section className="grid grid-cols-1 gap-5">
-            ${foodMeals.length
-              ? foodMeals.map(
-              (meal) => {
-                const mealTotal = summarizeFoods(meal.foods);
-                const mealCalories = Math.round(mealTotal.calories);
-                const hasMealCalories = mealCalories > 0;
-                const mealDescription = Array.isArray(meal.foods) && meal.foods.length
-                  ? meal.foods
-                      .map((food) => `${food.name}${food.quantity ? ` (${food.quantity})` : ""}`)
-                      .join(", ")
-                  : meal.description || "Sem registro";
-                const mealCalorieLabel =
-                  mealCalories <= 300
-                    ? "Baixo"
-                    : mealCalories <= 600
-                      ? "OK"
-                      : "Alto";
-                return html`
-                  <button className="mos-card food-meal-card rounded-[26px] p-7 min-h-[176px] active:scale-98 transition-transform cursor-pointer text-left flex flex-col justify-between gap-8" onClick=${() => { setSelectedConsumedId(meal.id); setScreen("food-detail"); }}>
-                    <div className="food-meal-top">
-                      <div className="food-meal-icon">
-                        <${Icon} name=${meal.icon || "restaurant"} className="text-[#0F172A] text-[1.55rem]" />
-                      </div>
-                      <${Icon} name="arrow_forward" className="food-meal-arrow" />
-                    </div>
-                    <div className="food-meal-copy">
-                      <h3 className="font-headline text-[1.82rem] font-[320] leading-none text-[#0F172A]">${meal.name}</h3>
-                      <p className="food-meal-description">${mealDescription}</p>
-                    </div>
-                    <div className="food-meal-footer">
-                      ${hasMealCalories
-                        ? html`
-                            <div className="food-meal-calories">
-                              <span className="food-meal-calories-value">${mealCalories}</span>
-                              <span className="food-meal-calories-unit">kcal</span>
-                            </div>
-                            <span className="food-meal-chip">${mealCalorieLabel}</span>
-                          `
-                        : html`
-                            <span className="food-meal-empty">Sem registro</span>
-                          `}
-                    </div>
-                  </button>
-                `;
-              },
-            )
-              : html`
-                  <div className="mos-card rounded-[26px] p-6 text-center space-y-3">
-                    <p className="font-bold text-[#0F172A]">Nenhuma refeição registrada</p>
-                    <p className="text-[0.96rem] text-[#334155]">Escolha outra data ou registre uma refeição para este dia.</p>
-                  </div>
-                `}
-          </section>
-          <div className="fixed left-0 w-full px-4 z-40 pointer-events-none mos-fixed-cta">
-            <button className="mos-fixed-cta-button font-headline shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setModal("food")}>
-              <${Icon} name="add_circle" />
-              Registrar comida
-            </button>
-          </div>
-        </main>
-        <${BottomNav} active="food" onChange=${setScreen} />
-      </div>
-    `;
+    return renderFoodScreen({
+      html,
+      getSectionBackground,
+      TopBar,
+      BottomNav,
+      Icon,
+      state,
+      summary,
+      remaining,
+      todayKey,
+      foodDate,
+      foodDateLabel,
+      foodMeals,
+      summarizeFoods,
+      setScreen,
+      setDrawerOpen,
+      openSearch,
+      openNotifications,
+      openFoodCalendar,
+      goToTodayFood,
+      setModal,
+      setSelectedConsumedId,
+    });
   }
 
   function renderFoodDetail() {
@@ -4616,7 +3825,9 @@ function App() {
     `;
   }
 
-  function renderPlanModeTabs({ activeMode }) {
+  function renderPlanModeTabs() {
+    return null;
+  }) {
     const isPlan = activeMode === "plan";
     return html`
       <div className="plan-mode-tabs" role="tablist" aria-label="Navegação do plano">
@@ -4642,7 +3853,9 @@ function App() {
     `;
   }
 
-  function renderPlanModeHeader({ activeMode, headline, support, nowHour, profileName }) {
+  function renderPlanModeHeader() {
+    return null;
+  }) {
     return html`
       <section className="plan-mode-header">
         <div className="plan-mode-copy">
@@ -4658,192 +3871,33 @@ function App() {
   }
 
   function renderPlan() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
-    const planBrainState = calculateMosState({
-      caloriesConsumed: summary.calories,
-      calorieTarget: state.profile.calorieTarget,
-      waterConsumedMl: water,
-      waterTargetMl: waterGoal,
-      trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
+    return renderPlanScreen({
+      html,
+      getSectionBackground,
+      TopBar,
+      BottomNav,
+      Icon,
+      state,
+      summary,
+      water,
+      waterGoal,
+      trainingHistory,
+      todayKey,
+      sortedPlanMeals,
+      selectedPlanId,
+      planTimelineRef,
+      evaluateDailyBrain,
+      getCurrentPlanMeal,
+      summarizeFoods,
+      formatMealTimeLabel,
+      getFoodAccent,
+      setScreen,
+      setDrawerOpen,
+      openSearch,
+      openNotifications,
+      setSelectedPlanId,
+      setSubstituteFood,
     });
-    const planHeadline = "Seu plano, organizado pra você";
-    const currentPlanMeal = getCurrentPlanMeal(sortedPlanMeals);
-    const activePlanMeal = sortedPlanMeals.find((meal) => meal.id === selectedPlanId) || currentPlanMeal || sortedPlanMeals[0] || null;
-    const activePlanMealFoods = activePlanMeal?.foods || [];
-    const activePlanMealTotals = summarizeFoods(activePlanMealFoods);
-    const scrollPlanTimeline = (direction = 1) => {
-      planTimelineRef.current?.scrollBy({
-        left: direction * 220,
-        behavior: "smooth",
-      });
-    };
-    return html`
-      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
-        <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
-        <main className="pt-24 pb-64 px-6 max-w-md mx-auto space-y-8">
-          <${renderPlanModeHeader}
-            activeMode="plan"
-            headline=${planHeadline}
-            nowHour=${nowHour}
-            profileName=${profileName}
-          />
-          <section className="space-y-5">
-            <div className="space-y-0.5">
-              <h2 className="text-xl font-bold text-[#0F172A]">Roteiro do dia</h2>
-            </div>
-            <div className="plan-timeline-shell">
-              <div className="plan-timeline-head">
-                <div className="plan-timeline-nav">
-                  <button className="plan-timeline-arrow" type="button" onClick=${() => scrollPlanTimeline(-1)} aria-label="Ver refeição anterior">
-                    <${Icon} name="arrow_back" />
-                  </button>
-                  <button className="plan-timeline-arrow" type="button" onClick=${() => scrollPlanTimeline(1)} aria-label="Ver próxima refeição">
-                    <${Icon} name="arrow_forward" />
-                  </button>
-                </div>
-              </div>
-              <div className="plan-timeline-scroller" ref=${planTimelineRef}>
-                <div className="plan-timeline-track">
-                ${sortedPlanMeals.map((meal, index) => html`
-                    <button
-                      id=${`plan-timeline-item-${meal.id}`}
-                      className=${`plan-time-pill ${activePlanMeal?.id === meal.id ? "plan-time-pill--active" : ""} ${currentPlanMeal?.id === meal.id ? "plan-time-pill--now" : ""}`}
-                      onClick=${() => setSelectedPlanId(meal.id)}
-                    >
-                      <div className="plan-time-pill-top">
-                        <span className="plan-time-pill-step">${String(index + 1).padStart(2, "0")}</span>
-                        <span className=${`plan-time-pill-state ${activePlanMeal?.id === meal.id ? "plan-time-pill-state--active" : currentPlanMeal?.id === meal.id ? "plan-time-pill-state--now" : ""}`}>
-                          ${activePlanMeal?.id === meal.id ? "Ativa" : currentPlanMeal?.id === meal.id ? "Agora" : "Plano"}
-                        </span>
-                      </div>
-                      <span className="plan-time-pill-label">${meal.name}</span>
-                      <span className="plan-time-pill-time">${formatMealTimeLabel(meal.time) || "Sem horário"}</span>
-                    </button>
-                `)}
-                </div>
-              </div>
-              </div>
-          </section>
-          ${activePlanMeal
-            ? html`
-                <section className="plan-active-shell space-y-5">
-                  <div className="plan-active-header">
-                    <div className="space-y-1.5">
-                      <span className="plan-meal-eyebrow">Refeição ativa</span>
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-[2rem] font-bold leading-none text-[#0F172A]">${activePlanMeal.name}</h2>
-                        <span className="plan-active-time">${formatMealTimeLabel(activePlanMeal.time)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <section className="space-y-3">
-                    <div className="mos-card plan-active-foods rounded-[24px] px-4 divide-y divide-[rgba(148,163,184,0.1)]">
-                      ${activePlanMealFoods.map((food) => {
-                        const accent = getFoodAccent(food.name);
-                        return html`
-                          <div className="py-4 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3.5 min-w-0">
-                              <div className="plan-detail-food-icon w-10 h-10 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
-                                <${Icon} name=${accent.icon} className="text-jet-black text-[1.35rem]" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-[1rem] leading-relaxed text-jet-black">
-                                  <strong className="font-bold">${food.name}</strong>
-                                </p>
-                                <p className="text-[0.9rem] text-on-surface-variant mt-1">${food.quantity}</p>
-                              </div>
-                            </div>
-                            <button className="plan-swap-button shrink-0 min-h-9 px-3.5 rounded-[10px] text-[0.78rem] font-bold active:scale-95 transition-transform flex items-center gap-2" onClick=${() => setSubstituteFood(food)}>
-                              <${Icon} name="swap_horiz" className="text-[1.05rem] text-[#EF5F37]" />
-                              <span>Trocar</span>
-                            </button>
-                          </div>
-                        `;
-                      })}
-                    </div>
-                  </section>
-
-                  <section className="space-y-3">
-                    <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Resumo nutricional</h3>
-                    <div className="plan-inline-totals">
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Calorias</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.calories)}</strong>
-                        <span className="plan-total-unit">kcal</span>
-                      </div>
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Proteína</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.protein)}</strong>
-                        <span className="plan-total-unit">g</span>
-                      </div>
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Carbos</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.carbs)}</strong>
-                        <span className="plan-total-unit">g</span>
-                      </div>
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Gordura</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.fat)}</strong>
-                        <span className="plan-total-unit">g</span>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="mos-card plan-macro-card rounded-2xl p-5 space-y-5">
-                    <h3 className="font-bold text-lg text-jet-black">Distribuição de Macros</h3>
-                    <div className="space-y-3.5">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[0.6875rem] font-bold text-[#475569]">Carbo</span>
-                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.carbs)}g</span>
-                        </div>
-                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#4558C8]" style=${{ width: `${Math.min(100, activePlanMealTotals.carbs)}%` }}></div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[0.6875rem] font-bold text-[#475569]">Proteínas</span>
-                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.protein)}g</span>
-                        </div>
-                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#EF5F37]" style=${{ width: `${Math.min(100, activePlanMealTotals.protein)}%` }}></div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[0.6875rem] font-bold text-[#475569]">Gorduras</span>
-                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.fat)}g</span>
-                        </div>
-                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#D9B8F3]" style=${{ width: `${Math.min(100, activePlanMealTotals.fat * 2)}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="mos-card plan-guidance-card rounded-[22px] p-5 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#DFF37D] flex items-center justify-center">
-                        <${Icon} name="lightbulb" className="text-jet-black" />
-                      </div>
-                      <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Ajuste com segurança</h3>
-                    </div>
-                    <p className="text-[0.96rem] leading-relaxed text-on-surface-variant">${planBrainState.calorie === "ACIMA_CALORIA" ? "Troque sem pesar e mantenha a base da refeição." : "Troque quando precisar, sem perder a base do plano."}</p>
-                  </section>
-                </section>
-              `
-            : null}
-          <button className="w-full py-5 bg-[#EF5F37] text-white rounded-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setScreen("plan-config")}>
-            <${Icon} name="settings" />
-            Configurar plano
-          </button>
-        </main>
-        <${BottomNav} active="plan" onChange=${setScreen} />
-      </div>
-    `;
   }
 
   function renderPlanConfig() {
@@ -4903,6 +3957,14 @@ function App() {
               <div className="w-11 h-11 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
                 <${Icon} name="receipt_long" className="text-[#4558C8]" />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button className=${getSecondaryActionClass(false)} type="button" onClick=${() => openImportFlow("plan")}>
+                Importar plano
+              </button>
+              <button className=${getPrimaryActionClass(false)} type="button" onClick=${() => setModal("plan")}>
+                Nova refeição
+              </button>
             </div>
             <div className="space-y-4">
               ${state.planMeals.length
@@ -5027,13 +4089,13 @@ function App() {
   function renderPlanDetail() {
     if (!selectedPlan) return renderPlan();
     const totals = summarizeFoods(selectedPlan.foods);
-    const planBrainState = calculateMosState({
+    const planBrainState = evaluateDailyBrain({
       caloriesConsumed: summary.calories,
       calorieTarget: state.profile.calorieTarget,
       waterConsumedMl: water,
       waterTargetMl: waterGoal,
       trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
-    });
+    }).state;
     const planDetailGuidance =
       planBrainState.calorie === "ACIMA_CALORIA"
         ? "Troque quando quiser, mas prefira opções mais leves."
@@ -5171,63 +4233,76 @@ function App() {
   }
 
   function renderTraining() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
-    return html`
-      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
-        <${TopBar} title="Treino" leftIcon="menu" centerBold=${false} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("training")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>Meus treinos</h1>
-            <p className="text-[0.95rem] text-[#334155]">Abra um treino para ver exercícios e registrar a sessão.</p>
-          </section>
+    return renderTrainingScreen({
+      html,
+      getSectionBackground,
+      TopBar,
+      BottomNav,
+      Icon,
+      state,
+      todayKey,
+      trainingPlans,
+      trainingHistory,
+      TRAINING_THEME,
+      summarizeExerciseNames,
+      getPrimaryActionClass,
+      setScreen,
+      setDrawerOpen,
+      openSearch,
+      openNotifications,
+      openTrainingDetail,
+      openTrainingCreate,
+      openTrainingImport: () => openImportFlow("training"),
+      getSecondaryActionClass,
+    });
+  }
 
-          <section className="space-y-3">
-            ${trainingPlans.length
-              ? trainingPlans.map((plan) => {
-                  const completedToday = trainingHistory.some((entry) => entry.planId === plan.id && entry.date === todayKey);
-                  return html`
-                    <button
-                      className="mos-card rounded-2xl p-5 w-full text-left active:scale-[0.98] transition-transform flex flex-col gap-4"
-                      onClick=${() => openTrainingDetail(plan.id)}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <span className="text-[0.6875rem] ${TRAINING_THEME.accentText}">Treino</span>
-                          <h3 className="text-[1.25rem] font-bold text-jet-black">${plan.name}</h3>
-                        </div>
-                        ${
-                          completedToday
-                            ? html`<div className="w-11 h-11 rounded-full ${TRAINING_THEME.accentSurface} flex items-center justify-center shrink-0"><${Icon} name="check" className="text-[#101846]" /></div>`
-                            : html`<${Icon} name="arrow_forward" className="${TRAINING_THEME.accentText} text-[1.75rem] shrink-0" />`
-                        }
-                      </div>
-                      <div className="flex items-center gap-4 text-sm ${TRAINING_THEME.mutedText}">
-                        <span>${plan.estimatedMinutes} min</span>
-                        <span>${plan.exercises.length} exercícios</span>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[0.75rem] font-semibold ${TRAINING_THEME.accentText}">Exercícios do treino</p>
-                        <p className="text-sm ${TRAINING_THEME.mutedText}">${summarizeExerciseNames(plan)}</p>
-                      </div>
-                      ${completedToday ? html`<p className="text-sm ${TRAINING_THEME.accentText} font-bold">Treino concluído hoje</p>` : null}
-                    </button>
-                  `;
-                })
-              : html`
-                <div className="mos-card rounded-2xl p-5 text-jet-black">
-                  <p className="font-bold text-base">Você ainda não criou um treino.</p>
-                  <p className="text-sm text-on-surface-variant mt-1">Crie seu primeiro treino para começar a acompanhar suas sessões e evoluções.</p>
+  function renderImportPreview() {
+    if (!importFlow.preview) return null;
+
+    if (importFlow.preview.kind === "plan") {
+      return html`
+        <div className="space-y-4">
+          <div className="rounded-[10px] bg-surface-container-low px-4 py-3">
+            <p className="text-sm font-bold text-jet-black">${importFlow.preview.summary}</p>
+            ${importFlow.preview.warnings?.length
+              ? html`<p className="text-[0.82rem] text-on-surface-variant mt-1">${importFlow.preview.warnings[0]}</p>`
+              : null}
+          </div>
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            ${importFlow.preview.meals.map((meal) => html`
+              <div className="rounded-[10px] border border-outline-variant bg-white px-4 py-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <strong className="text-sm text-jet-black">${meal.name}</strong>
+                  <span className="text-[0.78rem] text-on-surface-variant">${meal.time}</span>
                 </div>
-              `}
-          </section>
+                <p className="text-[0.82rem] text-on-surface-variant">${meal.foods.map((food) => `${food.name}${food.quantity ? ` (${food.quantity})` : ""}`).join(", ")}</p>
+              </div>
+            `)}
+          </div>
+        </div>
+      `;
+    }
 
-          <button className=${getPrimaryActionClass(false)} onClick=${openTrainingCreate}>
-            Novo treino
-          </button>
-        </main>
-        <${BottomNav} active="training" onChange=${setScreen} />
+    return html`
+      <div className="space-y-4">
+        <div className="rounded-[10px] bg-surface-container-low px-4 py-3">
+          <p className="text-sm font-bold text-jet-black">${importFlow.preview.summary}</p>
+          ${importFlow.preview.warnings?.length
+            ? html`<p className="text-[0.82rem] text-on-surface-variant mt-1">${importFlow.preview.warnings[0]}</p>`
+            : null}
+        </div>
+        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+          ${importFlow.preview.plans.map((plan) => html`
+            <div className="rounded-[10px] border border-outline-variant bg-white px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <strong className="text-sm text-jet-black">${plan.name}</strong>
+                <span className="text-[0.78rem] text-on-surface-variant">${plan.exercises.length} exercício(s)</span>
+              </div>
+              <p className="text-[0.82rem] text-on-surface-variant">${plan.exercises.slice(0, 4).map((exercise) => exercise.name).join(", ")}${plan.exercises.length > 4 ? "..." : ""}</p>
+            </div>
+          `)}
+        </div>
       </div>
     `;
   }
@@ -5836,162 +4911,37 @@ function App() {
   }
 
   function renderWater() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
-    const waterProgress = Math.min(100, (water / waterGoal) * 100);
-    const remainingWater = Math.max(0, waterGoal - water);
-    const quickWaterOptions = [200, 300, 500];
-    const selectedEntriesCount = waterEntries.length;
-    const waterInsight = generateMosOperationalInsight(
-      calculateMosExecutionSignals({
-        caloriesConsumed: summary.calories,
-        calorieTarget: state.profile.calorieTarget,
-        waterConsumedMl: water,
-        waterTargetMl: waterGoal,
-        trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
-      }),
-    );
-    return html`
-      <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-32">
-        <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
-        <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
-          <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2rem, 6.5vw, 3rem)", lineHeight: "1.06" }}>
-              Água hoje
-            </h1>
-            <p className="text-[0.95rem] text-[#334155]">Veja quanto entrou e quanto falta para a meta.</p>
-          </section>
-          <section className="water-focus-hero">
-            <div className="water-status-head">
-              <span className="text-[0.78rem] font-black text-[#64748B]">Status da água</span>
-              <span className="water-progress-chip">${Math.round(waterProgress)}%</span>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <h2 className="water-primary-number">
-                  ${remainingWater > 0 ? `Faltam ${remainingWater}` : "Meta batida"}
-                  ${remainingWater > 0 ? html`<span>ml</span>` : null}
-                </h2>
-                <p className="water-status-copy">${Math.round(water)} de ${waterGoal} ml consumidos hoje</p>
-              </div>
-              <div className="water-progress-track" aria-hidden="true">
-                <div className="water-progress-fill" style=${{ width: `${waterProgress}%` }}></div>
-              </div>
-            </div>
-            <div className="water-insight-line">
-              <${Icon} name="water_drop" className="text-[1.05rem]" filled=${true} />
-              <p>${waterInsight}</p>
-            </div>
-            ${waterHistoryDate !== todayKey
-              ? html`
-                  <div className="flex justify-end">
-                    <button
-                      className="min-h-11 px-4 rounded-[10px] bg-[#fff4ef] border border-[#ffd8ce] text-[#EF5F37] font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                      onClick=${goToTodayWaterHistory}
-                    >
-                      <${Icon} name="today" className="text-[#EF5F37]" />
-                      <span>Ver hoje</span>
-                    </button>
-                  </div>
-                `
-              : null}
-          </section>
-
-          <section className="water-action-panel">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-[1.15rem] font-black text-[#0F172A]">Adicionar água</h2>
-                <p className="text-sm text-[#475569]">Toque uma vez para somar no dia.</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              ${quickWaterOptions.map(
-                (amount) => html`
-                  <button
-                    className="water-quick-button"
-                    onClick=${() => appendWaterAmount(amount)}
-                  >
-                    <${Icon} name="water_drop" className="text-[1.15rem]" filled=${true} />
-                    <span>${amount} ml</span>
-                  </button>
-                `,
-              )}
-              <button className="water-quick-button water-quick-button--custom" onClick=${() => setModal("water")}>
-                <${Icon} name="add_circle" className="text-[1.15rem]" />
-                <span>Outro valor</span>
-              </button>
-            </div>
-          </section>
-
-          <section className="water-support-panel">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-black text-[#0F172A]">
-                ${waterHistoryDate === todayKey
-                  ? `Hoje você já registrou ${selectedEntriesCount} ${selectedEntriesCount === 1 ? "vez" : "vezes"}`
-                  : `Registros de ${waterViewDateLabel}`}
-              </h3>
-              <button className="water-history-link" onClick=${openWaterHistory}>Ver tudo</button>
-            </div>
-            <div className="space-y-1">
-              ${waterEntries.length
-                ? waterEntries.slice(0, 4).map(
-                    (entry) => html`
-                      <div className="water-history-row">
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-[1.05rem] font-black leading-none text-[#0F172A]">${entry.amount}</span>
-                              <span className="text-[0.75rem] font-bold text-[#64748B]">ml</span>
-                            </div>
-                            <p className="text-[0.82rem] text-[#64748B]">${entry.label}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[0.9rem] font-bold text-[#475569]">${entry.time}</span>
-                          <button
-                            className="w-9 h-9 rounded-full text-[#EF5F37] flex items-center justify-center active:scale-95 transition-transform"
-                            onClick=${() => askDeleteConfirm({
-                              title: "Apagar registro de água",
-                              message: "Tem certeza que deseja apagar este item?",
-                              onConfirm: async () => {
-                                if (authConfigured) {
-                                  const user = await getAuthenticatedUser();
-                                  if (!user) {
-                                    showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o registro.");
-                                    return;
-                                  }
-                                  const result = await deleteWaterEntry(user.id, entry.id);
-                                  if (!result.ok) {
-                                    showAuthNotice(result.error?.message || "Não foi possível apagar o registro agora.");
-                                    return;
-                                  }
-                                }
-                                mutate((draft) => {
-                                  draft.waterHistory[waterHistoryDate] = (draft.waterHistory[waterHistoryDate] || waterEntries).filter((item) => item.id !== entry.id);
-                                  draft.water[waterHistoryDate] = Math.max(0, (draft.water[waterHistoryDate] || water) - entry.amount);
-                                });
-                              },
-                            })}
-                          >
-                            <${Icon} name="delete" className="text-[1rem]" />
-                          </button>
-                        </div>
-                      </div>
-                    `,
-                  )
-                : html`
-                    <div className="water-empty-state">
-                      <p className="font-bold text-[#0F172A]">Nenhum registro nesse dia</p>
-                      <p className="text-sm text-[#64748B]">Adicione água para começar o histórico.</p>
-                    </div>
-                  `}
-            </div>
-          </section>
-        </main>
-        <${BottomNav} active="water" onChange=${setScreen} />
-      </div>
-    `;
+    return renderWaterScreen({
+      html,
+      getSectionBackground,
+      TopBar,
+      BottomNav,
+      Icon,
+      state,
+      summary,
+      trainingHistory,
+      todayKey,
+      water,
+      waterGoal,
+      waterEntries,
+      waterHistoryDate,
+      waterViewDateLabel,
+      evaluateDailyBrain,
+      setScreen,
+      setDrawerOpen,
+      openSearch,
+      openNotifications,
+      goToTodayWaterHistory,
+      appendWaterAmount,
+      setModal,
+      openWaterHistory,
+      askDeleteConfirm,
+      getAuthenticatedUser,
+      deleteWaterEntry,
+      authConfigured,
+      showAuthNotice,
+      mutate,
+    });
   }
 
   function renderMeasures() {
@@ -6145,66 +5095,18 @@ function App() {
   }
 
   function renderProfile() {
-    const profileItems = [
-      { label: "Nome", value: state.profile.name || "Ainda não informado", icon: "person" },
-      { label: "Email", value: state.profile.email || "Ainda não informado", icon: "mail" },
-      { label: "Cidade", value: state.profile.city || "Ainda não informado", icon: "location_on" },
-      {
-        label: "Aniversário",
-        value: state.profile.birthday ? parseDateKey(state.profile.birthday).toLocaleDateString("pt-BR") : "Ainda não informado",
-        icon: "cake",
-      },
-      { label: "Meta calórica", value: `${Math.round(state.profile.calorieTarget || 0).toLocaleString("pt-BR")} kcal`, icon: "local_fire_department" },
-      { label: "Meta de água", value: `${Math.round(state.profile.waterTargetMl || 0).toLocaleString("pt-BR")} ml`, icon: "water_drop" },
-    ];
-
-    return html`
-      <div className="mos-screen text-on-surface min-h-screen pb-32">
-        <${TopBar}
-          title="Meu perfil"
-          leftIcon="arrow_back"
-          centerBold=${false}
-          onLeft=${() => setScreen("home")}
-          onSearch=${() => openSearch("home")}
-          onRight=${openNotifications}
-        />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="mos-info-card space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-sm text-[#4558C8]">Dados pessoais</span>
-                <h1 className="text-[1.9rem] font-bold text-jet-black leading-tight">${state.profile.name || "Meu perfil"}</h1>
-                <p className="text-sm leading-relaxed text-on-surface-variant">Aqui você concentra as informações principais da sua conta para manter o MOS! mais pessoal e organizado.</p>
-              </div>
-              <div className="w-12 h-12 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
-                <${Icon} name="account_circle" className="text-[#4558C8] text-[1.6rem]" />
-              </div>
-            </div>
-          </section>
-
-          <section className="mos-info-grid">
-            ${profileItems.map(
-              (item) => html`
-                <div className="mos-info-tile">
-                  <div className="mos-info-icon">
-                    <${Icon} name=${item.icon} className="text-[#4558C8]" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm text-on-surface-variant block mb-1">${item.label}</span>
-                    <strong className="text-[1rem] font-bold text-jet-black break-words">${item.value}</strong>
-                  </div>
-                </div>
-              `,
-            )}
-          </section>
-
-          <button className="w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => setModal("profile")}>
-            Editar
-          </button>
-        </main>
-        <${BottomNav} active=${null} onChange=${setScreen} />
-      </div>
-    `;
+    return renderProfileScreen({
+      html,
+      TopBar,
+      BottomNav,
+      Icon,
+      state,
+      parseDateKey,
+      setScreen,
+      openSearch,
+      openNotifications,
+      setModal,
+    });
   }
 
   function renderAboutApp() {
@@ -6926,6 +5828,82 @@ function App() {
               <button className=${getPrimaryActionClass(false)} onClick=${() => completeTrainingSession(activeTraining)}>
                 Concluir treino de hoje
               </button>
+            </div>
+          </${Modal}>
+        `
+      }
+
+      ${
+        isSignedIn &&
+        (modal === "plan-import" || modal === "training-import") &&
+        html`
+          <${Modal}
+            title=${modal === "training-import" ? "Importar treino" : "Importar plano"}
+            onClose=${closeImportFlow}
+          >
+            <div className="flex flex-col gap-5">
+              <div className="rounded-[10px] bg-surface-container-low px-4 py-3">
+                <p className="text-sm font-bold text-jet-black">
+                  ${modal === "training-import"
+                    ? "Cole o treino ou envie um arquivo. O MOS! separa blocos e exercícios antes de salvar."
+                    : "Cole o plano ou envie um arquivo. O MOS! organiza refeições e alimentos antes de salvar."}
+                </p>
+                <p className="text-[0.82rem] text-on-surface-variant mt-1">
+                  Funciona melhor hoje com texto, .txt, .md, .csv e PDF com texto selecionável.
+                </p>
+              </div>
+
+              <label className="grid gap-2">
+                <span className="text-[0.78rem] font-medium text-jet-black">Arquivo</span>
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.md,.csv,.png,.jpg,.jpeg,.webp"
+                  className="w-full rounded-[10px] border border-outline-variant bg-white px-4 py-3 text-sm text-jet-black"
+                  onChange=${(e) => updateImportFile(e.currentTarget.files?.[0] || null)}
+                />
+                ${importFlow.fileName ? html`<span className="text-[0.75rem] text-on-surface-variant">${importFlow.fileName}</span>` : null}
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-[0.78rem] font-medium text-jet-black">Texto</span>
+                <textarea
+                  className="w-full min-h-32 rounded-[10px] border border-outline-variant bg-white px-4 py-3 text-sm text-jet-black resize-none"
+                  placeholder=${modal === "training-import"
+                    ? "Ex: Treino A\nAgachamento 4x10\nLeg press 3x12\n..."
+                    : "Ex: Café da manhã 08:00\n2 ovos, pão integral, café\n..."}
+                  value=${importFlow.rawText}
+                  onInput=${(e) => updateImportText(e.currentTarget.value)}
+                ></textarea>
+              </label>
+
+              ${importFlow.error
+                ? html`
+                    <div className="rounded-[10px] border border-[#f5ddd5] bg-[#fff6f2] px-4 py-3">
+                      <p className="text-sm text-[#292B2D]">${importFlow.error}</p>
+                    </div>
+                  `
+                : null}
+
+              ${renderImportPreview()}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  className=${getSecondaryActionClass(importFlow.busy)}
+                  type="button"
+                  disabled=${importFlow.busy}
+                  onClick=${analyzeImportFlow}
+                >
+                  ${importFlow.busy ? "Organizando..." : "Organizar conteúdo"}
+                </button>
+                <button
+                  className=${getPrimaryActionClass(!importFlow.preview || importFlow.busy)}
+                  type="button"
+                  disabled=${!importFlow.preview || importFlow.busy}
+                  onClick=${modal === "training-import" ? applyImportedTraining : applyImportedPlan}
+                >
+                  ${modal === "training-import" ? "Adicionar ao treino" : "Adicionar ao plano"}
+                </button>
+              </div>
             </div>
           </${Modal}>
         `

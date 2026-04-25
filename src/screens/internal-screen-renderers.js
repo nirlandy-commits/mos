@@ -1,0 +1,27 @@
+export function createInternalScreenRenderers(deps) {
+  return {
+    home: deps.renderHome,
+    food: deps.renderFood,
+    foodDetail: deps.renderFoodDetail,
+    ingredientDetail: deps.renderIngredientDetail,
+    plan: deps.renderPlan,
+    planConfig: deps.renderPlanConfig,
+    planDetail: deps.renderPlanDetail,
+    supplements: deps.renderSupplements,
+    registerSupplement: deps.renderRegisterSupplement,
+    supplementDetail: deps.renderSupplementDetail,
+    water: deps.renderWater,
+    training: deps.renderTraining,
+    trainingDetail: deps.renderTrainingDetail,
+    trainingExecution: deps.renderTrainingExecution,
+    trainingSummary: deps.renderTrainingSummary,
+    trainingEdit: deps.renderTrainingEdit,
+    profile: deps.renderProfile,
+    measures: deps.renderMeasures,
+    aboutApp: deps.renderAboutApp,
+    appNews: deps.renderAppNews,
+    adminNotifications: deps.renderAdminNotifications,
+    history: deps.renderHistory,
+    search: deps.renderSearch,
+  };
+}
