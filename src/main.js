@@ -3229,7 +3229,6 @@ function App() {
       water,
       latestMeasure,
       latestBmi,
-      executionSignals,
       evaluateDailyBrain,
       setScreen,
       setDrawerOpen,

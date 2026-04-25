@@ -15,7 +15,6 @@ export function renderHomeScreen(ctx) {
     water,
     latestMeasure,
     latestBmi,
-    executionSignals,
     evaluateDailyBrain,
     setScreen,
     setDrawerOpen,
@@ -33,6 +32,7 @@ export function renderHomeScreen(ctx) {
   const greeting = nowHour < 12 ? "Bom dia" : nowHour < 18 ? "Boa tarde" : "Boa noite";
   const trainingDoneToday = trainingHistory.some((entry) => entry.date === todayKey);
   const waterRemaining = Math.max(0, waterGoal - water);
+  const waterProgress = waterGoal > 0 ? water / waterGoal : 0;
   const brain = evaluateDailyBrain({
     caloriesConsumed: summary.calories,
     calorieTarget: state.profile.calorieTarget,
@@ -69,7 +69,7 @@ export function renderHomeScreen(ctx) {
         action: () => setModal("food"),
       };
     }
-    if (waterRemaining > 0 && executionSignals.waterPercent < 0.75) {
+    if (waterRemaining > 0 && waterProgress < 0.75) {
       return {
         label: "Registrar água",
         title: `Beber ${Math.ceil(waterRemaining / 50) * 50} ml`,
