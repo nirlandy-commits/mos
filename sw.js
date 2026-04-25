@@ -1,4 +1,4 @@
-const MOS_CACHE = "mos-static-v20260421-03";
+const MOS_CACHE = "mos-static-v20260425-01";
 
 const STATIC_ASSETS = [
   "/",
@@ -7,9 +7,9 @@ const STATIC_ASSETS = [
   "/manifest.webmanifest",
   "/favicon-mos.png",
   "/logo-mos.svg",
-  "/src/main.js?v=20260421-03",
-  "/src/styles.css?v=20260421-03",
-  "/src/tailwind.generated.css?v=20260421-03",
+  "/src/main.js?v=20260425-01",
+  "/src/styles.css?v=20260425-01",
+  "/src/tailwind.generated.css?v=20260425-01",
 ];
 
 self.addEventListener("install", (event) => {
