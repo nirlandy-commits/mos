@@ -19,6 +19,13 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'user' check (role in ('user', 'admin')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.measure_entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -49,10 +56,10 @@ create table if not exists public.consumed_food_items (
   name text not null,
   quantity_label text,
   grams numeric(7,2),
-  calories numeric(7,2) default 0,
-  protein numeric(7,2) default 0,
-  carbs numeric(7,2) default 0,
-  fat numeric(7,2) default 0,
+  calories numeric(7,2) not null default 0,
+  protein numeric(7,2) not null default 0,
+  carbs numeric(7,2) not null default 0,
+  fat numeric(7,2) not null default 0,
   benefit_text text,
   source_label text,
   created_at timestamptz not null default now()
@@ -75,10 +82,10 @@ create table if not exists public.plan_food_items (
   name text not null,
   quantity_label text,
   grams numeric(7,2),
-  calories numeric(7,2) default 0,
-  protein numeric(7,2) default 0,
-  carbs numeric(7,2) default 0,
-  fat numeric(7,2) default 0,
+  calories numeric(7,2) not null default 0,
+  protein numeric(7,2) not null default 0,
+  carbs numeric(7,2) not null default 0,
+  fat numeric(7,2) not null default 0,
   benefit_text text,
   recommendation_text text,
   created_at timestamptz not null default now()
@@ -108,7 +115,7 @@ create table if not exists public.water_entries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   entry_date date not null,
-  amount_ml integer not null,
+  amount_ml integer not null check (amount_ml > 0 and amount_ml <= 5000),
   entry_time time not null,
   label text default 'Água',
   created_at timestamptz not null default now()
@@ -130,7 +137,7 @@ create table if not exists public.training_sessions (
   user_id uuid not null references public.profiles(id) on delete cascade,
   entry_date date not null,
   completed_at timestamptz not null default now(),
-  plan_id uuid,
+  plan_id uuid references public.training_plans(id) on delete set null,
   plan_name text,
   duration_seconds integer default 0,
   exercises_completed integer default 0,
@@ -157,3 +164,10 @@ create index if not exists idx_supplements_user on public.supplements(user_id);
 create index if not exists idx_water_entries_user_date on public.water_entries(user_id, entry_date desc);
 create index if not exists idx_training_plans_user on public.training_plans(user_id, sort_order);
 create index if not exists idx_training_sessions_user_date on public.training_sessions(user_id, entry_date desc);
+create index if not exists idx_consumed_food_items_user on public.consumed_food_items(user_id);
+create index if not exists idx_plan_food_items_user on public.plan_food_items(user_id);
+create index if not exists idx_plan_food_swaps_plan_food_item on public.plan_food_swaps(plan_food_item_id);
+create index if not exists idx_feedback_entries_user_created on public.feedback_entries(user_id, created_at desc);
+create index if not exists idx_training_sessions_plan_id on public.training_sessions(plan_id);
+create index if not exists idx_user_roles_role on public.user_roles(role);
+create unique index if not exists idx_water_entries_user_date_time_unique on public.water_entries(user_id, entry_date desc, entry_time);

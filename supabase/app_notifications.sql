@@ -1,3 +1,19 @@
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'user' check (role in ('user', 'admin')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_roles enable row level security;
+
+drop policy if exists "Users can read own role" on public.user_roles;
+create policy "Users can read own role"
+  on public.user_roles
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
 create table if not exists public.app_notifications (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
@@ -29,7 +45,12 @@ create policy "MOS admins can create app notifications"
   for insert
   to authenticated
   with check (
-    lower(auth.jwt() ->> 'email') like '%nirlandy%'
+    exists (
+      select 1
+      from public.user_roles
+      where user_id = auth.uid()
+        and role = 'admin'
+    )
   );
 
 create index if not exists app_notifications_created_at_idx

@@ -4,19 +4,15 @@ export function normalizeMosPath(pathname = globalThis.location?.pathname || "/"
 
 export function getMosRoute(pathname = globalThis.location?.pathname || "/") {
   const normalizedPath = normalizeMosPath(pathname);
-  if (normalizedPath.endsWith("/demo")) return "demo";
-  if (normalizedPath.endsWith("/app")) return "app";
-  return "landing";
+  return normalizedPath.endsWith("/app") ? "app" : "landing";
 }
 
 export function buildMosPath(route = "landing") {
   const pathname = normalizeMosPath(globalThis.location?.pathname || "/");
   const segments = pathname.split("/").filter(Boolean);
-  const lastSegment = segments[segments.length - 1];
-  const baseSegments = ["app", "demo"].includes(lastSegment) ? segments.slice(0, -1) : segments;
+  const baseSegments = segments[segments.length - 1] === "app" ? segments.slice(0, -1) : segments;
   const basePath = `/${baseSegments.join("/")}`.replace(/\/+/g, "/");
   if (route === "app") return `${basePath === "/" ? "" : basePath}/app`;
-  if (route === "demo") return `${basePath === "/" ? "" : basePath}/demo`;
   return basePath === "" ? "/" : basePath;
 }
 

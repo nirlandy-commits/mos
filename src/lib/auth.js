@@ -38,7 +38,7 @@ export function isSupabaseConfigured() {
 }
 
 export function getSupabaseSetupMessage() {
-  return "Configure MOS_SUPABASE_CONFIG no index.html para ativar cadastro, login, recuperação de senha e logout reais.";
+  return "Configure o arquivo mos-runtime-config.js ou a chave local mos-valendo-supabase-config para ativar cadastro, login, recuperação de senha e logout reais.";
 }
 
 let supabaseClient = null;
@@ -317,14 +317,31 @@ export async function fetchProfile(userId) {
   const client = getSupabaseClient();
   if (!client || !userId) return null;
 
-  const { data, error } = await client
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
+  const [{ data, error }, role] = await Promise.all([
+    client
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle(),
+    fetchUserRole(userId),
+  ]);
 
   if (error) return null;
-  return data;
+  return data ? { ...data, role } : null;
+}
+
+export async function fetchUserRole(userId) {
+  const client = getSupabaseClient();
+  if (!client || !userId) return "user";
+
+  const { data, error } = await client
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) return "user";
+  return data?.role || "user";
 }
 
 export async function saveProfileData(userId, profile) {

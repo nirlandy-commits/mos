@@ -14,7 +14,7 @@ create table if not exists public.training_sessions (
   user_id uuid not null references public.profiles(id) on delete cascade,
   entry_date date not null,
   completed_at timestamptz not null default now(),
-  plan_id uuid,
+  plan_id uuid references public.training_plans(id) on delete set null,
   plan_name text,
   duration_seconds integer default 0,
   exercises_completed integer default 0,

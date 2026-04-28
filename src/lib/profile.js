@@ -1,4 +1,5 @@
 export const DEFAULT_PROFILE = Object.freeze({
+  role: "user",
   calorieTarget: 2400,
   waterTargetMl: 3000,
   activeGoal: "",
@@ -28,6 +29,7 @@ export function createProfile(overrides = {}) {
 export function normalizeProfile(rawProfile = {}, fallbackProfile = DEFAULT_PROFILE) {
   const fallback = structuredClone(fallbackProfile);
   return {
+    role: rawProfile?.role || fallback.role,
     calorieTarget: Number(rawProfile?.calorieTarget) || fallback.calorieTarget,
     waterTargetMl: Number(rawProfile?.waterTargetMl) || fallback.waterTargetMl,
     activeGoal: rawProfile?.activeGoal || fallback.activeGoal,

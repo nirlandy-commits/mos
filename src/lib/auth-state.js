@@ -29,6 +29,7 @@ export function hydrateAuthenticatedState(current, result, { fallbackEmail = "",
     },
     profile: {
       ...current.profile,
+      role: result.profile?.role || current.profile.role || "user",
       name: result.profile?.name || result.user?.user_metadata?.name || current.profile.name,
       email: result.profile?.email || result.user?.email || fallbackEmail || current.profile.email,
       city: result.profile?.city || current.profile.city,

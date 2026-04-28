@@ -3,27 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>MOS! | Organize sua rotina em um só lugar</title>
-    <meta name="description" content="MOS! organiza alimentação, água, treino e plano alimentar para você executar melhor o que já foi definido." />
+    <title>MOS! Demo | Conteúdo genérico para apresentação</title>
+    <meta
+      name="description"
+      content="MOS! em modo demonstração com a mesma interface do app real e dados genéricos para apresentação."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://use.typekit.net/jfb0ghv.css" />
     <link rel="icon" type="image/png" href="/favicon-mos.png" />
     <link rel="apple-touch-icon" href="/favicon-mos.png" />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-    <script src="./mos-runtime-config.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/mos-runtime-config.js"></script>
     <script>
-      window.MOS_APP_MODE = "public";
-      window.MOS_LOCAL_DEMO = false;
+      window.MOS_APP_MODE = "demo";
+      window.MOS_LOCAL_DEMO = true;
       window.MOS_SUPABASE_CONFIG = window.MOS_SUPABASE_CONFIG || null;
     </script>
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="stylesheet" href="./src/tailwind.generated.css?v=20260426-02" />
-    <link rel="stylesheet" href="./src/styles.css?v=20260426-02" />
+    <link rel="stylesheet" href="/src/tailwind.generated.css?v=20260426-02" />
+    <link rel="stylesheet" href="/src/styles.css?v=20260426-02" />
   </head>
   <body class="bg-background text-on-surface">
     <div id="app"></div>
-    <script type="module" src="./src/main.js?v=20260426-02"></script>
+    <script type="module" src="/src/main.js?v=20260426-02"></script>
   </body>
 </html>

@@ -57,7 +57,7 @@ import {
   getProfileAvatarLabel,
   normalizeProfile,
 } from "./lib/profile.js";
-import { buildMosPath, getMosRoute, navigateMosRoute } from "./lib/routes.js";
+import { getMosRoute, navigateMosRoute } from "./lib/routes.js";
 import { renderSignedInScreen as renderSignedInScreenFromRouter, getMenuTargetScreen } from "./lib/screen-router.js";
 import { mosRuntime } from "./lib/runtime.js";
 import { renderLandingScreen } from "./screens/landing-screen.js";
@@ -68,16 +68,12 @@ import { renderPlanScreen } from "./screens/plan-screen.js";
 import { renderTrainingScreen } from "./screens/training-screen.js";
 import { renderWaterScreen } from "./screens/water-screen.js";
 import { renderProfileScreen } from "./screens/profile-screen.js";
-import { getMosAppMode } from "./lib/app-mode.js";
 import { createInitialUiState } from "./lib/ui-state.js";
 import { createMosUserStateSeeds } from "./lib/user-state.js";
 
 const html = htm.bind(React.createElement);
 
-const APP_MODE = getMosAppMode();
-const LOCAL_DEMO_MODE = APP_MODE === "demo";
-
-if ("serviceWorker" in navigator && APP_MODE === "real") {
+if ("serviceWorker" in navigator && !globalThis.MOS_LOCAL_DEMO) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((error) => {
       console.warn("MOS! PWA indisponível:", error);
@@ -127,6 +123,7 @@ function isRecoveryRedirect() {
   }
 }
 
+const LOCAL_DEMO_MODE = Boolean(globalThis.MOS_LOCAL_DEMO);
 const STORAGE_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-state" : "mos-stitch-faithful";
 const FORCE_LOGIN_KEY = LOCAL_DEMO_MODE ? "mos-local-demo-force-login" : "mos-force-login";
 const DEMO_TODAY_KEY = (() => {
@@ -1341,7 +1338,7 @@ function App() {
   const [showResetPassword, setShowResetPassword] = useState(initialUiState.showResetPassword);
   const [showResetPasswordConfirm, setShowResetPasswordConfirm] = useState(initialUiState.showResetPasswordConfirm);
   const [authReady, setAuthReady] = useState(initialUiState.authReady);
-  const authConfigured = appRoute === "app" && isSupabaseConfigured();
+  const authConfigured = isSupabaseConfigured();
   const recoveryFlowRef = useRef(isRecoveryRedirect());
   const [passwordRecoveryReady, setPasswordRecoveryReady] = useState(initialUiState.passwordRecoveryReady);
   const passwordStrengthScore = useMemo(() => {
@@ -1767,6 +1764,12 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!authReady || appRoute !== "landing" || !hasVerifiedSession || recoveryFlowRef.current) return;
+    if (LOCAL_DEMO_MODE) return;
+    openSignedInApp("home", { replace: true });
+  }, [appRoute, authReady, hasVerifiedSession]);
+
+  useEffect(() => {
     if (!desktopSearchOpen) return;
     setNotificationsOpen(false);
   }, [desktopSearchOpen]);
@@ -1822,7 +1825,7 @@ function App() {
     hasVerifiedSession &&
     Boolean(state.auth?.signedIn) &&
     !["welcome", "signup", "login", "recover-password", "reset-password", "legal"].includes(screen);
-  const isAdminUser = state.profile.role === "admin";
+  const isAdminUser = LOCAL_DEMO_MODE || state.profile.role === "admin";
   const markerNotificationPattern = /(teste|aqui eu envio|test mos)/i;
   const adminNotifications = (state.appNotifications || [])
     .filter((item) => !markerNotificationPattern.test(`${item.title || ""} ${item.body || ""}`))
@@ -2338,12 +2341,9 @@ function App() {
       setDrawerOpen(false);
       if (title === "Sair") {
         askDeleteConfirm({
-          title: appRoute === "demo" ? "Sair da demonstração" : "Sair do MOS!",
-          message:
-            appRoute === "demo"
-              ? "Ao sair da demonstração, você volta para a página inicial. Deseja continuar?"
-              : "Ao sair, você volta para a tela de login. Deseja continuar?",
-          confirmLabel: appRoute === "demo" ? "Voltar ao início" : "Sair agora",
+          title: "Sair do MOS!",
+          message: "Ao sair, você volta para a tela de login. Deseja continuar?",
+          confirmLabel: "Sair agora",
           onConfirm: async () => {
             setDrawerOpen(false);
             setNotificationsOpen(false);
@@ -2354,21 +2354,6 @@ function App() {
             setPasswordRecoveryReady(false);
             resetAuthVisibility();
             setHasVerifiedSession(false);
-
-            if (appRoute === "demo") {
-              try {
-                stateStorage.saveState(structuredClone(initialState));
-              } catch (error) {
-                console.error(error);
-              }
-
-              setState(structuredClone(initialState));
-              navigateMosRoute("landing", { replace: true });
-              setAppRoute("landing");
-              setScreen("welcome");
-              window.location.assign(`${window.location.origin}${buildMosPath("landing")}`);
-              return;
-            }
 
             const nextEmail = getStateEmail(state);
             if (authConfigured) {
@@ -2405,20 +2390,12 @@ function App() {
 
   function openAuthScreen(nextScreen) {
     clearAuthNotice();
-    if (appRoute === "landing") {
-      window.location.assign(`${window.location.origin}${buildMosPath("app")}`);
-      return;
-    }
     navigateMosRoute("app");
     setAppRoute("app");
     setScreen(nextScreen);
   }
 
   function openSignedInApp(nextScreen = "home", { replace = true } = {}) {
-    if (appRoute === "landing") {
-      window.location.assign(`${window.location.origin}${buildMosPath("app")}`);
-      return;
-    }
     navigateMosRoute("app", { replace });
     setAppRoute("app");
     setScreen(nextScreen);
@@ -3261,11 +3238,8 @@ function App() {
 
   function renderLanding() {
     const openApp = () => {
-      window.location.assign(`${window.location.origin}${buildMosPath("app")}`);
-    };
-
-    const openDemo = () => {
-      window.location.assign(`${window.location.origin}${buildMosPath("demo")}`);
+      openSignedInApp("home", { replace: false });
+      setScreen(state.auth?.signedIn ? "home" : "welcome");
     };
 
     return renderLandingScreen({
@@ -3273,7 +3247,6 @@ function App() {
       MosWordmark,
       Icon,
       onAccess: openApp,
-      onOpenDemo: openDemo,
     });
   }
 
@@ -5619,7 +5592,6 @@ function App() {
   }
 
   const shouldRenderResetPassword = authReady && passwordRecoveryReady;
-  const isSharedAppRoute = appRoute === "app" || appRoute === "demo";
 
   return html`
     <div>
@@ -5653,7 +5625,8 @@ function App() {
           color: inherit;
         }
       </style>
-      ${appRoute === "landing" && renderLanding()}
+      ${appRoute === "landing" && !authReady && renderLanding()}
+      ${appRoute === "landing" && authReady && (!hasVerifiedSession || LOCAL_DEMO_MODE) && renderLanding()}
       ${appRoute === "app" && !authReady &&
       html`
         <div className="min-h-screen bg-white text-[#111] flex items-center justify-center px-6">
@@ -5671,7 +5644,7 @@ function App() {
       ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "reset-password" && renderResetPassword()}
       ${appRoute === "app" && !shouldRenderResetPassword && authReady && !isSignedIn && screen === "legal" && renderLegal()}
 
-      ${isSharedAppRoute &&
+      ${appRoute === "app" &&
       !shouldRenderResetPassword &&
       authReady &&
       isSignedIn &&
@@ -5718,8 +5691,8 @@ function App() {
           : null}
       `}
 
-      ${isSharedAppRoute && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} isAdmin=${isAdminUser} />`}
-      ${isSharedAppRoute && authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
+      ${appRoute === "app" && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} isAdmin=${isAdminUser} />`}
+      ${appRoute === "app" && authReady && isSignedIn && notificationsOpen && html`<${NotificationsPanel} items=${notifications} onClose=${() => setNotificationsOpen(false)} onOpen=${openNotificationItem} onClear=${clearNotifications} />`}
       ${
         authReady &&
         isSignedIn &&

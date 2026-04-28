@@ -15,7 +15,7 @@ create policy "profiles select own" on public.profiles
 for select using (auth.uid() = id);
 
 create policy "profiles update own" on public.profiles
-for update using (auth.uid() = id);
+for update using (auth.uid() = id) with check (auth.uid() = id);
 
 create policy "profiles insert own" on public.profiles
 for insert with check (auth.uid() = id);
