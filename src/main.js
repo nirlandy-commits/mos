@@ -3772,9 +3772,9 @@ function App() {
       },
     ];
     return html`
-      <div className="min-h-screen pb-32 ${getSectionBackground()}">
+      <div className="min-h-screen pb-28 mos-screen">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
-        <main className="home-main pt-24 px-6 max-w-md mx-auto space-y-5">
+        <main className="home-main pt-20 px-4 max-w-md mx-auto space-y-4">
           <section className="home-greeting-line">
             <p>${greeting}, ${profileName}.</p>
           </section>
@@ -4538,12 +4538,12 @@ function App() {
             ? "Mantenha refeições equilibradas"
             : "Prefira algo leve na próxima refeição";
     return html`
-      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-40">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-28">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("food")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-8">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="space-y-3">
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(1.8rem, 6vw, 2.6rem)", lineHeight: "1.1" }}>
               ${foodHeadline}
             </h1>
             <p className="text-[0.95rem] text-[#334155]">Veja rápido o que já entrou, o que falta e onde ajustar hoje. <span className="emoji-badge emoji-badge--food" aria-hidden="true">🍽️</span></p>
@@ -4667,7 +4667,7 @@ function App() {
     if (!selectedConsumed) return renderFood();
     const totals = summarizeFoods(selectedConsumed.foods);
     return html`
-      <div className="${getSectionBackground("food")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("food")} text-on-surface min-h-screen pb-28">
         <${TopBar}
           title=${selectedConsumed.name}
           leftIcon="arrow_back"
@@ -4703,7 +4703,7 @@ function App() {
             </button>
           </div>`}
         />
-        <main className="pt-24 pb-32 px-4 max-w-md mx-auto space-y-8">
+        <main className="pt-20 pb-4 px-4 max-w-md mx-auto space-y-5">
           <section className="space-y-2">
             <h1 className="text-[2rem] font-bold text-jet-black">${selectedConsumed.name}</h1>
           </section>
@@ -4826,7 +4826,7 @@ function App() {
       <section className="plan-mode-header">
         <div className="plan-mode-copy">
           <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-          <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
+          <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(1.8rem, 6vw, 2.6rem)", lineHeight: "1.1" }}>
             ${headline}
           </h1>
           ${support ? html`<p className="text-[0.95rem] text-[#334155]">${support}</p>` : null}
@@ -4846,7 +4846,7 @@ function App() {
       waterTargetMl: waterGoal,
       trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
     });
-    const planHeadline = "Seu plano, organizado pra você";
+    const planHeadline = "Seu plano";
     const currentPlanMeal = getCurrentPlanMeal(sortedPlanMeals);
     const activePlanMeal = sortedPlanMeals.find((meal) => meal.id === selectedPlanId) || currentPlanMeal || sortedPlanMeals[0] || null;
     const activePlanMealFoods = activePlanMeal?.foods || [];
@@ -4858,9 +4858,9 @@ function App() {
       });
     };
     return html`
-      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-28">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
-        <main className="pt-24 pb-64 px-6 max-w-md mx-auto space-y-8">
+        <main className="pt-20 pb-8 px-4 max-w-md mx-auto space-y-5">
           <${renderPlanModeHeader}
             activeMode="plan"
             headline=${planHeadline}
@@ -5035,7 +5035,7 @@ function App() {
     const guardPlanConfigNavigation = (action) =>
       confirmDiscard(action, "Deseja sair da página? As alterações do plano ainda não foram salvas.");
     return html`
-      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-36">
+      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Configurar plano"
           leftIcon="arrow_back"
@@ -5044,7 +5044,7 @@ function App() {
           onSearch=${() => openSearch("plan")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="mos-card rounded-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
@@ -5353,12 +5353,12 @@ function App() {
     const nowHour = new Date().getHours();
     const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     return html`
-      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-28">
         <${TopBar} title="Treino" leftIcon="menu" centerBold=${false} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("training")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="space-y-3">
             <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>Meus treinos</h1>
+            <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(1.8rem, 6vw, 2.6rem)", lineHeight: "1.1" }}>Meus treinos</h1>
             <p className="text-[0.95rem] text-[#334155]">Abra um treino para ver exercícios e registrar a sessão.</p>
           </section>
 
@@ -5414,7 +5414,7 @@ function App() {
   function renderTrainingDetail() {
     if (!selectedTraining) return renderTraining();
     return html`
-      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-28">
         <${TopBar}
           title=${selectedTraining.name}
           leftIcon="arrow_back"
@@ -5423,7 +5423,7 @@ function App() {
           onSearch=${() => openSearch("training")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="grid grid-cols-2 gap-3">
             <div className="mos-card rounded-2xl p-5">
               <span className="text-[0.75rem] text-[#475569]">Minutos estimados</span>
@@ -5497,7 +5497,7 @@ function App() {
           </button>
         `}
       />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="${TRAINING_THEME.surface} rounded-xl p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -5624,7 +5624,7 @@ function App() {
           onSearch=${() => openSearch("training")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="${TRAINING_THEME.surface} rounded-xl p-6 space-y-2">
             <span className="text-sm ${TRAINING_THEME.accentText}">Resumo da sessão</span>
             <h1 className="text-[1.75rem] font-bold text-white">${summaryEntry.planName}</h1>
@@ -5688,7 +5688,7 @@ function App() {
       confirmDiscard(action, "Deseja sair da edição atual? As alterações do treino ainda não foram salvas.");
     const trainingLabel = trainingDraft.name?.trim() || "Novo treino";
     return html`
-      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Editar treino"
           leftIcon="arrow_back"
@@ -5700,7 +5700,7 @@ function App() {
           onSearch=${() => openSearch("training")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <form className="space-y-6" onSubmit=${saveTrainingDraft} onInput=${() => markDraftDirty("training-edit")} onChange=${() => markDraftDirty("training-edit")}>
           <section className="rounded-xl p-6 space-y-4 ${TRAINING_THEME.surface}">
             <div className="space-y-1">
@@ -5913,7 +5913,7 @@ function App() {
     const sortedCategories = Object.keys(groupedSupplements).sort((left, right) => left.localeCompare(right));
     const currentMinutes = getCurrentMinutes();
     return html`
-      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-28">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("supplements")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-8 pb-64">
           <${renderPlanModeHeader}
@@ -6031,7 +6031,7 @@ function App() {
       }),
     );
     return html`
-      <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-28">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
         <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
           <section className="space-y-3">
@@ -6182,7 +6182,7 @@ function App() {
     const latestDateLabel = parseDateKey(latestMeasure.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
     return html`
-      <div className="mos-screen text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Minhas medidas"
           leftIcon="arrow_back"
@@ -6191,7 +6191,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="mos-info-card mos-info-card--hero space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -6338,7 +6338,7 @@ function App() {
     ];
 
     return html`
-      <div className="mos-screen text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Meu perfil"
           leftIcon="arrow_back"
@@ -6347,7 +6347,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="mos-info-card space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -6400,7 +6400,7 @@ function App() {
     ];
 
     return html`
-      <div className="mos-screen text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Sobre o app"
           leftIcon="arrow_back"
@@ -6409,7 +6409,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="mos-info-card space-y-4">
             <span className="text-sm text-[#4558C8]">Bem-vinda ao MOS!</span>
             <h1 className="text-[1.85rem] font-bold text-jet-black leading-tight">Um guia rápido para usar o app com clareza e leveza</h1>
@@ -6486,7 +6486,7 @@ function App() {
 
   function renderHistory() {
     return html`
-      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-28">
         <${TopBar} title="Histórico" leftIcon="arrow_back" centerBold=${false} onLeft=${() => setScreen("plan-config")} onSearch=${() => openSearch("history")} onRight=${openNotifications} />
         <main className="pt-24 px-4 max-w-md mx-auto">
           <section className="mb-5">
@@ -6521,7 +6521,7 @@ function App() {
     const recentAdminNotifications = state.appNotifications || [];
 
     return html`
-      <div className="mos-screen text-on-surface min-h-screen pb-32">
+      <div className="mos-screen text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Notificações"
           leftIcon="arrow_back"
@@ -6530,7 +6530,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="mos-info-card space-y-3">
             <span className="text-sm font-bold text-[#0F172A]/60">Admin MOS!</span>
             <h1 className="text-[1.9rem] font-black text-[#0F172A] leading-tight">Enviar aviso aos usuários</h1>
@@ -6656,7 +6656,7 @@ function App() {
           ? getSectionBackground("water")
           : getSectionBackground("plan");
     return html`
-      <div className="${searchBg} text-on-surface min-h-screen pb-32">
+      <div className="${searchBg} text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Buscar"
           leftIcon="arrow_back"
@@ -6772,7 +6772,7 @@ function App() {
     return html`
       <div className="${ingredientBg} text-on-surface min-h-screen pb-24">
         <${TopBar} title=${selectedFood.name} leftIcon="arrow_back" centerBold=${false} onLeft=${() => setScreen(selectedFood.back || "food-detail")} onSearch=${() => openSearch("ingredient-detail")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <${ContextNav}
             items=${[
               { label: "Voltar à refeição", onClick: () => setScreen(selectedFood.back || "food-detail"), primary: true },
@@ -6812,7 +6812,7 @@ function App() {
     const guardSupplementNavigation = (action) =>
       confirmDiscard(action, "Deseja cancelar a edição? As alterações do suplemento ainda não foram salvas.");
     return html`
-      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-28">
         <${TopBar}
           title="Registrar suplemento"
           leftIcon="arrow_back"
