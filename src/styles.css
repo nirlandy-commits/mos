@@ -15,7 +15,7 @@ html {
 body {
   margin: 0;
   font-family: "Sora", sans-serif;
-  background: #ebf5f2;
+  background: #F2F2F7;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -29,9 +29,9 @@ body {
   --mos-ink: #0b1020;
   --mos-muted: #5f6b7d;
   --mos-cream: #fff9ed;
-  --mos-page-bg: #ebf5f2;
-  --mos-surface: #fbfff8;
-  --mos-surface-soft: rgba(255, 255, 255, 0.62);
+  --mos-page-bg: #F2F2F7;
+  --mos-surface: #ffffff;
+  --mos-surface-soft: rgba(255, 255, 255, 0.92);
   --mos-line: rgba(11, 16, 32, 0.08);
   --mos-soft-shadow: 0 18px 48px rgba(11, 16, 32, 0.055);
   --mos-desktop-max: 76.5rem;
@@ -2337,11 +2337,11 @@ body *::after {
 }
 
 .home-panel {
-  border-radius: 22px;
-  padding: 1.35rem;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(11, 16, 32, 0.08);
-  box-shadow: none;
+  border-radius: 18px;
+  padding: 1.1rem;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .home-panel--primary {
@@ -2512,41 +2512,45 @@ body *::after {
 }
 
 .home-signal-pill {
-  min-height: 4.55rem;
-  padding: 0.75rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 0;
+  min-height: 4.2rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.65rem;
   text-align: left;
-  box-shadow: none;
-  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 180ms ease, box-shadow 180ms ease;
   cursor: pointer;
+  border-left-width: 3px;
 }
 
 .home-signal-pill:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
 }
 
 .home-signal-pill:nth-child(1) {
-  background: #ffd39a;
+  background: #ffffff;
+  border-left-color: #FF6B1A;
 }
 
 .home-signal-pill:nth-child(2) {
-  background: #95f4e8;
+  background: #ffffff;
+  border-left-color: #3B82F6;
 }
 
 .home-signal-pill:nth-child(3) {
-  background: #e7ff46;
+  background: #ffffff;
+  border-left-color: #22C55E;
 }
 
 .home-signal-pill:nth-child(4) {
-  background: #c5ceff;
+  background: #ffffff;
+  border-left-color: #8B5CF6;
 }
 
 .home-signal-pill:active {
@@ -2554,56 +2558,84 @@ body *::after {
 }
 
 .home-signal-pill-icon {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.46);
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
   color: #0f172a;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
+
+.home-signal-pill:nth-child(1) .home-signal-pill-icon { background: rgba(255,107,26,0.1); color: #FF6B1A; }
+.home-signal-pill:nth-child(2) .home-signal-pill-icon { background: rgba(59,130,246,0.1); color: #3B82F6; }
+.home-signal-pill:nth-child(3) .home-signal-pill-icon { background: rgba(34,197,94,0.1); color: #22C55E; }
+.home-signal-pill:nth-child(4) .home-signal-pill-icon { background: rgba(139,92,246,0.1); color: #8B5CF6; }
 
 .home-signal-pill > div > span {
   display: block;
-  color: #64748b;
-  font-size: 0.78rem;
+  color: #94A3B8;
+  font-size: 0.7rem;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .home-signal-pill strong {
   display: block;
-  margin-top: 0.12rem;
+  margin-top: 0.1rem;
   color: #0f172a;
   font-size: 0.88rem;
-  line-height: 1.18;
-  font-weight: 900;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .home-signal-pill small {
   display: block;
-  margin-top: 0.22rem;
+  margin-top: 0.15rem;
   color: #64748b;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   line-height: 1.25;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .home-quick-action {
-  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  min-height: 3rem;
+  border-radius: 14px;
+  padding: 0 1rem;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: transform 180ms ease, box-shadow 180ms ease;
   cursor: pointer;
 }
 
 .home-quick-action:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(148, 163, 184, 0.28);
-  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
 }
 
 .home-quick-action:active {
-  transform: translateY(0) scale(0.99);
+  transform: translateY(0) scale(0.98);
+}
+
+.home-quick-action:first-child {
+  background: #FF6B1A;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(255,107,26,0.3);
+}
+
+.home-quick-action:last-child {
+  background: #3B82F6;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(59,130,246,0.3);
 }
 
 .home-inline-insight {
@@ -2641,33 +2673,10 @@ body *::after {
   color: #0f172a;
 }
 
-.home-quick-action {
-  min-height: 3.15rem;
-  border-radius: 16px;
-  padding: 0 1rem;
-  background: rgba(255, 255, 255, 0.48);
-  border: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  color: #0f172a;
-  font-size: 0.94rem;
-  font-weight: 800;
-}
-
-.home-quick-action:first-child {
-  background: #ffd39a;
-}
-
-.home-quick-action:last-child {
-  background: #c5ceff;
-}
-
 .food-hero-card {
-  background: #fff3de;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.11);
+  background: #ffffff;
+  border: 1px solid rgba(255, 107, 26, 0.12);
+  box-shadow: 0 4px 20px rgba(255, 107, 26, 0.06);
 }
 
 .food-summary-card {
@@ -3198,11 +3207,11 @@ body *::after {
 }
 
 .plan-mode-copy {
-  min-height: clamp(11.5rem, 34vw, 14.75rem);
+  min-height: clamp(6rem, 20vw, 9rem);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .plan-mode-tabs {
@@ -3218,19 +3227,22 @@ body *::after {
 
 .plan-subnav-tab {
   flex: 1;
-  min-height: 3rem;
-  padding: 0.7rem 0.95rem;
-  border-radius: 1.1rem;
-  color: #526070;
-  font-size: 0.9rem;
-  font-weight: 800;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 600;
   text-align: center;
   border: 0;
+  background: transparent;
+  transition: background 180ms ease, color 180ms ease;
 }
 
 .plan-subnav-tab--active {
-  background: var(--mos-lime);
-  color: var(--mos-black);
+  background: #0F172A;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .plan-active-foods,
@@ -3674,12 +3686,12 @@ body *::after {
 
 /* MOS! visual system polish: lighter internals, flatter CTAs, fewer nested boxes. */
 .mos-screen {
-  background: var(--mos-page-bg);
+  background: #F2F2F7;
 }
 
 .mos-screen,
 .mos-screen > main {
-  background-color: var(--mos-page-bg);
+  background-color: #F2F2F7;
 }
 
 /* bottom-nav-active icon — handled above in nav redesign */
@@ -4811,3 +4823,138 @@ body *::after {
     width: min(100% - 2rem, 76rem);
   }
 }
+
+/* ── MOS! FINAL POLISH — May 2026 ── */
+
+/* Greeting: reduce weight so it doesn't compete with hero */
+.home-greeting-line p {
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+}
+
+/* Base do dia: eyebrow smaller and muted */
+.home-panel .home-panel-eyebrow {
+  font-size: 0.68rem !important;
+  color: #94A3B8 !important;
+  font-weight: 600 !important;
+}
+
+/* Base do dia: goal text smaller */
+.home-panel .text-\[1\.9rem\] {
+  font-size: clamp(1.2rem, 4vw, 1.6rem) !important;
+}
+
+/* home-inline-insight: muted, not competing */
+.home-inline-insight {
+  background: #F0FDF4;
+  color: #166534;
+  border: 1px solid rgba(22, 163, 74, 0.15);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  max-width: 9rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* home summary stats: cleaner */
+.home-summary-stat {
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #F8F8FA;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: none;
+}
+
+.home-summary-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.home-summary-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+/* Fix: food_summary card white, not yellowish */
+.food-summary-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: none;
+}
+
+/* Fix: plan-mode-tabs background */
+.plan-mode-tabs {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 4px;
+}
+
+/* Fix: plan-active-shell highlight */
+.plan-active-shell {
+  background: #FFF8F2;
+  border: 1.5px solid rgba(255, 107, 26, 0.15);
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+/* Fix: water progress track */
+.water-progress-track {
+  background: #BFDBFE;
+}
+.water-progress-fill {
+  background: #2563EB;
+}
+
+/* Fix: water panels */
+.water-focus-hero,
+.water-action-panel,
+.water-support-panel {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 22px;
+}
+
+/* Fix: water quick buttons */
+.water-quick-button {
+  background: #2563EB;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 14px;
+  border: none;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.water-quick-button:hover { background: #1D4ED8; transform: translateY(-2px); }
+.water-quick-button--custom {
+  background: #EFF6FF;
+  color: #1E40AF;
+  border: 1.5px solid #BFDBFE;
+}
+
+/* Fix: mos-card everywhere */
+.mos-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Fix: measure sparklines */
+.mos-info-tile svg {
+  overflow: hidden !important;
+  display: block;
+  width: 100%;
+}
+
+/* Fix: supplement status colors */
+.supplement-status--now { background: #DCFCE7; color: #166534; font-weight: 700; }
+.supplement-status--late { background: #FEF3C7; color: #92400E; font-weight: 700; }
+.supplement-status--later, .supplement-status--idle { background: #F1F5F9; color: #64748b; }
