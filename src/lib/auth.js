@@ -738,7 +738,7 @@ export async function fetchConsumedMeals(userId) {
   if (!client || !userId) return {};
 
   const [{ data: meals, error: mealsError }, { data: foods, error: foodsError }] = await Promise.all([
-    client.from("consumed_meals").select("*").eq("user_id", userId).order("entry_date", { ascending: false }).order("created_at", { ascending: true }),
+    client.from("consumed_meals").select("*").eq("user_id", userId).order("entry_date", { ascending: false }).order("meal_time", { ascending: true }).order("created_at", { ascending: true }),
     client.from("consumed_food_items").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
   ]);
 
@@ -770,7 +770,10 @@ export async function createConsumedMealEntry(userId, date, meal) {
   if (!client || !userId) return { ok: false, error: new Error("Usuário não autenticado.") };
 
   const now = new Date();
-  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
+  const informedTime = String(meal.time || "").match(/^(\d{1,2}):(\d{2})$/);
+  const time = informedTime
+    ? `${String(Math.max(0, Math.min(23, Number(informedTime[1]) || 0))).padStart(2, "0")}:${String(Math.max(0, Math.min(59, Number(informedTime[2]) || 0))).padStart(2, "0")}:00`
+    : `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
   const payload = {
     user_id: userId,
     entry_date: date,

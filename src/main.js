@@ -90,15 +90,17 @@ function normalizeMosPath(pathname = globalThis.location?.pathname || "/") {
 
 function getMosRoute(pathname = globalThis.location?.pathname || "/") {
   const normalizedPath = normalizeMosPath(pathname);
-  return normalizedPath.endsWith("/app") ? "app" : "landing";
+  return normalizedPath.endsWith("/app") || normalizedPath.endsWith("/demo") ? "app" : "landing";
 }
 
 function buildMosPath(route = "landing") {
   const pathname = normalizeMosPath(globalThis.location?.pathname || "/");
   const segments = pathname.split("/").filter(Boolean);
-  const baseSegments = segments[segments.length - 1] === "app" ? segments.slice(0, -1) : segments;
+  const lastSegment = segments[segments.length - 1];
+  const baseSegments = ["app", "demo"].includes(lastSegment) ? segments.slice(0, -1) : segments;
   const basePath = `/${baseSegments.join("/")}`.replace(/\/+/g, "/");
   if (route === "app") return `${basePath === "/" ? "" : basePath}/app`;
+  if (route === "demo") return `${basePath === "/" ? "" : basePath}/demo`;
   return basePath === "" ? "/" : basePath;
 }
 
@@ -116,6 +118,16 @@ const DEMO_TODAY_KEY = (() => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 })();
+
+function offsetDateKey(days = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+const DEMO_YESTERDAY_KEY = offsetDateKey(-1);
+const DEMO_TWO_DAYS_AGO_KEY = offsetDateKey(-2);
+const DEMO_THREE_DAYS_AGO_KEY = offsetDateKey(-3);
 
 const planImages = {
   breakfast:
@@ -136,20 +148,50 @@ const defaultState = {
   profile: {
     calorieTarget: 2400,
     waterTargetMl: 3000,
-    activeGoal: "",
-    planFocus: "",
-    planNotes: "",
+    activeGoal: "Perder peso",
+    planFocus: "Déficit leve, proteína alta e treino consistente.",
+    planNotes: "Priorizar refeições simples, hidratação constante e registro diário.",
     name: "Nirlandy Leitão Pinheiro",
-    email: "",
-    city: "",
-    birthday: "",
-    weight: 0,
-    height: 0,
-    age: 0,
-    targetWeight: 0,
+    email: "demo@mos.app",
+    city: "São Paulo",
+    birthday: "1989-08-14",
+    weight: 77.7,
+    height: 170,
+    age: 36,
+    targetWeight: 72,
   },
-  feedbackEntries: [],
-  appNotifications: [],
+  feedbackEntries: [
+    {
+      id: "feedback-demo-1",
+      section: "Home",
+      message: "A visualização preenchida ajuda a entender melhor a rotina do usuário.",
+      createdAt: `${DEMO_TODAY_KEY}T09:45:00.000Z`,
+    },
+    {
+      id: "feedback-demo-2",
+      section: "Plano alimentar",
+      message: "Exibir refeições completas deixa o fluxo de plano mais claro.",
+      createdAt: `${DEMO_YESTERDAY_KEY}T18:20:00.000Z`,
+    },
+  ],
+  appNotifications: [
+    {
+      id: "notification-demo-1",
+      title: "Plano do dia pronto",
+      body: "Café, almoço, lanche, jantar e ceia já estão organizados.",
+      createdAt: `${DEMO_TODAY_KEY}T07:30:00.000Z`,
+      section: "plan",
+      read: false,
+    },
+    {
+      id: "notification-demo-2",
+      title: "Treino registrado",
+      body: "Sessão de inferiores concluída ontem com boa consistência.",
+      createdAt: `${DEMO_YESTERDAY_KEY}T20:10:00.000Z`,
+      section: "training",
+      read: false,
+    },
+  ],
   measureEntries: [
     {
       id: "measure-2025-12-02",
@@ -171,8 +213,98 @@ const defaultState = {
       bodyWater: 53.8,
       metabolicAge: 50,
     },
+    {
+      id: "measure-demo-current",
+      date: DEMO_TODAY_KEY,
+      weight: 76.8,
+      height: 170,
+      bodyFat: 23.8,
+      muscleMass: 56.4,
+      bodyWater: 54.1,
+      metabolicAge: 49,
+    },
   ],
   consumedMeals: {
+    [DEMO_THREE_DAYS_AGO_KEY]: [
+      {
+        id: "meal-demo-3days-breakfast",
+        name: "Café da manhã",
+        icon: "light_mode",
+        description: "Panqueca de banana, ovos e café",
+        foods: [
+          { id: "meal-demo-3days-breakfast-1", name: "Panqueca de banana", quantity: "1 porção", calories: 260, protein: 13, carbs: 32, fat: 9, benefit: "Boa base de energia para começar o dia." },
+          { id: "meal-demo-3days-breakfast-2", name: "Café sem açúcar", quantity: "200 ml", calories: 5, protein: 0, carbs: 1, fat: 0, benefit: "Mantém a rotina leve pela manhã." },
+        ],
+      },
+      {
+        id: "meal-demo-3days-lunch",
+        name: "Almoço",
+        icon: "restaurant",
+        description: "Carne magra, batata e legumes",
+        foods: [
+          { id: "meal-demo-3days-lunch-1", name: "Patinho moído", quantity: "130g", calories: 245, protein: 33, carbs: 0, fat: 12, benefit: "Proteína com boa saciedade." },
+          { id: "meal-demo-3days-lunch-2", name: "Batata cozida", quantity: "160g", calories: 137, protein: 3, carbs: 31, fat: 0, benefit: "Carboidrato simples para sustentar a rotina." },
+          { id: "meal-demo-3days-lunch-3", name: "Legumes", quantity: "1 porção", calories: 60, protein: 2, carbs: 10, fat: 1, benefit: "Ajuda no volume e micronutrientes." },
+        ],
+      },
+    ],
+    [DEMO_TWO_DAYS_AGO_KEY]: [
+      {
+        id: "meal-demo-2days-breakfast",
+        name: "Café da manhã",
+        icon: "light_mode",
+        description: "Iogurte, aveia e fruta",
+        foods: [
+          { id: "meal-demo-2days-breakfast-1", name: "Iogurte grego", quantity: "170g", calories: 130, protein: 15, carbs: 8, fat: 4, benefit: "Facilita proteína logo cedo." },
+          { id: "meal-demo-2days-breakfast-2", name: "Aveia", quantity: "30g", calories: 117, protein: 4, carbs: 20, fat: 2, benefit: "Traz fibra e saciedade." },
+          { id: "meal-demo-2days-breakfast-3", name: "Morango", quantity: "100g", calories: 32, protein: 1, carbs: 8, fat: 0, benefit: "Acrescenta volume com baixa caloria." },
+        ],
+      },
+      {
+        id: "meal-demo-2days-dinner",
+        name: "Jantar",
+        icon: "dark_mode",
+        description: "Omelete e salada",
+        foods: [
+          { id: "meal-demo-2days-dinner-1", name: "Omelete", quantity: "3 ovos", calories: 270, protein: 21, carbs: 2, fat: 18, benefit: "Refeição prática e rica em proteína." },
+          { id: "meal-demo-2days-dinner-2", name: "Salada completa", quantity: "1 prato", calories: 85, protein: 3, carbs: 11, fat: 3, benefit: "Ajuda a fechar o dia com leveza." },
+        ],
+      },
+    ],
+    [DEMO_YESTERDAY_KEY]: [
+      {
+        id: "meal-demo-yesterday-breakfast",
+        name: "Café da manhã",
+        icon: "light_mode",
+        description: "Tapioca, ovos e café",
+        foods: [
+          { id: "meal-demo-yesterday-breakfast-1", name: "Tapioca", quantity: "70g", calories: 210, protein: 2, carbs: 50, fat: 0, benefit: "Energia rápida para a manhã." },
+          { id: "meal-demo-yesterday-breakfast-2", name: "Ovos mexidos", quantity: "2 ovos", calories: 180, protein: 14, carbs: 2, fat: 12, benefit: "Ajuda na saciedade." },
+        ],
+      },
+      {
+        id: "meal-demo-yesterday-lunch",
+        name: "Almoço",
+        icon: "restaurant",
+        description: "Frango, macarrão e salada",
+        foods: [
+          { id: "meal-demo-yesterday-lunch-1", name: "Frango grelhado", quantity: "150g", calories: 246, protein: 39, carbs: 0, fat: 8, benefit: "Base proteica do almoço." },
+          { id: "meal-demo-yesterday-lunch-2", name: "Macarrão integral", quantity: "120g", calories: 180, protein: 7, carbs: 37, fat: 1, benefit: "Energia para o treino." },
+          { id: "meal-demo-yesterday-lunch-3", name: "Salada", quantity: "1 prato", calories: 42, protein: 2, carbs: 7, fat: 0, benefit: "Aumenta volume da refeição." },
+        ],
+      },
+      {
+        id: "meal-demo-yesterday-dinner",
+        name: "Jantar",
+        icon: "dark_mode",
+        description: "Salmão, arroz e legumes",
+        foods: [
+          { id: "meal-demo-yesterday-dinner-1", name: "Salmão grelhado", quantity: "130g", calories: 260, protein: 29, carbs: 0, fat: 15, benefit: "Proteína com boa gordura." },
+          { id: "meal-demo-yesterday-dinner-2", name: "Arroz branco", quantity: "100g", calories: 128, protein: 2, carbs: 28, fat: 0, benefit: "Completa energia do dia." },
+          { id: "meal-demo-yesterday-dinner-3", name: "Brócolis", quantity: "1 porção", calories: 45, protein: 4, carbs: 7, fat: 0, benefit: "Ajuda em fibras e micronutrientes." },
+        ],
+      },
+    ],
     [DEMO_TODAY_KEY]: [
       {
         id: "meal-demo-breakfast",
@@ -270,6 +402,37 @@ const defaultState = {
         { id: "pf9", name: "Maçã", quantity: "1 un", calories: 70, protein: 0, carbs: 18, fat: 0, benefit: "Boa opção leve e prática para o lanche." },
       ],
     },
+    {
+      id: "plan-dinner",
+      name: "Jantar",
+      time: "20:00",
+      icon: "dark_mode",
+      color: "border-[#4558C8]",
+      accent: "#4558C8",
+      image: planImages.lunch,
+      title: "Tilápia com Purê e Legumes",
+      description: "160g de tilápia, purê de batata e legumes no vapor",
+      foods: [
+        { id: "pf10", name: "Tilápia grelhada", quantity: "160g", calories: 210, protein: 34, carbs: 0, fat: 7, benefit: "Proteína leve para fechar o dia." },
+        { id: "pf11", name: "Purê de batata", quantity: "130g", calories: 142, protein: 3, carbs: 27, fat: 3, benefit: "Completa carboidrato sem pesar." },
+        { id: "pf12", name: "Legumes no vapor", quantity: "1 porção", calories: 48, protein: 2, carbs: 9, fat: 0, benefit: "Melhora volume e fibras." },
+      ],
+    },
+    {
+      id: "plan-supper",
+      name: "Ceia",
+      time: "22:15",
+      icon: "nightlight",
+      color: "border-[#DFF37D]",
+      accent: "#DFF37D",
+      image: planImages.snack,
+      title: "Iogurte com Canela",
+      description: "Iogurte natural, canela e castanhas",
+      foods: [
+        { id: "pf13", name: "Iogurte natural", quantity: "1 pote", calories: 110, protein: 9, carbs: 8, fat: 4, benefit: "Ajuda a fechar proteína do dia." },
+        { id: "pf14", name: "Castanhas", quantity: "15g", calories: 85, protein: 3, carbs: 3, fat: 7, benefit: "Traz saciedade no fim da rotina." },
+      ],
+    },
   ],
   supplements: [
     { id: "s1", period: "Pós-treino", category: "Performance", time: "18:00", name: "Creatina", dosage: "5 gramas", instruction: "Usar 1x por dia para consistência no treino.", card: "bg-old-flax text-custom-jet" },
@@ -289,22 +452,109 @@ const defaultState = {
         { id: "training-a-4", name: "Desenvolvimento", focus: "Ombros", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 18, loadDelta: "+2kg" },
       ],
     },
-    {
-      id: "training-b",
-      name: "Costas + Bíceps",
+      {
+        id: "training-b",
+        name: "Costas + Bíceps",
       estimatedMinutes: 55,
       exercises: [
         { id: "training-b-1", name: "Puxada frontal", focus: "Costas", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 75, suggestedLoadKg: 45, loadDelta: "+5kg" },
         { id: "training-b-2", name: "Remada baixa", focus: "Costas", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 75, suggestedLoadKg: 40, loadDelta: "+2kg" },
-        { id: "training-b-3", name: "Rosca direta", focus: "Bíceps", sets: 3, reps: "8-10", targetReps: 10, restSeconds: 60, suggestedLoadKg: 20, loadDelta: "+2kg" },
-      ],
-    },
-  ],
-  trainingHistory: [],
+          { id: "training-b-3", name: "Rosca direta", focus: "Bíceps", sets: 3, reps: "8-10", targetReps: 10, restSeconds: 60, suggestedLoadKg: 20, loadDelta: "+2kg" },
+        ],
+      },
+      {
+        id: "training-c",
+        name: "Inferiores",
+        estimatedMinutes: 60,
+        exercises: [
+          { id: "training-c-1", name: "Agachamento livre", focus: "Quadríceps", sets: 4, reps: "8-10", targetReps: 10, restSeconds: 120, suggestedLoadKg: 55, loadDelta: "+2kg" },
+          { id: "training-c-2", name: "Leg press", focus: "Quadríceps", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 120, loadDelta: "+5kg" },
+          { id: "training-c-3", name: "Mesa flexora", focus: "Posterior de coxa", sets: 3, reps: "12-15", targetReps: 15, restSeconds: 60, suggestedLoadKg: 35, loadDelta: "+2kg" },
+          { id: "training-c-4", name: "Elevação pélvica", focus: "Glúteos", sets: 4, reps: "10-12", targetReps: 12, restSeconds: 90, suggestedLoadKg: 70, loadDelta: "+5kg" },
+        ],
+      },
+      {
+        id: "training-d",
+        name: "Core + Cardio",
+        estimatedMinutes: 35,
+        exercises: [
+          { id: "training-d-1", name: "Prancha", focus: "Abdômen", sets: 4, reps: "40s", targetReps: 40, restSeconds: 45, suggestedLoadKg: 0, loadDelta: "estável" },
+          { id: "training-d-2", name: "Abdominal infra", focus: "Abdômen", sets: 3, reps: "15-20", targetReps: 20, restSeconds: 45, suggestedLoadKg: 0, loadDelta: "+2 reps" },
+          { id: "training-d-3", name: "Esteira inclinada", focus: "Cardio", sets: 1, reps: "20 min", targetReps: 20, restSeconds: 0, suggestedLoadKg: 0, loadDelta: "+2 min" },
+        ],
+      },
+    ],
+    trainingHistory: [
+      {
+        id: "training-history-demo-today",
+        planId: "training-a",
+        planName: "Peito + Ombro",
+        date: DEMO_TODAY_KEY,
+        completedAt: `${DEMO_TODAY_KEY}T18:45:00.000Z`,
+        durationMinutes: 52,
+        volumeTotal: 6420,
+        exercises: [
+          { id: "training-history-demo-today-1", name: "Supino reto", focus: "Peito", sets: 4, reps: "12, 11, 10, 10", loadKg: 40, volume: 1720 },
+          { id: "training-history-demo-today-2", name: "Supino inclinado", focus: "Peito", sets: 4, reps: "10, 10, 9, 9", loadKg: 36, volume: 1368 },
+          { id: "training-history-demo-today-3", name: "Crucifixo", focus: "Peito", sets: 3, reps: "15, 14, 13", loadKg: 12, volume: 504 },
+          { id: "training-history-demo-today-4", name: "Desenvolvimento", focus: "Ombros", sets: 4, reps: "12, 11, 10, 10", loadKg: 18, volume: 774 },
+        ],
+      },
+      {
+        id: "training-history-demo-yesterday",
+        planId: "training-c",
+        planName: "Inferiores",
+        date: DEMO_YESTERDAY_KEY,
+        completedAt: `${DEMO_YESTERDAY_KEY}T19:20:00.000Z`,
+        durationMinutes: 61,
+        volumeTotal: 12480,
+        exercises: [
+          { id: "training-history-demo-yesterday-1", name: "Agachamento livre", focus: "Quadríceps", sets: 4, reps: "10, 10, 9, 8", loadKg: 55, volume: 2035 },
+          { id: "training-history-demo-yesterday-2", name: "Leg press", focus: "Quadríceps", sets: 4, reps: "12, 12, 11, 10", loadKg: 120, volume: 5400 },
+          { id: "training-history-demo-yesterday-3", name: "Mesa flexora", focus: "Posterior", sets: 3, reps: "15, 14, 13", loadKg: 35, volume: 1470 },
+        ],
+      },
+      {
+        id: "training-history-demo-2days",
+        planId: "training-b",
+        planName: "Costas + Bíceps",
+        date: DEMO_TWO_DAYS_AGO_KEY,
+        completedAt: `${DEMO_TWO_DAYS_AGO_KEY}T18:10:00.000Z`,
+        durationMinutes: 54,
+        volumeTotal: 7380,
+        exercises: [
+          { id: "training-history-demo-2days-1", name: "Puxada frontal", focus: "Costas", sets: 4, reps: "12, 11, 10, 10", loadKg: 45, volume: 1935 },
+          { id: "training-history-demo-2days-2", name: "Remada baixa", focus: "Costas", sets: 4, reps: "12, 12, 10, 10", loadKg: 40, volume: 1760 },
+          { id: "training-history-demo-2days-3", name: "Rosca direta", focus: "Bíceps", sets: 3, reps: "10, 9, 8", loadKg: 20, volume: 540 },
+        ],
+      },
+    ],
   water: {
+    [DEMO_THREE_DAYS_AGO_KEY]: 2850,
+    [DEMO_TWO_DAYS_AGO_KEY]: 3100,
+    [DEMO_YESTERDAY_KEY]: 2950,
     [DEMO_TODAY_KEY]: 2450,
   },
   waterHistory: {
+    [DEMO_THREE_DAYS_AGO_KEY]: [
+      { id: "water-demo-3days-1", amount: 500, label: "Manhã", time: "08:10" },
+      { id: "water-demo-3days-2", amount: 700, label: "Almoço", time: "12:30" },
+      { id: "water-demo-3days-3", amount: 650, label: "Tarde", time: "16:20" },
+      { id: "water-demo-3days-4", amount: 1000, label: "Noite", time: "20:15" },
+    ],
+    [DEMO_TWO_DAYS_AGO_KEY]: [
+      { id: "water-demo-2days-1", amount: 600, label: "Ao acordar", time: "07:20" },
+      { id: "water-demo-2days-2", amount: 800, label: "Durante a manhã", time: "10:45" },
+      { id: "water-demo-2days-3", amount: 700, label: "Pré-treino", time: "17:30" },
+      { id: "water-demo-2days-4", amount: 1000, label: "Depois do treino", time: "20:40" },
+    ],
+    [DEMO_YESTERDAY_KEY]: [
+      { id: "water-demo-yesterday-1", amount: 450, label: "Ao acordar", time: "07:05" },
+      { id: "water-demo-yesterday-2", amount: 500, label: "Manhã", time: "09:50" },
+      { id: "water-demo-yesterday-3", amount: 750, label: "Almoço", time: "12:35" },
+      { id: "water-demo-yesterday-4", amount: 650, label: "Treino", time: "18:40" },
+      { id: "water-demo-yesterday-5", amount: 600, label: "Noite", time: "21:10" },
+    ],
     [DEMO_TODAY_KEY]: [
       { id: "water-demo-1", amount: 300, label: "Ao acordar", time: "07:15" },
       { id: "water-demo-2", amount: 500, label: "Após o café da manhã", time: "09:40" },
@@ -749,15 +999,65 @@ function deriveBenefit(name = "") {
   return "Mantém a refeição mais organizada dentro do plano.";
 }
 
+function parseFoodQuantityAmount(quantity = "") {
+  const raw = String(quantity || "").toLowerCase().replace(",", ".");
+  const number = Number(raw.match(/(\d+(?:\.\d+)?)/)?.[1]) || 1;
+  if (raw.includes("kg")) return number * 1000;
+  if (raw.includes("g")) return number;
+  if (raw.includes("ml")) return number;
+  if (raw.includes("ovo")) return number * 50;
+  if (raw.includes("fatia")) return number * 30;
+  if (raw.includes("concha")) return number * 100;
+  if (raw.includes("pote")) return number * 170;
+  if (raw.includes("prato")) return number * 250;
+  if (raw.includes("porção") || raw.includes("porcao")) return number * 100;
+  if (raw.includes("un")) return number * 100;
+  return number * 100;
+}
+
+function calculateFoodByMosBrain(name = "", quantity = "") {
+  const n = String(name || "").toLowerCase();
+  const grams = Math.max(1, parseFoodQuantityAmount(quantity));
+  const by100g = [
+    { test: ["frango", "peito"], calories: 165, protein: 31, carbs: 0, fat: 4 },
+    { test: ["ovo"], calories: 143, protein: 13, carbs: 1, fat: 10 },
+    { test: ["pão", "pao"], calories: 247, protein: 9, carbs: 41, fat: 4 },
+    { test: ["arroz"], calories: 130, protein: 3, carbs: 28, fat: 0 },
+    { test: ["feijão", "feijao"], calories: 76, protein: 5, carbs: 14, fat: 1 },
+    { test: ["macarrão", "macarrao"], calories: 158, protein: 6, carbs: 31, fat: 1 },
+    { test: ["batata"], calories: 86, protein: 2, carbs: 20, fat: 0 },
+    { test: ["tilápia", "tilapia", "peixe"], calories: 128, protein: 26, carbs: 0, fat: 3 },
+    { test: ["salmão", "salmao"], calories: 208, protein: 20, carbs: 0, fat: 13 },
+    { test: ["iogurte"], calories: 80, protein: 8, carbs: 6, fat: 2 },
+    { test: ["banana"], calories: 89, protein: 1, carbs: 23, fat: 0 },
+    { test: ["maçã", "maca"], calories: 52, protein: 0, carbs: 14, fat: 0 },
+    { test: ["aveia"], calories: 389, protein: 17, carbs: 66, fat: 7 },
+    { test: ["salada", "legume", "brócol", "brocol"], calories: 35, protein: 2, carbs: 7, fat: 0 },
+    { test: ["abacate"], calories: 160, protein: 2, carbs: 9, fat: 15 },
+    { test: ["castanha", "nozes"], calories: 600, protein: 15, carbs: 20, fat: 54 },
+    { test: ["café", "cafe"], calories: 2, protein: 0, carbs: 0, fat: 0 },
+  ].find((item) => item.test.some((term) => n.includes(term))) || { calories: 120, protein: 5, carbs: 15, fat: 4 };
+
+  const factor = grams / 100;
+  return {
+    calories: Math.round(by100g.calories * factor),
+    protein: Math.round(by100g.protein * factor),
+    carbs: Math.round(by100g.carbs * factor),
+    fat: Math.round(by100g.fat * factor),
+  };
+}
+
 function normalizeFood(food = {}) {
+  const hasNutritionInput = ["calories", "protein", "carbs", "fat"].some((key) => food[key] !== undefined && food[key] !== null && String(food[key]).trim() !== "");
+  const brainNutrition = hasNutritionInput ? null : calculateFoodByMosBrain(food.name, food.quantity);
   return {
     id: food.id || uid("food"),
     name: food.name || "Alimento",
     quantity: food.quantity || "1 porção",
-    calories: Number(food.calories) || 0,
-    protein: Number(food.protein) || 0,
-    carbs: Number(food.carbs) || 0,
-    fat: Number(food.fat) || 0,
+    calories: hasNutritionInput ? Number(food.calories) || 0 : brainNutrition.calories,
+    protein: hasNutritionInput ? Number(food.protein) || 0 : brainNutrition.protein,
+    carbs: hasNutritionInput ? Number(food.carbs) || 0 : brainNutrition.carbs,
+    fat: hasNutritionInput ? Number(food.fat) || 0 : brainNutrition.fat,
     benefit: food.benefit || deriveBenefit(food.name),
   };
 }
@@ -816,6 +1116,11 @@ function formatMealTimeLabel(value = "") {
   const hours = Math.floor(parsed / 60);
   const minutes = parsed % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function getCurrentTimeValue() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
 function getSupplementMomentStatus(value = "", currentMinutes = getCurrentMinutes()) {
@@ -1006,6 +1311,7 @@ function migrate(raw) {
 }
 
 function loadState() {
+  if (LOCAL_DEMO_MODE) return structuredClone(initialState);
   try {
     const current = localStorage.getItem(STORAGE_KEY);
     if (current) return migrate(JSON.parse(current));
@@ -1361,7 +1667,7 @@ function BottomNav({ active, onChange }) {
           const isActive = active === item.key;
           return html`
             <button
-              className=${`flex flex-col items-center justify-center gap-0.5 ${isActive ? "bottom-nav-active" : "bottom-nav-inactive"} px-3 py-2.5 rounded-xl transition-all active:scale-95`}
+              className=${`flex flex-col items-center justify-center gap-0.5 ${isActive ? "bottom-nav-active" : "bottom-nav-inactive"} px-2 py-2 rounded-xl transition-all active:scale-95`}
               onClick=${() => onChange(item.key)}
             >
               <${Icon} name=${item.icon} filled=${isActive} />
@@ -1387,7 +1693,7 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
       <div className="mos-bottom-nav max-w-[26rem] mx-auto w-full flex justify-around items-center gap-0.5 bg-[#ffffff] rounded-2xl border border-black/8 px-1.5 shadow-[0_-2px_20px_rgba(0,0,0,0.08)]">
         ${items.map((item) => html`
           <button
-            className=${`flex flex-col items-center justify-center gap-0.5 ${item.active ? "bottom-nav-active" : "bottom-nav-inactive"} px-3 py-2.5 rounded-xl transition-all active:scale-95`}
+            className=${`flex flex-col items-center justify-center gap-0.5 ${item.active ? "bottom-nav-active" : "bottom-nav-inactive"} px-2 py-2 rounded-xl transition-all active:scale-95`}
             onClick=${item.onClick}
           >
             <${Icon} name=${item.icon} filled=${item.active} />
@@ -1399,211 +1705,35 @@ function PlanConfigNav({ onOpenConfig, onOpenMeal, onOpenHistory, onGoHome }) {
   `;
 }
 
-function DesktopSidebar({ active, onChange, onOpenProfile, onOpenMeasures, onOpenSettings, onOpenAbout, onOpenAdminNotifications, onSignOut, isAdmin = false }) {
-  const items = [
-    { key: "home", label: "Início", icon: "home" },
-    { key: "food", label: "Comida", icon: "restaurant" },
-    { key: "water", label: "Água", icon: "water_drop" },
-    { key: "training", label: "Treino", icon: "fitness_center" },
-    { key: "plan", label: "Plano", icon: "description" },
-  ];
-  const secondaryItems = [
-    { label: "Configurar plano", icon: "settings", onClick: onOpenSettings },
-    { label: "Meu perfil", icon: "person", onClick: onOpenProfile },
-    { label: "Minhas medidas", icon: "straighten", onClick: onOpenMeasures },
-    { label: "Sobre o app", icon: "info", onClick: onOpenAbout },
-    ...(isAdmin ? [{ label: "Admin de notificações", icon: "notifications_active", onClick: onOpenAdminNotifications }] : []),
-    { label: "Sair", icon: "logout", onClick: onSignOut, danger: true },
-  ];
 
+function MacroBarDark({ proteinWidth = "45%", carbWidth = "65%", fatWidth = "30%", proteinValue = null, carbValue = null, fatValue = null }) {
   return html`
-    <aside className="mos-desktop-sidebar">
-      <div className="space-y-8">
-        <div className="space-y-3">
-          <button type="button" className="mos-desktop-brand" onClick=${() => onChange("home")}><${MosWordmark} /></button>
-          <p className="mos-desktop-copy">Organize sua rotina em um só lugar.</p>
+    <div className="food-macro-bars">
+      <div className="food-macro-bar-row">
+        <div className="food-macro-bar-label">
+          <span>Carbo</span>
+          <strong>${carbValue ?? carbWidth.replace("%", "")}g</strong>
         </div>
-        <nav className="space-y-2">
-          ${items.map((item) => {
-            const isActive = active === item.key || (item.key === "plan" && active === "supplements");
-            return html`
-              <button type="button" className=${`mos-desktop-nav-item ${isActive ? "mos-desktop-nav-item--active" : ""}`} onClick=${() => onChange(item.key)}>
-                <${Icon} name=${item.icon} className="text-[1.15rem]" filled=${isActive} />
-                <span>${item.label}</span>
-              </button>
-            `;
-          })}
-        </nav>
-        <div className="mos-desktop-sidebar-divider"></div>
-        <nav className="space-y-1.5">
-          ${secondaryItems.map((item) => html`
-            <button type="button" className=${`mos-desktop-subnav-item ${item.danger ? "mos-desktop-subnav-item--danger" : ""}`} onClick=${item.onClick}>
-              <${Icon} name=${item.icon} className="text-[1rem]" />
-              <span>${item.label}</span>
-            </button>
-          `)}
-        </nav>
-      </div>
-    </aside>
-  `;
-}
-
-function DesktopSearchPanel({ query, results, onQueryChange, onClose, onPick }) {
-  return html`
-    <div className="mos-desktop-search-panel">
-      <div className="mos-desktop-search-panel-head">
-        <div className="mos-desktop-search-panel-input">
-          <${Icon} name="search" className="text-[1rem] text-[#64748B]" />
-          <input
-            type="search"
-            value=${query}
-            placeholder="Buscar..."
-            onInput=${(e) => onQueryChange(e.currentTarget.value)}
-            autoFocus
-          />
-        </div>
-        <button type="button" className="mos-desktop-search-close" onClick=${onClose}>Fechar</button>
-      </div>
-      <div className="mos-desktop-search-results">
-        ${results.length
-          ? results.slice(0, 10).map((item) => html`
-              <button type="button" className="mos-desktop-search-result" onClick=${() => onPick(item)}>
-                <div className="mos-desktop-search-result-icon">
-                  <${Icon} name=${item.icon} className="text-[1rem] text-[#0F172A]" />
-                </div>
-                <div className="min-w-0">
-                  <p className="mos-desktop-search-result-title">${item.title}</p>
-                  <p className="mos-desktop-search-result-subtitle">${item.subtitle}</p>
-                </div>
-                <span className="mos-desktop-search-result-meta">${item.meta}</span>
-              </button>
-            `)
-          : html`
-              <div className="mos-desktop-search-empty">
-                ${query ? "Nada encontrado para essa busca." : "Busque alimentos, refeições, suplementos ou treinos sem sair da tela atual."}
-              </div>
-            `}
-      </div>
-    </div>
-  `;
-}
-
-function DesktopRightRail({
-  onSearch,
-  onOpenNotifications,
-  notificationCount = 0,
-  avatarLabel,
-  accountMenuOpen,
-  onToggleAccountMenu,
-  onCloseAccountMenu,
-  onOpenProfile,
-  onOpenMeasures,
-  onOpenSettings,
-  onSignOut,
-  caloriesConsumed,
-  calorieTarget,
-  waterConsumedMl,
-  waterTargetMl,
-  trainingDone,
-  onOpenFood,
-  onOpenWater,
-  onOpenTraining,
-}) {
-  const caloriesRemaining = Math.max(0, (Number(calorieTarget) || 0) - (Number(caloriesConsumed) || 0));
-  const waterPercent = waterTargetMl > 0 ? Math.round(((Number(waterConsumedMl) || 0) / waterTargetMl) * 100) : 0;
-
-  return html`
-    <aside className="mos-desktop-right-rail">
-      <div className="space-y-5">
-        <div className="mos-desktop-right-head">
-          <button type="button" className="mos-desktop-search mos-desktop-search--rail" onClick=${onSearch}>
-            <${Icon} name="search" className="text-[1rem] text-[#64748B]" />
-            <span>Buscar...</span>
-          </button>
-          <button type="button" className="mos-desktop-utility" onClick=${onOpenNotifications}>
-            <${Icon} name="notifications" className="text-[1.1rem] text-[#334155]" />
-            <${NotificationBadge} count=${notificationCount} />
-          </button>
-          <div className="relative">
-            <button type="button" className="mos-desktop-avatar" onClick=${onToggleAccountMenu}>
-              <span>${avatarLabel}</span>
-            </button>
-            ${accountMenuOpen
-              ? html`
-                  <div className="mos-desktop-account-menu">
-                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenProfile(); }}>Meu perfil</button>
-                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenMeasures(); }}>Minhas medidas</button>
-                    <button type="button" className="mos-desktop-account-item" onClick=${() => { onCloseAccountMenu(); onOpenSettings(); }}>Configurações</button>
-                    <button type="button" className="mos-desktop-account-item mos-desktop-account-item--danger" onClick=${() => { onCloseAccountMenu(); onSignOut(); }}>Sair</button>
-                  </div>
-                `
-              : null}
-          </div>
-        </div>
-        <div className="space-y-2">
-          <h2 className="mos-desktop-rail-title">Atividade do dia</h2>
-          <p className="mos-desktop-rail-copy">Leitura rápida para agir no momento certo.</p>
-        </div>
-
-        <button type="button" className="mos-desktop-status-row" onClick=${onOpenFood}>
-          <div className="mos-desktop-status-top">
-            <span className="mos-desktop-status-label">Calorias</span>
-            <span className="mos-desktop-status-chip">${caloriesRemaining} kcal livres</span>
-          </div>
-          <strong className="mos-desktop-status-value">${caloriesConsumed}</strong>
-          <p className="mos-desktop-status-copy">Consumidas de ${calorieTarget} kcal hoje</p>
-        </button>
-
-        <button type="button" className="mos-desktop-status-row" onClick=${onOpenWater}>
-          <div className="mos-desktop-status-top">
-            <span className="mos-desktop-status-label">Água</span>
-            <span className="mos-desktop-status-chip">${Math.max(0, waterPercent)}%</span>
-          </div>
-          <strong className="mos-desktop-status-value">${waterConsumedMl}</strong>
-          <p className="mos-desktop-status-copy">de ${waterTargetMl} ml da sua meta</p>
-        </button>
-
-        <button type="button" className="mos-desktop-status-row" onClick=${onOpenTraining}>
-          <div className="mos-desktop-status-top">
-            <span className="mos-desktop-status-label">Treino</span>
-            <span className="mos-desktop-status-chip">${trainingDone ? "feito" : "pendente"}</span>
-          </div>
-          <strong className="mos-desktop-status-value">${trainingDone ? "OK" : "--"}</strong>
-          <p className="mos-desktop-status-copy">${trainingDone ? "Treino registrado hoje" : "Nenhum treino registrado hoje"}</p>
-        </button>
-      </div>
-    </aside>
-  `;
-}
-
-function MacroBarDark({ proteinWidth = "45%", carbWidth = "65%", fatWidth = "30%" }) {
-  return html`
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex justify-between items-end">
-          <span className="text-[0.6875rem] font-bold opacity-80">Carbo</span>
-          <span className="text-sm font-bold">${carbWidth.replace("%", "")}g</span>
-        </div>
-        <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden">
-          <div className="h-full bg-[#4558C8]" style=${{ width: carbWidth }}></div>
+        <div className="food-macro-track">
+          <div className="food-macro-fill" style=${{ width: carbWidth }}></div>
         </div>
       </div>
-      <div className="space-y-2">
-        <div className="flex justify-between items-end">
-          <span className="text-[0.6875rem] font-bold opacity-80">Proteínas</span>
-          <span className="text-sm font-bold">${proteinWidth.replace("%", "")}g</span>
+      <div className="food-macro-bar-row">
+        <div className="food-macro-bar-label">
+          <span>Proteínas</span>
+          <strong>${proteinValue ?? proteinWidth.replace("%", "")}g</strong>
         </div>
-        <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden">
-          <div className="h-full bg-[#EF5F37]" style=${{ width: proteinWidth }}></div>
+        <div className="food-macro-track">
+          <div className="food-macro-fill" style=${{ width: proteinWidth }}></div>
         </div>
       </div>
-      <div className="space-y-2">
-        <div className="flex justify-between items-end">
-          <span className="text-[0.6875rem] font-bold opacity-80">Gorduras</span>
-          <span className="text-sm font-bold text-[#D9B8F3]">${fatWidth.replace("%", "")}g</span>
+      <div className="food-macro-bar-row">
+        <div className="food-macro-bar-label">
+          <span>Gorduras</span>
+          <strong>${fatValue ?? fatWidth.replace("%", "")}g</strong>
         </div>
-        <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden">
-          <div className="h-full bg-[#D9B8F3]" style=${{ width: fatWidth }}></div>
+        <div className="food-macro-track">
+          <div className="food-macro-fill" style=${{ width: fatWidth }}></div>
         </div>
       </div>
     </div>
@@ -1621,9 +1751,13 @@ function FoodItem({ food, onEdit, onDelete, onOpen, dark = false }) {
           <p className="font-bold text-[#292B2D]">${food.name}</p>
           <p className="text-[0.6875rem] font-medium text-primary">${food.quantity} • ${food.calories} kcal</p>
           <p className="text-[0.75rem] text-on-surface-variant mt-1">${food.benefit}</p>
-          <div className="flex gap-3 mt-2">
-            <button type="button" className="text-[0.6875rem] font-bold text-[#4558C8]" onClick=${(e) => { e.stopPropagation(); onEdit(); }}>Editar</button>
-            <button type="button" className="text-[0.6875rem] font-bold text-error" onClick=${(e) => { e.stopPropagation(); onDelete(); }}>Excluir</button>
+          <div className="flex gap-2 mt-3">
+            <button type="button" className="mos-icon-action mos-icon-action--small" title="Editar" aria-label="Editar" onClick=${(e) => { e.stopPropagation(); onEdit(); }}>
+              <${Icon} name="edit" />
+            </button>
+            <button type="button" className="mos-icon-action mos-icon-action--small mos-icon-action--danger" title="Apagar" aria-label="Apagar" onClick=${(e) => { e.stopPropagation(); onDelete(); }}>
+              <${Icon} name="delete" />
+            </button>
           </div>
         </div>
       </div>
@@ -1657,11 +1791,8 @@ function App() {
   const [screen, setScreen] = useState(() => (shouldOpenLoginAfterReload() ? "login" : loadState().auth?.signedIn ? "home" : "welcome"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
-  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [notificationsCleared, setNotificationsCleared] = useState(false);
   const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
-  const [landingSignal, setLandingSignal] = useState("comida");
   const [searchOpenFrom, setSearchOpenFrom] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [foodDate, setFoodDate] = useState(getTodayKey());
@@ -1671,6 +1802,7 @@ function App() {
   const [waterHistoryDate, setWaterHistoryDate] = useState(getTodayKey());
   const [waterHistoryMonth, setWaterHistoryMonth] = useState(parseDateKey(getTodayKey()));
   const [modal, setModal] = useState(null);
+  const [foodRegisterRows, setFoodRegisterRows] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [selectedConsumedId, setSelectedConsumedId] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
@@ -1681,6 +1813,7 @@ function App() {
   const [trainingDraft, setTrainingDraft] = useState(null);
   const [trainingClock, setTrainingClock] = useState(Date.now());
   const [newTrainingExerciseId, setNewTrainingExerciseId] = useState(null);
+  const [editingTrainingExerciseId, setEditingTrainingExerciseId] = useState(null);
   const [appNewsEntries] = useState([
     {
       id: "news-2026-03-30",
@@ -1712,7 +1845,6 @@ function App() {
   const [authNoticeTitle, setAuthNoticeTitle] = useState("");
   const [authNoticeTone, setAuthNoticeTone] = useState("error");
   const [authBusy, setAuthBusy] = useState(false);
-  const planTimelineRef = useRef(null);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
@@ -1820,7 +1952,7 @@ function App() {
   }
 
   useEffect(() => {
-    const hasOverlayOpen = drawerOpen || notificationsOpen || foodCalendarOpen || waterHistoryOpen || desktopSearchOpen || Boolean(modal) || Boolean(editor) || Boolean(substituteFood) || Boolean(confirmAction);
+    const hasOverlayOpen = drawerOpen || notificationsOpen || foodCalendarOpen || waterHistoryOpen || Boolean(modal) || Boolean(editor) || Boolean(substituteFood) || Boolean(confirmAction);
     const html = document.documentElement;
     const body = document.body;
     const scrollY = window.scrollY;
@@ -1986,19 +2118,26 @@ function App() {
 
   useEffect(() => {
     let active = true;
+    if (LOCAL_DEMO_MODE) {
+      setState((current) => ({
+        ...current,
+        auth: {
+          ...current.auth,
+          registered: true,
+          signedIn: true,
+        },
+      }));
+      setHasVerifiedSession(true);
+      clearAuthNotice();
+      setScreen("home");
+      setAuthReady(true);
+      return () => {
+        active = false;
+      };
+    }
+
     if (!authConfigured) {
-      if (LOCAL_DEMO_MODE) {
-        setState((current) => ({
-          ...current,
-          auth: {
-            ...current.auth,
-            registered: true,
-            signedIn: true,
-          },
-        }));
-        setScreen("home");
-      }
-      setHasVerifiedSession(LOCAL_DEMO_MODE);
+      setHasVerifiedSession(false);
       setAuthReady(true);
       return () => {
         active = false;
@@ -2083,17 +2222,7 @@ function App() {
     setScreen("home");
   }, [appRoute, authReady, hasVerifiedSession]);
 
-  useEffect(() => {
-    setDesktopAccountMenuOpen(false);
-  }, [screen]);
-
-  useEffect(() => {
-    if (!desktopSearchOpen) return;
-    setDesktopAccountMenuOpen(false);
-    setNotificationsOpen(false);
-  }, [desktopSearchOpen]);
-
-  const foodMeals = state.consumedMeals[foodDate] || [];
+  const foodMeals = sortPlanMealsByTime(state.consumedMeals[foodDate] || []);
 
   const allConsumedFoods = (state.consumedMeals[date] || []).flatMap((meal) => meal.foods);
   const summary = summarizeFoods(allConsumedFoods);
@@ -2176,20 +2305,6 @@ function App() {
     if (!automaticPlanMeal) return;
     setSelectedPlanId(automaticPlanMeal.id);
   }, [screen, state.planMeals]);
-
-  useEffect(() => {
-    if (screen !== "plan") return;
-    if (!selectedPlanId) return;
-    const container = planTimelineRef.current;
-    const activeTimelineItem = document.getElementById(`plan-timeline-item-${selectedPlanId}`);
-    if (!container || !activeTimelineItem) return;
-    const targetLeft =
-      activeTimelineItem.offsetLeft - (container.clientWidth / 2) + (activeTimelineItem.clientWidth / 2);
-    container.scrollTo({
-      left: Math.max(0, targetLeft),
-      behavior: "smooth",
-    });
-  }, [screen, selectedPlanId]);
 
   useEffect(() => {
     const params = new URLSearchParams(globalThis.location?.search || "");
@@ -2407,26 +2522,6 @@ function App() {
       setSearchQuery("");
       setScreen("search");
     }, "Deseja sair da edição atual? As alterações não salvas serão perdidas.");
-  }
-
-  function openDesktopSearch() {
-    setSearchOpenFrom(screen);
-    setDesktopSearchOpen(true);
-  }
-
-  function closeDesktopSearch() {
-    setDesktopSearchOpen(false);
-    setSearchQuery("");
-  }
-
-  function handleDesktopSearchPick(item) {
-    setDesktopSearchOpen(false);
-    setSearchQuery("");
-    item.action?.();
-  }
-
-  function openDesktopSettings() {
-    setScreen("plan-config");
   }
 
   function renderSignedInScreen() {
@@ -2843,16 +2938,52 @@ function App() {
     setScreen("ingredient-detail");
   }
 
+  function resetFoodRegisterForm() {
+    clearDraft("modal-food");
+    setFoodRegisterRows(1);
+    setModal(null);
+  }
+
+  function addFoodRegisterRow() {
+    setFoodRegisterRows((current) => current + 1);
+  }
+
+  function maybeGrowFoodRegisterRows(event) {
+    const input = event?.currentTarget;
+    const form = input?.form;
+    const match = String(input?.name || "").match(/^food(?:Name|Quantity)(\d+)$/);
+    if (!form || !match) return;
+    const index = Number(match[1]) || 1;
+    if (index !== foodRegisterRows) return;
+    const name = String(form.elements[`foodName${index}`]?.value || "").trim();
+    const quantity = String(form.elements[`foodQuantity${index}`]?.value || "").trim();
+    if (name && quantity) addFoodRegisterRow();
+  }
+
   async function registerMeal(formData) {
+    const mealTime = formatMealTimeLabel(formData.get("mealTime")) || getCurrentTimeValue();
+    const foodIndexes = [...formData.keys()]
+      .map((key) => Number(String(key).match(/^foodName(\d+)$/)?.[1]) || 0)
+      .filter(Boolean);
+    const mealFoods = [...new Set(foodIndexes)]
+      .sort((a, b) => a - b)
+      .map((index) => {
+        const name = String(formData.get(`foodName${index}`) || "").trim();
+        const quantity = String(formData.get(`foodQuantity${index}`) || "").trim();
+        if (!name || !quantity) return null;
+        return normalizeFood({ name, quantity });
+      })
+      .filter(Boolean);
+    if (!mealFoods.length) return;
     const meal = {
       id: uid("meal"),
       name: formData.get("mealName"),
       title: formData.get("mealName"),
-      description: formData.get("description"),
-      time: "Agora",
+      description: mealFoods.map((food) => `${food.name} ${food.quantity}`.trim()).join(", "),
+      time: mealTime,
       icon: "restaurant",
       cardClass: "bg-[#EF5F37] text-white",
-      foods: [],
+      foods: mealFoods,
     };
 
     if (authConfigured) {
@@ -2867,12 +2998,24 @@ function App() {
         return;
       }
       Object.assign(meal, result.meal);
+
+      const savedFoods = [];
+      for (const food of mealFoods) {
+        const foodResult = await saveConsumedFoodItem(user.id, meal.id, food);
+        if (!foodResult.ok) {
+          showAuthNotice(foodResult.error?.message || "A refeição foi criada, mas nem todos os alimentos foram salvos.");
+          continue;
+        }
+        savedFoods.push(foodResult.food);
+      }
+      meal.foods = savedFoods;
     }
 
     mutate((draft) => {
       draft.consumedMeals[foodDate] = [...(draft.consumedMeals[foodDate] || (foodDate === todayKey ? consumedMeals : [])), meal];
     });
     clearDraft("modal-food");
+    setFoodRegisterRows(1);
     setScreen("food");
   }
 
@@ -3328,6 +3471,8 @@ function App() {
     const plan = trainingPlans.find((item) => item.id === planId);
     setSelectedTrainingId(planId);
     setTrainingDraft(normalizeTrainingPlan(plan || buildBlankTrainingPlan(), 0, { allowEmptyExercises: true }));
+    setEditingTrainingExerciseId(null);
+    setNewTrainingExerciseId(null);
     setScreen("training-edit");
   }
 
@@ -3335,6 +3480,8 @@ function App() {
     const nextPlan = buildBlankTrainingPlan();
     setSelectedTrainingId(nextPlan.id);
     setTrainingDraft(nextPlan);
+    setEditingTrainingExerciseId(null);
+    setNewTrainingExerciseId(null);
     setScreen("training-edit");
   }
 
@@ -3509,7 +3656,24 @@ function App() {
     updateTrainingExerciseFocus(exerciseId, event?.target?.value || "");
   }
 
+  function isTrainingExerciseIncomplete(exercise = {}) {
+    const name = String(exercise.name || "").trim().toLowerCase();
+    return !name || name === "novo exercício" || !String(exercise.focus || "").trim();
+  }
+
+  function notifyTrainingEdit(message, title = "Finalize o exercício") {
+    showAuthNotice(message, { tone: "info", title });
+  }
+
   function addTrainingExercise() {
+    if (editingTrainingExerciseId) {
+      notifyTrainingEdit("Salve ou remova o exercício que está aberto antes de adicionar outro.");
+      document.getElementById(`training-exercise-${editingTrainingExerciseId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      return;
+    }
     markDraftDirty("training-edit");
     setTrainingDraft((current) => {
       if (!current) return current;
@@ -3528,6 +3692,7 @@ function App() {
         current.exercises.length,
       );
       setNewTrainingExerciseId(nextExercise.id);
+      setEditingTrainingExerciseId(nextExercise.id);
       return {
         ...current,
         exercises: [
@@ -3553,6 +3718,7 @@ function App() {
           };
         });
         setNewTrainingExerciseId((current) => (current === exerciseId ? null : current));
+        setEditingTrainingExerciseId((current) => (current === exerciseId ? null : current));
       },
     });
   }
@@ -3566,6 +3732,7 @@ function App() {
         markDraftDirty("training-edit");
         setTrainingDraft((current) => (current ? { ...current, exercises: [] } : current));
         setNewTrainingExerciseId(null);
+        setEditingTrainingExerciseId(null);
       },
     });
   }
@@ -3613,8 +3780,7 @@ function App() {
     });
   }
 
-  function saveTrainingDraft(event) {
-    event.preventDefault();
+  function persistTrainingDraft() {
     if (!trainingDraft) return;
     const normalizedPlan = normalizeTrainingPlan({
       ...trainingDraft,
@@ -3627,7 +3793,43 @@ function App() {
     });
     clearDraft("training-edit");
     setSelectedTrainingId(normalizedPlan.id);
+    setTrainingDraft(normalizedPlan);
+    return normalizedPlan;
+  }
+
+  function saveTrainingExercise(exerciseId) {
+    const exercise = trainingDraft?.exercises.find((item) => item.id === exerciseId);
+    if (isTrainingExerciseIncomplete(exercise)) {
+      notifyTrainingEdit("Preencha o nome do exercício e selecione o grupo muscular antes de salvar.");
+      document.getElementById(`training-exercise-name-${exerciseId}`)?.focus();
+      return;
+    }
+    const normalizedPlan = persistTrainingDraft();
+    if (!normalizedPlan) return;
+    setEditingTrainingExerciseId((current) => (current === exerciseId ? null : current));
+    setNewTrainingExerciseId((current) => (current === exerciseId ? null : current));
+  }
+
+  function saveTrainingDraft(event) {
+    event.preventDefault();
+    const incompleteExercise = trainingDraft?.exercises.find((exercise) => isTrainingExerciseIncomplete(exercise));
+    if (editingTrainingExerciseId || incompleteExercise) {
+      const targetId = editingTrainingExerciseId || incompleteExercise?.id;
+      notifyTrainingEdit("Finalize ou remova os exercícios incompletos antes de salvar o treino.", "Treino incompleto");
+      if (targetId) {
+        setEditingTrainingExerciseId(targetId);
+        document.getElementById(`training-exercise-${targetId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+      return;
+    }
+    const normalizedPlan = persistTrainingDraft();
+    if (!normalizedPlan) return;
     setTrainingDraft(null);
+    setEditingTrainingExerciseId(null);
+    setNewTrainingExerciseId(null);
     setScreen("training-detail");
   }
 
@@ -3698,7 +3900,7 @@ function App() {
         return {
           label: "Registrar comida",
           title: "Registrar primeira refeição",
-          detail: "Abra comida e marque o que já foi consumido.",
+          detail: "Marque o que já foi consumido.",
           icon: "restaurant",
           action: () => setModal("food"),
         };
@@ -3707,7 +3909,7 @@ function App() {
         return {
           label: "Registrar água",
           title: `Beber ${Math.ceil(waterRemaining / 50) * 50} ml`,
-          detail: "Some água para aproximar sua meta do dia.",
+          detail: "Some água na meta do dia.",
           icon: "water_drop",
           action: () => setModal("water"),
         };
@@ -3716,7 +3918,7 @@ function App() {
         return {
           label: "Ver treino",
           title: "Fazer treino de hoje",
-          detail: "Abra o treino definido e registre a sessão.",
+          detail: "Abra e registre a sessão.",
           icon: "fitness_center",
           action: () => setScreen("training"),
         };
@@ -3725,7 +3927,7 @@ function App() {
         return {
           label: "Ajustar plano",
           title: "Configurar roteiro",
-          detail: "Organize as refeições que já foram definidas.",
+          detail: "Organize as refeições.",
           icon: "description",
           action: () => setScreen("plan-config"),
         };
@@ -3733,7 +3935,7 @@ function App() {
       return {
         label: "Ver plano",
         title: "Seguir o roteiro",
-        detail: "Abra o plano e veja a próxima refeição.",
+        detail: "Veja a próxima refeição.",
         icon: "description",
         action: () => setScreen("plan"),
       };
@@ -3774,7 +3976,7 @@ function App() {
     return html`
       <div className="min-h-screen pb-32 ${getSectionBackground()}">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("home")} onRight=${openNotifications} />
-        <main className="home-main pt-24 px-6 max-w-md mx-auto space-y-5">
+        <main className="home-main pt-20 px-6 max-w-md mx-auto space-y-5">
           <section className="home-greeting-line">
             <p>${greeting}, ${profileName}.</p>
           </section>
@@ -3828,10 +4030,8 @@ function App() {
                 <span className="home-panel-eyebrow">Base do dia</span>
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <div className="text-[1.9rem] font-black leading-tight text-[#0F172A]">${profileGoal}</div>
-                    <p className="text-sm text-[#64748b]">parâmetros que guiam o MOS! hoje</p>
+                    <div className="home-goal-title">${profileGoal}</div>
                   </div>
-                  <div className="home-inline-insight">${profileInsight}</div>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
@@ -3863,239 +4063,24 @@ function App() {
   }
 
   function renderLanding() {
-    const openApp = () => {
-      navigateMosRoute("app");
-      setAppRoute("app");
-      setScreen(state.auth?.signedIn ? "home" : "welcome");
-    };
-
-    const navItems = [
-      ["Início", "#inicio"],
-      ["Comida", "#comida"],
-      ["Água", "#agua"],
-      ["Treino", "#treino"],
-      ["Plano", "#plano"],
-    ];
-
-    const landingSections = [
-      {
-        id: "comida",
-        eyebrow: "Comida",
-        title: "Comida registrada sem perder o rumo.",
-        copy: "Veja o que já entrou, quanto ainda cabe e onde ajustar a próxima refeição.",
-        stat: "903 kcal",
-        statLabel: "livres hoje",
-        color: "orange",
-        icon: "restaurant",
-      },
-      {
-        id: "agua",
-        eyebrow: "Água",
-        title: "Água clara, meta visível.",
-        copy: "Registre em um toque e veja quanto falta para fechar a meta do dia.",
-        stat: "550 ml",
-        statLabel: "faltando",
-        color: "cyan",
-        icon: "water_drop",
-      },
-      {
-        id: "treino",
-        eyebrow: "Treino",
-        title: "Treino definido, execução simples.",
-        copy: "Abra o treino, registre a sessão e mantenha o histórico no mesmo lugar.",
-        stat: "1 sessão",
-        statLabel: "próxima ação",
-        color: "lime",
-        icon: "fitness_center",
-      },
-      {
-        id: "plano",
-        eyebrow: "Plano",
-        title: "Seu plano organizado para hoje.",
-        copy: "Horários, alimentos, suplementos e trocas ficam claros para você seguir com segurança.",
-        stat: "4 passos",
-        statLabel: "no roteiro",
-        color: "blue",
-        icon: "article",
-      },
-    ];
-
-    const landingBrain = {
-      comida: {
-        label: "Comida",
-        input: { caloriesConsumed: 1497, calorieTarget: 2400, waterConsumedMl: 2450, waterTargetMl: 3000, trainingDone: false },
-      },
-      agua: {
-        label: "Água",
-        input: { caloriesConsumed: 900, calorieTarget: 2400, waterConsumedMl: 500, waterTargetMl: 3000, trainingDone: false },
-      },
-      treino: {
-        label: "Treino",
-        input: { caloriesConsumed: 1600, calorieTarget: 2400, waterConsumedMl: 2600, waterTargetMl: 3000, trainingDone: false },
-      },
-      plano: {
-        label: "Plano",
-        input: { caloriesConsumed: 1800, calorieTarget: 2400, waterConsumedMl: 3000, waterTargetMl: 3000, trainingDone: true },
-      },
-    };
-    const selectedBrain = landingBrain[landingSignal] || landingBrain.comida;
-    const selectedBrainState = calculateMosState(selectedBrain.input);
-    const selectedBrainSignals = calculateMosExecutionSignals(selectedBrain.input);
-    const selectedBrainMessage = generateMosMainMessage(selectedBrainState);
-    const selectedBrainRecommendation = generateMosShortRecommendation(selectedBrainState);
-    const selectedBrainInsight = generateMosOperationalInsight(selectedBrainSignals);
-
     return html`
-      <div className="mos-landing" id="inicio">
-        <header className="mos-landing-nav">
-          <a className="mos-landing-brand" href="#inicio" aria-label="MOS!">
-            <${MosWordmark} className="mos-wordmark--landing" />
+      <main className="min-h-screen bg-white text-black flex items-center justify-center px-6">
+        <nav className="flex items-center gap-4" aria-label="Escolher versão do MOS!">
+          <a
+            className="inline-flex h-12 min-w-28 items-center justify-center rounded-none border border-black bg-black px-8 text-sm font-bold uppercase tracking-normal text-white transition-colors hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4 focus-visible:ring-offset-white"
+            href=${buildMosPath("app")}
+          >
+            APP
           </a>
-          <nav className="mos-landing-links" aria-label="Navegação da landing">
-            ${navItems.map(([label, href]) => html`<a href=${href}>${label}</a>`)}
-          </nav>
-          <button className="mos-landing-nav-cta" onClick=${openApp}>
-            <span>Acessar o MOS!</span>
-            <${Icon} name="arrow_forward" />
-          </button>
-        </header>
-
-        <main>
-          <section className="mos-landing-hero">
-            <div className="mos-landing-hero-copy">
-              <span className="mos-landing-kicker">Rotina definida. Execução clara.</span>
-              <h1>Siga sua rotina com clareza.</h1>
-              <p>
-                MOS! organiza comida, água, treino e plano em um painel simples para você executar o que já foi definido.
-              </p>
-              <div className="mos-landing-actions">
-                <button className="mos-landing-primary" onClick=${openApp}>
-                  <span>Começar agora</span>
-                  <${Icon} name="arrow_forward" />
-                </button>
-                <a className="mos-landing-secondary" href="#cerebro">Ver como funciona</a>
-              </div>
-            </div>
-
-            <div className="mos-landing-stage" aria-label="Prévia do painel do MOS!">
-              <span className="mos-landing-bigword">MOS!</span>
-              <div className="mos-landing-phone">
-                <div className="mos-landing-phone-top">
-                  <span></span>
-                  <strong>MOS!</strong>
-                  <span></span>
-                </div>
-                <div className="mos-landing-phone-panel">
-                  <span>Painel do dia</span>
-                  <strong>903</strong>
-                  <p>kcal livres hoje</p>
-                  <small>Você ainda tem margem hoje</small>
-                </div>
-                <div className="mos-landing-phone-action">
-                  <${Icon} name="fitness_center" />
-                  <div>
-                    <strong>Próximo passo</strong>
-                    <span>Fazer treino de hoje</span>
-                  </div>
-                </div>
-                <div className="mos-landing-phone-grid">
-                  <span>Comida</span>
-                  <span>Água</span>
-                  <span>Treino</span>
-                  <span>Plano</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="mos-landing-strip" aria-label="Resumo do produto">
-            <div>
-              <strong>4 sinais</strong>
-              <span>comida, água, treino e plano</span>
-            </div>
-            <div>
-              <strong>1 painel</strong>
-              <span>para decidir a próxima ação</span>
-            </div>
-            <div>
-              <strong>0 achismo</strong>
-              <span>regras simples, sem IA inventando</span>
-            </div>
-          </section>
-
-          <section className="mos-landing-manifest">
-            <span>Por que existe</span>
-            <h2>Menos improviso. Mais execução.</h2>
-            <p>Você já sabe o que precisa seguir. O MOS! organiza o dia para a próxima decisão ficar mais simples.</p>
-          </section>
-
-          <section className="mos-landing-sections">
-            ${landingSections.map(
-              (item, index) => html`
-                <article className=${`mos-landing-feature mos-landing-feature--${item.color}`} id=${item.id}>
-                  <div className="mos-landing-feature-copy">
-                    <span className="mos-landing-feature-index">${String(index + 1).padStart(2, "0")} · ${item.eyebrow}</span>
-                    <h2>${item.title}</h2>
-                    <p>${item.copy}</p>
-                    <button className="mos-landing-inline-cta" onClick=${openApp}>
-                      <span>Usar no MOS!</span>
-                      <${Icon} name="arrow_forward" />
-                    </button>
-                  </div>
-                  <div className="mos-landing-feature-card">
-                    <${Icon} name=${item.icon} />
-                    <strong>${item.stat}</strong>
-                    <span>${item.statLabel}</span>
-                  </div>
-                </article>
-              `,
-            )}
-          </section>
-
-          <section className="mos-landing-brain" id="cerebro">
-            <div className="mos-landing-brain-copy">
-              <span className="mos-landing-kicker">Cérebro MOS!</span>
-              <h2>O MOS! lê o dia e mostra o próximo passo.</h2>
-              <p>Regras simples analisam calorias restantes, água e treino para gerar uma orientação direta.</p>
-            </div>
-            <div className="mos-landing-brain-panel">
-              <div className="mos-landing-brain-tabs">
-                ${Object.entries(landingBrain).map(
-                  ([key, item]) => html`
-                    <button
-                      className=${`mos-landing-brain-tab ${landingSignal === key ? "mos-landing-brain-tab--active" : ""}`}
-                      onClick=${() => setLandingSignal(key)}
-                    >
-                      ${item.label}
-                    </button>
-                  `,
-                )}
-              </div>
-              <div className="mos-landing-brain-result">
-                <span>Leitura do MOS!</span>
-                <strong>${selectedBrainMessage}</strong>
-                <p>${selectedBrainRecommendation}</p>
-                <small>${selectedBrainInsight}</small>
-              </div>
-            </div>
-          </section>
-
-          <section className="mos-landing-final">
-            <span>Pronto para testar?</span>
-            <h2>Entre e organize seu dia em poucos segundos.</h2>
-            <button className="mos-landing-primary" onClick=${openApp}>
-              <span>Acessar o MOS!</span>
-              <${Icon} name="arrow_forward" />
-            </button>
-          </section>
-        </main>
-
-        <footer className="mos-landing-footer">
-          <${MosWordmark} className="mos-wordmark--landing" />
-          <p>MOS! organiza a execução da sua rotina. Não substitui orientação profissional.</p>
-          <button onClick=${openApp}>Entrar no app</button>
-        </footer>
-      </div>
+          <span className="text-sm font-bold text-black" aria-hidden="true">|</span>
+          <a
+            className="inline-flex h-12 min-w-28 items-center justify-center rounded-none border border-black bg-white px-8 text-sm font-bold uppercase tracking-normal text-black transition-colors hover:bg-black hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4 focus-visible:ring-offset-white"
+            href=${buildMosPath("demo")}
+          >
+            DEMO
+          </a>
+        </nav>
+      </main>
     `;
   }
 
@@ -4514,8 +4499,6 @@ function App() {
   }
 
   function renderFood() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const consumedCalories = Math.round(summary.calories);
     const calorieTarget = Math.round(state.profile.calorieTarget);
     const remainingCalories = Math.max(0, Math.round(remaining));
@@ -4540,9 +4523,8 @@ function App() {
     return html`
       <div className="${getSectionBackground()} text-on-surface min-h-screen pb-40">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("food")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-8">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-8">
           <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
             <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
               ${foodHeadline}
             </h1>
@@ -4624,6 +4606,7 @@ function App() {
                       <${Icon} name="arrow_forward" className="food-meal-arrow" />
                     </div>
                     <div className="food-meal-copy">
+                      <span className="plan-meal-time">${formatMealTimeLabel(meal.time) || "Sem horário"}</span>
                       <h3 className="font-headline text-[1.82rem] font-[320] leading-none text-[#0F172A]">${meal.name}</h3>
                       <p className="food-meal-description">${mealDescription}</p>
                     </div>
@@ -4674,8 +4657,8 @@ function App() {
           centerBold=${false}
           onLeft=${() => setScreen("food")}
           rightSlot=${html`<div className="flex items-center gap-4">
-            <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food: null })}>
-              <${Icon} name="edit" className="text-[#292B2D]" />
+            <button className="hover:opacity-80 transition-opacity active:scale-95" title="Adicionar alimento" aria-label="Adicionar alimento" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food: null })}>
+              <${Icon} name="add" className="text-[#292B2D]" />
             </button>
             <button className="hover:opacity-80 transition-opacity active:scale-95" onClick=${() => askDeleteConfirm({
               title: "Apagar refeição",
@@ -4703,7 +4686,7 @@ function App() {
             </button>
           </div>`}
         />
-        <main className="pt-24 pb-32 px-4 max-w-md mx-auto space-y-8">
+        <main className="pt-20 pb-32 px-4 max-w-md mx-auto space-y-8">
           <section className="space-y-2">
             <h1 className="text-[2rem] font-bold text-jet-black">${selectedConsumed.name}</h1>
           </section>
@@ -4725,18 +4708,25 @@ function App() {
                       </div>
                     </button>
                     <div className="flex items-center gap-3 shrink-0">
-                      <button className="text-[#4558C8] font-bold text-[0.9rem] active:scale-95 transition-transform" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food })}>
-                        Editar
+                      <button
+                        className="mos-icon-action"
+                        title="Editar alimento"
+                        aria-label="Editar alimento"
+                        onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food })}
+                      >
+                        <${Icon} name="edit" />
                       </button>
                       <button
-                        className="text-error font-bold text-[0.9rem] active:scale-95 transition-transform"
+                        className="mos-icon-action mos-icon-action--danger"
+                        title="Apagar alimento"
+                        aria-label="Apagar alimento"
                         onClick=${() => askDeleteConfirm({
                           title: "Apagar alimento",
                           message: "Tem certeza que deseja apagar este item?",
                           onConfirm: () => removeFood("food", selectedConsumed.id, food.id),
                         })}
                       >
-                        Excluir
+                        <${Icon} name="delete" />
                       </button>
                     </div>
                   </div>
@@ -4780,9 +4770,16 @@ function App() {
               )}
             </div>
           </section>
-          <section className="bg-[#292B2D] text-white p-6 rounded-xl space-y-6">
-            <h3 className="font-bold text-lg">Distribuição de Macros</h3>
-            <${MacroBarDark} proteinWidth=${`${Math.min(100, totals.protein)}%`} carbWidth=${`${Math.min(100, totals.carbs)}%`} fatWidth=${`${Math.min(100, totals.fat * 2)}%`} />
+          <section className="food-macro-summary">
+            <h3>Distribuição de macros</h3>
+            <${MacroBarDark}
+              proteinWidth=${`${Math.min(100, totals.protein)}%`}
+              carbWidth=${`${Math.min(100, totals.carbs)}%`}
+              fatWidth=${`${Math.min(100, totals.fat * 2)}%`}
+              proteinValue=${Math.round(totals.protein)}
+              carbValue=${Math.round(totals.carbs)}
+              fatValue=${Math.round(totals.fat)}
+            />
           </section>
           <section className="flex flex-col gap-3">
             <button className="w-full bg-[#292B2D] text-white font-bold py-4 rounded-lg active:scale-95 transition-all text-sm" onClick=${() => setEditor({ target: "food", mealId: selectedConsumed.id, food: null })}>
@@ -4798,9 +4795,9 @@ function App() {
   function renderPlanModeTabs({ activeMode }) {
     const isPlan = activeMode === "plan";
     return html`
-      <div className="plan-mode-tabs" role="tablist" aria-label="Navegação do plano">
+      <div className="plan-page-tabs" role="tablist" aria-label="Navegação do plano">
         <button
-          className=${`plan-subnav-tab ${isPlan ? "plan-subnav-tab--active" : ""}`}
+          className=${`plan-page-tab ${isPlan ? "plan-page-tab--active" : ""}`}
           type="button"
           role="tab"
           aria-selected=${isPlan}
@@ -4809,7 +4806,7 @@ function App() {
           Plano alimentar
         </button>
         <button
-          className=${`plan-subnav-tab ${!isPlan ? "plan-subnav-tab--active" : ""}`}
+          className=${`plan-page-tab ${!isPlan ? "plan-page-tab--active" : ""}`}
           type="button"
           role="tab"
           aria-selected=${!isPlan}
@@ -4821,15 +4818,12 @@ function App() {
     `;
   }
 
-  function renderPlanModeHeader({ activeMode, headline, support, nowHour, profileName }) {
+  function renderPlanModeHeader({ activeMode, headline, support }) {
     return html`
       <section className="plan-mode-header">
         <div className="plan-mode-copy">
-          <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
-          <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>
-            ${headline}
-          </h1>
-          ${support ? html`<p className="text-[0.95rem] text-[#334155]">${support}</p>` : null}
+          <h1>${headline}</h1>
+          ${support ? html`<span>${support}</span>` : null}
         </div>
         <${renderPlanModeTabs} activeMode=${activeMode} />
       </section>
@@ -4837,185 +4831,87 @@ function App() {
   }
 
   function renderPlan() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
-    const planBrainState = calculateMosState({
-      caloriesConsumed: summary.calories,
-      calorieTarget: state.profile.calorieTarget,
-      waterConsumedMl: water,
-      waterTargetMl: waterGoal,
-      trainingDone: trainingHistory.some((entry) => entry.date === todayKey),
-    });
-    const planHeadline = "Seu plano, organizado pra você";
-    const currentPlanMeal = getCurrentPlanMeal(sortedPlanMeals);
-    const activePlanMeal = sortedPlanMeals.find((meal) => meal.id === selectedPlanId) || currentPlanMeal || sortedPlanMeals[0] || null;
-    const activePlanMealFoods = activePlanMeal?.foods || [];
-    const activePlanMealTotals = summarizeFoods(activePlanMealFoods);
-    const scrollPlanTimeline = (direction = 1) => {
-      planTimelineRef.current?.scrollBy({
-        left: direction * 220,
-        behavior: "smooth",
-      });
-    };
+    const totalPlanCalories = Math.round(planTotals.calories);
+    const targetCalories = Number(state.profile.calorieTarget) || totalPlanCalories || 0;
+    const remainingPlanCalories = Math.max(0, targetCalories - totalPlanCalories);
     return html`
-      <div className="${getSectionBackground()} text-on-surface min-h-screen pb-32">
+      <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("plan")} onRight=${openNotifications} />
-        <main className="pt-24 pb-64 px-6 max-w-md mx-auto space-y-8">
+        <main className="plan-page-shell pt-20 pb-64 px-6 max-w-md mx-auto space-y-6">
           <${renderPlanModeHeader}
             activeMode="plan"
-            headline=${planHeadline}
-            nowHour=${nowHour}
-            profileName=${profileName}
+            headline="Plano alimentar"
+            support="O roteiro passado pelo nutricionista para você meter o shape."
           />
-          <section className="space-y-5">
-            <div className="space-y-0.5">
-              <h2 className="text-xl font-bold text-[#0F172A]">Roteiro do dia</h2>
+
+          <section className="plan-list-summary">
+            <div>
+              <span>Calorias totais</span>
+              <strong>${totalPlanCalories || 0} kcal</strong>
             </div>
-            <div className="plan-timeline-shell">
-              <div className="plan-timeline-head">
-                <div className="plan-timeline-nav">
-                  <button className="plan-timeline-arrow" type="button" onClick=${() => scrollPlanTimeline(-1)} aria-label="Ver refeição anterior">
-                    <${Icon} name="arrow_back" />
-                  </button>
-                  <button className="plan-timeline-arrow" type="button" onClick=${() => scrollPlanTimeline(1)} aria-label="Ver próxima refeição">
-                    <${Icon} name="arrow_forward" />
-                  </button>
-                </div>
-              </div>
-              <div className="plan-timeline-scroller" ref=${planTimelineRef}>
-                <div className="plan-timeline-track">
-                ${sortedPlanMeals.map((meal, index) => html`
-                    <button
-                      id=${`plan-timeline-item-${meal.id}`}
-                      className=${`plan-time-pill ${activePlanMeal?.id === meal.id ? "plan-time-pill--active" : ""} ${currentPlanMeal?.id === meal.id ? "plan-time-pill--now" : ""}`}
-                      onClick=${() => setSelectedPlanId(meal.id)}
-                    >
-                      <div className="plan-time-pill-top">
-                        <span className="plan-time-pill-step">${String(index + 1).padStart(2, "0")}</span>
-                        <span className=${`plan-time-pill-state ${activePlanMeal?.id === meal.id ? "plan-time-pill-state--active" : currentPlanMeal?.id === meal.id ? "plan-time-pill-state--now" : ""}`}>
-                          ${activePlanMeal?.id === meal.id ? "Ativa" : currentPlanMeal?.id === meal.id ? "Agora" : "Plano"}
+            <div>
+              <span>Restante</span>
+              <strong>${remainingPlanCalories} kcal</strong>
+            </div>
+            <div className="plan-list-summary-line" aria-hidden="true">
+              <i style=${{ width: `${targetCalories ? Math.min(100, (totalPlanCalories / targetCalories) * 100) : 0}%` }}></i>
+            </div>
+          </section>
+
+          <section className="plan-meal-list" aria-label="Refeições do plano alimentar">
+            ${sortedPlanMeals.length
+              ? sortedPlanMeals.map((meal) => {
+                  const foods = meal.foods || [];
+                  const mealTotals = summarizeFoods(foods);
+                  return html`
+                    <article className="plan-meal-list-card">
+                      <div className="plan-meal-card-head">
+                        <div>
+                          <span className="plan-meal-time">${formatMealTimeLabel(meal.time) || "Sem horário"}</span>
+                          <h2>${meal.name}</h2>
+                        </div>
+                        <strong className="plan-meal-calories">${Math.round(mealTotals.calories)} kcal</strong>
+                      </div>
+                      <p className="plan-meal-description">${meal.description || meal.title || "Refeição cadastrada no plano."}</p>
+                      ${foods.length
+                        ? html`
+                            <ul className="plan-meal-items">
+                              ${foods.map((food) => html`
+                                <li>
+                                  <span>${food.name}</span>
+                                  <strong>${food.quantity}</strong>
+                                </li>
+                              `)}
+                            </ul>
+                          `
+                        : html`<p className="plan-meal-empty-copy">Sem itens cadastrados.</p>`}
+                      <div className="plan-meal-macros">
+                        <span>
+                          <small>Prot</small>
+                          <strong>${Math.round(mealTotals.protein)}g</strong>
+                        </span>
+                        <span>
+                          <small>Carb</small>
+                          <strong>${Math.round(mealTotals.carbs)}g</strong>
+                        </span>
+                        <span>
+                          <small>Gord</small>
+                          <strong>${Math.round(mealTotals.fat)}g</strong>
                         </span>
                       </div>
-                      <span className="plan-time-pill-label">${meal.name}</span>
-                      <span className="plan-time-pill-time">${formatMealTimeLabel(meal.time) || "Sem horário"}</span>
-                    </button>
-                `)}
-                </div>
-              </div>
-              </div>
+                    </article>
+                  `;
+                })
+              : html`
+                  <article className="plan-meal-list-card plan-meal-list-card--empty">
+                    <span className="plan-meal-time">Sem plano</span>
+                    <h2>Nenhuma refeição cadastrada</h2>
+                    <p className="plan-meal-description">Configure o plano para visualizar horários, itens, macros e calorias.</p>
+                  </article>
+                `}
           </section>
-          ${activePlanMeal
-            ? html`
-                <section className="plan-active-shell space-y-5">
-                  <div className="plan-active-header">
-                    <div className="space-y-1.5">
-                      <span className="plan-meal-eyebrow">Refeição ativa</span>
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-[2rem] font-bold leading-none text-[#0F172A]">${activePlanMeal.name}</h2>
-                        <span className="plan-active-time">${formatMealTimeLabel(activePlanMeal.time)}</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  <section className="space-y-3">
-                    <div className="mos-card plan-active-foods rounded-[24px] px-4 divide-y divide-[rgba(148,163,184,0.1)]">
-                      ${activePlanMealFoods.map((food) => {
-                        const accent = getFoodAccent(food.name);
-                        return html`
-                          <div className="py-4 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3.5 min-w-0">
-                              <div className="plan-detail-food-icon w-10 h-10 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
-                                <${Icon} name=${accent.icon} className="text-jet-black text-[1.35rem]" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-[1rem] leading-relaxed text-jet-black">
-                                  <strong className="font-bold">${food.name}</strong>
-                                </p>
-                                <p className="text-[0.9rem] text-on-surface-variant mt-1">${food.quantity}</p>
-                              </div>
-                            </div>
-                            <button className="plan-swap-button shrink-0 min-h-9 px-3.5 rounded-[10px] text-[0.78rem] font-bold active:scale-95 transition-transform flex items-center gap-2" onClick=${() => setSubstituteFood(food)}>
-                              <${Icon} name="swap_horiz" className="text-[1.05rem] text-[#EF5F37]" />
-                              <span>Trocar</span>
-                            </button>
-                          </div>
-                        `;
-                      })}
-                    </div>
-                  </section>
-
-                  <section className="space-y-3">
-                    <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Resumo nutricional</h3>
-                    <div className="plan-inline-totals">
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Calorias</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.calories)}</strong>
-                        <span className="plan-total-unit">kcal</span>
-                      </div>
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Proteína</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.protein)}</strong>
-                        <span className="plan-total-unit">g</span>
-                      </div>
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Carbos</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.carbs)}</strong>
-                        <span className="plan-total-unit">g</span>
-                      </div>
-                      <div className="plan-inline-total">
-                        <span className="plan-total-label">Gordura</span>
-                        <strong className="plan-total-value">${Math.round(activePlanMealTotals.fat)}</strong>
-                        <span className="plan-total-unit">g</span>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="mos-card plan-macro-card rounded-2xl p-5 space-y-5">
-                    <h3 className="font-bold text-lg text-jet-black">Distribuição de Macros</h3>
-                    <div className="space-y-3.5">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[0.6875rem] font-bold text-[#475569]">Carbo</span>
-                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.carbs)}g</span>
-                        </div>
-                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#4558C8]" style=${{ width: `${Math.min(100, activePlanMealTotals.carbs)}%` }}></div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[0.6875rem] font-bold text-[#475569]">Proteínas</span>
-                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.protein)}g</span>
-                        </div>
-                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#EF5F37]" style=${{ width: `${Math.min(100, activePlanMealTotals.protein)}%` }}></div>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <span className="text-[0.6875rem] font-bold text-[#475569]">Gorduras</span>
-                          <span className="text-sm font-bold text-jet-black">${Math.round(activePlanMealTotals.fat)}g</span>
-                        </div>
-                        <div className="h-3 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#D9B8F3]" style=${{ width: `${Math.min(100, activePlanMealTotals.fat * 2)}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="mos-card plan-guidance-card rounded-[22px] p-5 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#DFF37D] flex items-center justify-center">
-                        <${Icon} name="lightbulb" className="text-jet-black" />
-                      </div>
-                      <h3 className="text-[0.875rem] font-bold text-[#292B2D]">Ajuste com segurança</h3>
-                    </div>
-                    <p className="text-[0.96rem] leading-relaxed text-on-surface-variant">${planBrainState.calorie === "ACIMA_CALORIA" ? "Troque sem pesar e mantenha a base da refeição." : "Troque quando precisar, sem perder a base do plano."}</p>
-                  </section>
-                </section>
-              `
-            : null}
-          <button className="w-full py-5 bg-[#EF5F37] text-white rounded-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setScreen("plan-config")}>
+          <button className="plan-wire-action" onClick=${() => setScreen("plan-config")}>
             <${Icon} name="settings" />
             Configurar plano
           </button>
@@ -5044,7 +4940,7 @@ function App() {
           onSearch=${() => openSearch("plan")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="mos-card rounded-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
@@ -5052,8 +4948,8 @@ function App() {
                 <h1 className="text-[1.8rem] font-bold leading-tight">${hasPlanConfigured ? state.profile.activeGoal : "Nenhum plano configurado"}</h1>
                 <p className="text-sm leading-relaxed text-[#475569]">${hasPlanConfigured ? planFocus : "Crie seu primeiro plano para começar a organizar suas refeições."}</p>
               </div>
-              <div className="w-12 h-12 rounded-[10px] bg-white/80 flex items-center justify-center shrink-0">
-                <${Icon} name="dashboard" className="text-[#0F172A] text-[1.65rem]" />
+              <div className="mos-icon-action" aria-hidden="true">
+                <${Icon} name="edit" />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -5094,17 +4990,21 @@ function App() {
                         </div>
                         <div className="flex items-center gap-3 mt-4">
                           <button
-                            className="h-10 px-4 rounded-[10px] bg-[#eef2ff] text-[#3b4cca] font-bold active:scale-95 transition-transform"
+                            className="mos-icon-action"
+                            title="Editar refeição"
+                            aria-label="Editar refeição"
                             onClick=${() =>
                               guardPlanConfigNavigation(() => {
                                 setSelectedPlanId(meal.id);
                                 setScreen("plan-detail");
                               })}
                           >
-                            Editar
+                            <${Icon} name="edit" />
                           </button>
                           <button
-                            className="h-10 px-4 rounded-[10px] bg-[#fff0ec] text-[#b42318] font-bold active:scale-95 transition-transform"
+                            className="mos-icon-action mos-icon-action--danger"
+                            title="Apagar refeição"
+                            aria-label="Apagar refeição"
                             onClick=${() => askDeleteConfirm({
                               title: "Apagar refeição do plano",
                               message: "Tem certeza que deseja apagar este item?",
@@ -5127,7 +5027,7 @@ function App() {
                               },
                             })}
                           >
-                            Apagar
+                            <${Icon} name="delete" />
                           </button>
                         </div>
                       </div>
@@ -5142,17 +5042,7 @@ function App() {
             </div>
           </section>
 
-          <section className="mos-card rounded-2xl p-6 space-y-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-sm text-[#4558C8]">Configuração</span>
-                <h2 className="text-lg font-bold text-jet-black">Editar dados do plano</h2>
-                <p className="text-sm text-on-surface-variant">Atualize o nome, o foco e as notas gerais que orientam a rotina alimentar.</p>
-              </div>
-              <div className="w-11 h-11 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
-                <${Icon} name="tune" className="text-[#4558C8]" />
-              </div>
-            </div>
+          <section>
             <form
               className="flex flex-col gap-5"
               onInput=${() => markDraftDirty("plan-config")}
@@ -5350,14 +5240,11 @@ function App() {
   }
 
   function renderTraining() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     return html`
       <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
         <${TopBar} title="Treino" leftIcon="menu" centerBold=${false} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("training")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
             <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2.4rem, 8vw, 3.6rem)", lineHeight: "1.08" }}>Meus treinos</h1>
             <p className="text-[0.95rem] text-[#334155]">Abra um treino para ver exercícios e registrar a sessão.</p>
           </section>
@@ -5423,7 +5310,7 @@ function App() {
           onSearch=${() => openSearch("training")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="grid grid-cols-2 gap-3">
             <div className="mos-card rounded-2xl p-5">
               <span className="text-[0.75rem] text-[#475569]">Minutos estimados</span>
@@ -5464,8 +5351,8 @@ function App() {
             <button className=${getPrimaryActionClass(false)} onClick=${() => startTraining(selectedTraining.id)}>
               ${activeTraining?.planId === selectedTraining.id ? "Continuar treino" : "Iniciar treino"}
             </button>
-            <button className=${getSecondaryActionClass(false)} onClick=${() => openTrainingEdit(selectedTraining.id)}>
-              Editar treino
+            <button className=${`${getSecondaryActionClass(false)} mos-wide-icon-button`} title="Editar treino" aria-label="Editar treino" onClick=${() => openTrainingEdit(selectedTraining.id)}>
+              <${Icon} name="edit" />
             </button>
           </div>
         </main>
@@ -5478,132 +5365,105 @@ function App() {
     if (!activeTraining || !activeTrainingPlan || !currentTrainingExercise) return renderTraining();
     const allDone = completedTrainingExercises >= activeTrainingPlan.exercises.length;
     const remainingExercises = Math.max(activeTrainingPlan.exercises.length - completedTrainingExercises, 0);
-    const progressPercent = Math.max(8, Math.min(100, (completedTrainingExercises / Math.max(1, activeTrainingPlan.exercises.length)) * 100));
+    const totalExercises = activeTrainingPlan.exercises.length;
+    const progressPercent = Math.max(allDone ? 100 : 8, Math.min(100, (completedTrainingExercises / Math.max(1, totalExercises)) * 100));
+    const nextExercises = activeTrainingPlan.exercises.filter((exercise) => !completedTrainingExerciseIds.includes(exercise.id) && exercise.id !== currentTrainingExercise.id);
+    const completedExercises = activeTrainingPlan.exercises.filter((exercise) => completedTrainingExerciseIds.includes(exercise.id));
 
     return html`
-      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-12">
-      <${TopBar}
-        title=${activeTrainingPlan.name}
-        leftIcon="arrow_back"
-        centerBold=${false}
-        onLeft=${openTrainingPause}
-        rightSlot=${html`
-          <button
-            className="hover:opacity-80 transition-opacity active:scale-95"
-            onClick=${openTrainingPause}
-            aria-label="Pausar treino"
-          >
-            <${Icon} name="pause" className="text-[1.35rem] text-[#101846]" />
-          </button>
-        `}
-      />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <section className="${TRAINING_THEME.surface} rounded-xl p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-sm ${TRAINING_THEME.accentText}">Treino em andamento</span>
-                <h1 className="text-[1.75rem] font-bold text-white">${activeTrainingPlan.name}</h1>
-                <p className="text-sm ${TRAINING_THEME.mutedText}">${completedTrainingExercises} de ${activeTrainingPlan.exercises.length} exercícios concluídos</p>
-              </div>
-              <div className="${TRAINING_THEME.accentSurface} rounded-[10px] px-4 py-3 text-right shrink-0">
-                <span className="block text-[0.75rem] text-[#101846]/72">Tempo</span>
-                <strong className="block text-[1.25rem] font-bold text-[#101846]">${formatClock(activeTrainingElapsedSeconds)}</strong>
-              </div>
+      <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-10">
+        <${TopBar}
+          title=${activeTrainingPlan.name}
+          leftIcon="arrow_back"
+          centerBold=${false}
+          onLeft=${openTrainingPause}
+          rightSlot=${html`
+            <button className="mos-icon-action" onClick=${openTrainingPause} aria-label="Pausar treino" title="Pausar treino">
+              <${Icon} name="pause" />
+            </button>
+          `}
+        />
+        <main className="training-run-page pt-20 px-4 max-w-md mx-auto">
+          <section className="training-run-status">
+            <div>
+              <span>Tempo</span>
+              <strong>${formatClock(activeTrainingElapsedSeconds)}</strong>
             </div>
-            <div className="mt-4 space-y-2">
-              <div className="h-3 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-[#DFF37D]"
-                  style=${{ width: `${progressPercent}%` }}
-                ></div>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-sm ${TRAINING_THEME.mutedText}">
-                <span>${allDone ? "Treino pronto para encerrar" : `Agora: ${currentTrainingExercise.name}`}</span>
-                <span>${completedTrainingExercises} concluídos · ${remainingExercises} restantes</span>
-              </div>
+            <div>
+              <span>Progresso</span>
+              <strong>${completedTrainingExercises}/${totalExercises}</strong>
             </div>
           </section>
 
-          <section className="space-y-3">
-            <div className="space-y-1">
-              <h2 className="text-lg font-bold text-jet-black">Progresso do treino</h2>
-              <p className="text-sm text-on-surface-variant">Acompanhe o que já foi concluído, o exercício atual e o que ainda falta fazer.</p>
+          <section className="training-run-progress">
+            <div className="training-run-progress-track">
+              <div style=${{ width: `${progressPercent}%` }}></div>
             </div>
-            ${activeTrainingPlan.exercises.map((exercise, index) => {
-              const accent = getFoodAccent(exercise.name);
-              const done = completedTrainingExerciseIds.includes(exercise.id);
-              const isCurrent = !done && index === currentTrainingExerciseIndex && !allDone;
-              return html`
-                <div
-                  className=${[
-                    "w-full rounded-xl p-4 border space-y-3",
-                    done
-                      ? "bg-[#f4faef] border-[#d7ef9d]"
-                      : isCurrent
-                        ? "bg-white border-[#EF5F37] shadow-[0_10px_22px_rgba(41,43,45,0.05)]"
-                        : "bg-white border-surface-container-high",
-                  ].join(" ")}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: done ? "#e5f5c3" : accent.soft }}>
-                        <${Icon} name=${done ? "check" : accent.icon} className="text-jet-black text-[1.1rem]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[0.75rem] text-on-surface-variant">Exercício ${index + 1}</p>
-                        <p className="font-bold text-jet-black">${exercise.name}</p>
-                        <p className="text-sm text-on-surface-variant">${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso</p>
+            <p>${allDone ? "Tudo feito. Agora finalize a sessão." : `${remainingExercises} exercício(s) restantes`}</p>
+          </section>
+
+          ${allDone
+            ? html`
+                <section className="training-run-current">
+                  <span>Treino completo</span>
+                  <h1>${activeTrainingPlan.name}</h1>
+                  <p>Todos os exercícios foram marcados como concluídos.</p>
+                  <button className="training-run-primary" onClick=${requestTrainingFinish}>
+                    Finalizar treino
+                  </button>
+                </section>
+              `
+            : html`
+                <section className="training-run-current">
+                  <span>Exercício atual</span>
+                  <h1>${currentTrainingExercise.name}</h1>
+                  <div className="training-run-specs">
+                    <strong>${currentTrainingExercise.sets} séries</strong>
+                    <strong>${currentTrainingExercise.reps} reps</strong>
+                    <strong>${currentTrainingExercise.restSeconds}s descanso</strong>
+                  </div>
+                  <p>Faça este exercício agora. Quando terminar, marque como concluído para avançar automaticamente.</p>
+                  <button className="training-run-primary" onClick=${() => markTrainingExerciseDone(currentTrainingExercise.id)}>
+                    Concluir exercício
+                  </button>
+                </section>
+              `}
+
+          ${nextExercises.length
+            ? html`
+                <section className="training-run-list">
+                  <h2>Próximos</h2>
+                  ${nextExercises.map((exercise, index) => html`
+                    <div className="training-run-list-row">
+                      <span>${String(index + 1).padStart(2, "0")}</span>
+                      <div>
+                        <strong>${exercise.name}</strong>
+                        <p>${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso</p>
                       </div>
                     </div>
-                    <span className=${["text-sm font-bold shrink-0", done ? "text-[#4b7a10]" : isCurrent ? "text-[#EF5F37]" : "text-on-surface-variant"].join(" ")}>
-                      ${done ? "Feito" : isCurrent ? "Agora" : "Depois"}
-                    </span>
-                  </div>
-                    ${
-                      isCurrent
-                        ? html`
-                          <div className="rounded-[10px] bg-[#fff4ef] px-4 py-3 space-y-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-bold text-[#EF5F37]">Em andamento</span>
-                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-medium text-jet-black">${exercise.sets} séries</span>
-                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-medium text-jet-black">${exercise.reps} reps</span>
-                              <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.8125rem] font-medium text-jet-black">${exercise.restSeconds}s descanso</span>
-                            </div>
-                            <p className="text-sm text-on-surface-variant">Quando terminar este exercício, marque como concluído para ele entrar no progresso do treino.</p>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                className="min-h-11 rounded-[10px] border border-[#EF5F37] bg-white px-4 text-sm font-bold text-[#EF5F37] active:scale-[0.98] transition-transform"
-                                onClick=${() => markTrainingExerciseDone(exercise.id)}
-                              >
-                                Marcar como concluído
-                              </button>
-                            </div>
-                          </div>
-                        `
-                      : done
-                        ? html`
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="text-sm font-bold text-[#4b7a10]">Exercício concluído neste treino</div>
-                            <button
-                              className="inline-flex items-center gap-2 rounded-[10px] border border-outline-variant bg-surface-container-low px-3 py-2 text-sm font-medium text-jet-black active:scale-[0.98] transition-transform"
-                              onClick=${() => undoTrainingExerciseDone(exercise.id)}
-                            >
-                              <${Icon} name="undo" className="text-base" />
-                              <span>Desfazer</span>
-                            </button>
-                          </div>
-                        `
-                        : html`<p className="text-sm text-on-surface-variant">Este exercício aparece na sequência, depois que o atual for concluído.</p>`
-                  }
-                </div>
-              `;
-            })}
-          </section>
+                  `)}
+                </section>
+              `
+            : null}
 
-          <button className=${getPrimaryActionClass(false)} onClick=${requestTrainingFinish}>
-            Concluir treino de hoje
-          </button>
-          <button className=${getSecondaryActionClass(false)} onClick=${openTrainingPause}>
+          ${completedExercises.length
+            ? html`
+                <section className="training-run-list">
+                  <h2>Concluídos</h2>
+                  ${completedExercises.map((exercise) => html`
+                    <div className="training-run-list-row training-run-list-row--done">
+                      <${Icon} name="check" />
+                      <div>
+                        <strong>${exercise.name}</strong>
+                        <button onClick=${() => undoTrainingExerciseDone(exercise.id)}>Desfazer</button>
+                      </div>
+                    </div>
+                  `)}
+                </section>
+              `
+            : null}
+
+          <button className="training-run-secondary" onClick=${openTrainingPause}>
             Pausar treino
           </button>
         </main>
@@ -5624,7 +5484,7 @@ function App() {
           onSearch=${() => openSearch("training")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="${TRAINING_THEME.surface} rounded-xl p-6 space-y-2">
             <span className="text-sm ${TRAINING_THEME.accentText}">Resumo da sessão</span>
             <h1 className="text-[1.75rem] font-bold text-white">${summaryEntry.planName}</h1>
@@ -5687,6 +5547,8 @@ function App() {
     const guardTrainingEditNavigation = (action) =>
       confirmDiscard(action, "Deseja sair da edição atual? As alterações do treino ainda não foram salvas.");
     const trainingLabel = trainingDraft.name?.trim() || "Novo treino";
+    const totalSets = trainingDraft.exercises.reduce((sum, exercise) => sum + (Number(exercise.sets) || 0), 0);
+    const hasTrainingChanges = isDraftDirty("training-edit");
     return html`
       <div className="${getSectionBackground("training")} text-on-surface min-h-screen pb-32">
         <${TopBar}
@@ -5700,201 +5562,210 @@ function App() {
           onSearch=${() => openSearch("training")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
-          <form className="space-y-6" onSubmit=${saveTrainingDraft} onInput=${() => markDraftDirty("training-edit")} onChange=${() => markDraftDirty("training-edit")}>
-          <section className="rounded-xl p-6 space-y-4 ${TRAINING_THEME.surface}">
-            <div className="space-y-1">
-              <h2 className="text-lg font-bold ${TRAINING_THEME.accentText}">Informações do treino</h2>
-              <p className="text-sm ${TRAINING_THEME.mutedText}">Comece ajustando o nome e o tempo estimado. Logo abaixo aparecem os exercícios exatamente como estão cadastrados hoje, só que em modo editável.</p>
-            </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-jet-black">Nome do treino</label>
-                <input
-                  className="w-full h-14 px-4 rounded-[10px] bg-white text-jet-black border border-outline-variant"
-                  value=${trainingDraft.name}
-                  onInput=${(e) => updateTrainingDraftField("name", e.currentTarget.value)}
-                  placeholder="Ex: Treino A"
-                />
-                <p className="text-[0.8125rem] ${TRAINING_THEME.mutedText}">Esse é o nome que a pessoa vê na lista e também no treino em andamento.</p>
+        <main className="training-edit-shell pt-20 px-4 max-w-md mx-auto">
+          <form className="training-edit-form" onSubmit=${saveTrainingDraft} onInput=${() => markDraftDirty("training-edit")} onChange=${() => markDraftDirty("training-edit")}>
+            <section className="training-edit-hero">
+              <div>
+                <span>Treino</span>
+                <h1>${trainingLabel}</h1>
               </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium text-jet-black">Duração estimada da sessão (minutos)</label>
-                <input
-                  className="w-full h-14 px-4 rounded-[10px] bg-white text-jet-black border border-outline-variant"
-                  type="number"
-                  min="15"
-                  max="180"
-                  value=${trainingDraft.estimatedMinutes}
-                  onInput=${(e) => updateTrainingDraftField("estimatedMinutes", Number(e.currentTarget.value))}
-                />
-                <p className="text-[0.8125rem] ${TRAINING_THEME.mutedText}">Use um tempo aproximado da sessão inteira.</p>
-              </div>
-              <div className="rounded-[10px] bg-white/90 p-4 border border-outline-variant text-sm text-jet-black">
-                <strong>${trainingLabel}</strong> · ${trainingDraft.estimatedMinutes} min estimados · ${trainingDraft.exercises.length} exercícios cadastrados
+              <div className="training-edit-meta">
+                <strong>${trainingDraft.estimatedMinutes || 0} min</strong>
+                <strong>${trainingDraft.exercises.length} exercícios</strong>
+                <strong>${totalSets} séries</strong>
               </div>
             </section>
 
-            <section className="bg-white rounded-xl p-6 space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-lg font-bold text-jet-black">Exercícios do treino</h2>
-                <p className="text-sm text-on-surface-variant">Cada exercício aparece do jeito que já está cadastrado. Basta tocar nos campos que quiser ajustar.</p>
+            <section className="training-edit-panel">
+              <div className="training-edit-section-head">
+                <div>
+                  <span>Base</span>
+                  <h2>Informações do treino</h2>
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <button type="button" className="flex-1 min-h-12 rounded-[10px] border border-[#EF5F37] bg-white text-[#EF5F37] text-sm font-bold active:scale-[0.98] transition-transform" onClick=${addTrainingExercise}>
-                  Adicionar exercício
-                </button>
-                <button type="button" className="min-h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black text-sm font-medium active:scale-[0.98] transition-transform" onClick=${removeAllTrainingExercises}>
-                  Remover todos
-                </button>
+              <div className="training-edit-grid">
+                <label className="training-field training-field--wide">
+                  <span>Nome do treino</span>
+                  <input
+                    value=${trainingDraft.name}
+                    onInput=${(e) => updateTrainingDraftField("name", e.currentTarget.value)}
+                    placeholder="Ex: Peito + Ombro"
+                  />
+                </label>
+                <label className="training-field">
+                  <span>Duração</span>
+                  <input
+                    type="number"
+                    min="15"
+                    max="180"
+                    value=${trainingDraft.estimatedMinutes}
+                    onInput=${(e) => updateTrainingDraftField("estimatedMinutes", Number(e.currentTarget.value))}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="training-edit-panel">
+              <div className="training-edit-section-head">
+                <div>
+                  <span>Sequência</span>
+                  <h2>Exercícios</h2>
+                </div>
+                <div className="training-edit-actions">
+                  <button
+                    type="button"
+                    className=${editingTrainingExerciseId ? "training-action-disabled" : ""}
+                    aria-disabled=${Boolean(editingTrainingExerciseId)}
+                    onClick=${addTrainingExercise}
+                  >
+                    Adicionar exercício
+                  </button>
+                  <button type="button" onClick=${removeAllTrainingExercises}>Limpar</button>
+                </div>
               </div>
 
               ${trainingDraft.exercises.length
                 ? html`
-                  <div className="space-y-4">
-                    ${trainingDraft.exercises.map((exercise, index) => {
-                      const suggestion = getTrainingProgressionSuggestion(exercise, trainingHistory, trainingPlans);
-                      const summary = `${exercise.focus || "Selecione o grupo muscular"} · ${exercise.sets} séries · ${exercise.reps} reps · ${exercise.restSeconds}s descanso`;
-                      return html`
-                        <div id=${`training-exercise-${exercise.id}`} className="border border-outline-variant rounded-xl p-4 space-y-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-full bg-surface-container-low flex items-center justify-center">
-                                <${Icon} name="fitness_center" className="text-jet-black" />
-                              </div>
+                    <div className="training-exercise-list">
+                      ${trainingDraft.exercises.map((exercise, index) => {
+                        const suggestion = getTrainingProgressionSuggestion(exercise, trainingHistory, trainingPlans);
+                        const isExerciseEditing = editingTrainingExerciseId === exercise.id;
+                        return html`
+                          <article id=${`training-exercise-${exercise.id}`} className=${`training-exercise-editor ${isExerciseEditing ? "training-exercise-editor--open" : ""}`}>
+                            <div className="training-exercise-editor-head">
                               <div>
-                                <p className="text-[0.75rem] text-on-surface-variant">Exercício ${index + 1}</p>
-                                <p className="font-bold text-jet-black">${exercise.name}</p>
-                                <p className="text-sm text-on-surface-variant">${summary}</p>
+                                <span>${String(index + 1).padStart(2, "0")}</span>
+                                <h3>${exercise.name || "Novo exercício"}</h3>
+                                <p>${exercise.focus || "Grupo não definido"} · ${exercise.sets}x ${exercise.reps} · ${exercise.restSeconds}s</p>
                               </div>
-                            </div>
-                            <button type="button" className="text-[#d64545] font-bold text-sm" onClick=${() => removeTrainingExercise(exercise.id)}>
-                              Remover
-                            </button>
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="grid gap-2">
-                              <label className="text-sm font-medium text-jet-black">Nome do exercício</label>
-                              <input
-                                id=${`training-exercise-name-${exercise.id}`}
-                                className="w-full h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                value=${exercise.name}
-                                onInput=${(e) => updateTrainingExerciseField(exercise.id, "name", e.currentTarget.value)}
-                              />
-                              <p className="text-[0.8125rem] text-on-surface-variant">Esse é o nome que aparece na lista do treino e também durante a execução.</p>
-                            </div>
-
-                            <div className="grid gap-2">
-                              <label className="text-sm font-medium text-jet-black">Grupo muscular</label>
-                              <select
-                                className="w-full h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                value=${exercise.focus || ""}
-                                onChange=${(e) => handleTrainingExerciseFocusChange(exercise.id, e)}
-                              >
-                                <option value="">Selecione o grupo muscular</option>
-                                ${TRAINING_MUSCLE_GROUPS.map(
-                                  (group) => html`
-                                    <optgroup label=${group.label}>
-                                      ${group.options.map(
-                                        (option) => html`<option value=${option}>${option}</option>`,
-                                      )}
-                                    </optgroup>
-                                  `,
-                                )}
-                              </select>
-                              <p className="text-[0.8125rem] text-on-surface-variant">Selecione o principal grupo muscular trabalhado neste exercício.</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="grid gap-2">
-                                <label className="text-sm font-medium text-jet-black">Séries</label>
-                                <div className="flex items-center gap-2">
-                                  <button type="button" className="w-10 h-10 rounded-[10px] bg-surface-container-low text-jet-black font-bold" onClick=${() => adjustTrainingExerciseSets(exercise.id, -1)}>-</button>
-                                  <input
-                                    className="flex-1 h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                    type="number"
-                                    min="1"
-                                    max="12"
-                                    value=${exercise.sets}
-                                    onInput=${(e) => updateTrainingExerciseField(exercise.id, "sets", e.currentTarget.value)}
-                                  />
-                                  <button type="button" className="w-10 h-10 rounded-[10px] bg-surface-container-low text-jet-black font-bold" onClick=${() => adjustTrainingExerciseSets(exercise.id, 1)}>+</button>
-                                </div>
-                              </div>
-                              <div className="grid gap-2">
-                                <label className="text-sm font-medium text-jet-black">Repetições por série</label>
-                                <input
-                                  className="w-full h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                  value=${exercise.reps}
-                                  onInput=${(e) => updateTrainingExerciseField(exercise.id, "reps", e.currentTarget.value)}
-                                  placeholder="10-12"
-                                />
-                              </div>
-                              <div className="grid gap-2">
-                                <label className="text-sm font-medium text-jet-black">Descanso entre séries (segundos)</label>
-                                <input
-                                  className="w-full h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                  type="number"
-                                  min="15"
-                                  max="600"
-                                  value=${exercise.restSeconds}
-                                  onInput=${(e) => updateTrainingExerciseField(exercise.id, "restSeconds", e.currentTarget.value)}
-                                />
-                              </div>
-                              <div className="grid gap-2">
-                                <label className="text-sm font-medium text-jet-black">Carga de referência (kg)</label>
-                                <input
-                                  className="w-full h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                  type="number"
-                                  min="0"
-                                  max="500"
-                                  value=${exercise.suggestedLoadKg}
-                                  onInput=${(e) => updateTrainingExerciseField(exercise.id, "suggestedLoadKg", e.currentTarget.value)}
-                                />
+                              <div className="training-exercise-head-actions">
+                                ${isExerciseEditing
+                                  ? null
+                                  : html`
+                                      <button type="button" className="mos-icon-action training-exercise-edit-button" title="Editar exercício" aria-label="Editar exercício" onClick=${() => setEditingTrainingExerciseId(exercise.id)}>
+                                        <${Icon} name="edit" />
+                                      </button>
+                                    `}
+                                <button type="button" className="mos-icon-action mos-icon-action--danger training-exercise-remove-button" title="Apagar exercício" aria-label="Apagar exercício" onClick=${() => removeTrainingExercise(exercise.id)}>
+                                  <${Icon} name="delete" />
+                                </button>
                               </div>
                             </div>
 
-                            <div className="grid gap-2">
-                              <label className="text-sm font-medium text-jet-black">Sugestão de progressão</label>
-                              <input
-                                className="w-full h-12 px-4 rounded-[10px] bg-surface-container-low text-jet-black border border-outline-variant"
-                                value=${exercise.loadDelta}
-                                onInput=${(e) => updateTrainingExerciseField(exercise.id, "loadDelta", e.currentTarget.value)}
-                                placeholder="Ex: +2kg"
-                              />
-                              <p className="text-[0.8125rem] text-on-surface-variant">Use para indicar pequenas evoluções quando estiver confortável com as repetições.</p>
-                            </div>
-
-                            ${suggestion
+                            ${isExerciseEditing
                               ? html`
-                                  <div className="rounded-[10px] bg-[#f4f9ff] border border-[#d9e6ff] p-4 text-sm text-[#2e3f66] space-y-1">
-                                    <strong>Progressão sugerida</strong>
-                                    <p>Última carga: ${formatTrainingLoad(suggestion.lastLoad)} · Próxima meta: ${formatTrainingLoad(suggestion.suggestedLoad)}</p>
+                                  <div className="training-edit-grid">
+                                    <label className="training-field training-field--wide">
+                                      <span>Exercício</span>
+                                      <input
+                                        id=${`training-exercise-name-${exercise.id}`}
+                                        value=${exercise.name}
+                                        onInput=${(e) => updateTrainingExerciseField(exercise.id, "name", e.currentTarget.value)}
+                                        placeholder="Nome do exercício"
+                                      />
+                                    </label>
+                                    <label className="training-field training-field--wide">
+                                      <span>Grupo muscular</span>
+                                      <select
+                                        value=${exercise.focus || ""}
+                                        onChange=${(e) => handleTrainingExerciseFocusChange(exercise.id, e)}
+                                      >
+                                        <option value="">Selecionar</option>
+                                        ${TRAINING_MUSCLE_GROUPS.map(
+                                          (group) => html`
+                                            <optgroup label=${group.label}>
+                                              ${group.options.map((option) => html`<option value=${option}>${option}</option>`)}
+                                            </optgroup>
+                                          `,
+                                        )}
+                                      </select>
+                                    </label>
+                                    <label className="training-field">
+                                      <span>Séries</span>
+                                      <div className="training-stepper">
+                                        <button type="button" onClick=${() => adjustTrainingExerciseSets(exercise.id, -1)}>-</button>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          max="12"
+                                          value=${exercise.sets}
+                                          onInput=${(e) => updateTrainingExerciseField(exercise.id, "sets", e.currentTarget.value)}
+                                        />
+                                        <button type="button" onClick=${() => adjustTrainingExerciseSets(exercise.id, 1)}>+</button>
+                                      </div>
+                                    </label>
+                                    <label className="training-field">
+                                      <span>Reps</span>
+                                      <input
+                                        value=${exercise.reps}
+                                        onInput=${(e) => updateTrainingExerciseField(exercise.id, "reps", e.currentTarget.value)}
+                                        placeholder="10-12"
+                                      />
+                                    </label>
+                                    <label className="training-field">
+                                      <span>Descanso</span>
+                                      <input
+                                        type="number"
+                                        min="15"
+                                        max="600"
+                                        value=${exercise.restSeconds}
+                                        onInput=${(e) => updateTrainingExerciseField(exercise.id, "restSeconds", e.currentTarget.value)}
+                                      />
+                                    </label>
+                                    <label className="training-field">
+                                      <span>Carga kg</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="500"
+                                        value=${exercise.suggestedLoadKg}
+                                        onInput=${(e) => updateTrainingExerciseField(exercise.id, "suggestedLoadKg", e.currentTarget.value)}
+                                      />
+                                    </label>
+                                    <label className="training-field training-field--wide">
+                                      <span>Progressão</span>
+                                      <input
+                                        value=${exercise.loadDelta}
+                                        onInput=${(e) => updateTrainingExerciseField(exercise.id, "loadDelta", e.currentTarget.value)}
+                                        placeholder="Ex: +2kg"
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <div className="training-exercise-footer">
+                                    ${suggestion
+                                      ? html`<p>Última carga: ${formatTrainingLoad(suggestion.lastLoad)} · Próxima meta: ${formatTrainingLoad(suggestion.suggestedLoad)}</p>`
+                                      : html`<p>Salve este exercício para voltar à lista do treino.</p>`}
+                                    <button type="button" className="training-save-exercise" onClick=${() => saveTrainingExercise(exercise.id)}>Salvar exercício</button>
                                   </div>
                                 `
-                              : null}
-
-                            <div className="flex items-center justify-between gap-2">
-                              <button type="button" className="min-h-10 rounded-[10px] border border-outline-variant bg-white px-4 text-sm font-medium text-jet-black active:scale-[0.98] transition-transform" onClick=${() => duplicateTrainingExercise(exercise.id)}>
-                                Duplicar exercício
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      `;
-                    })}
-                  </div>
-                `
+                              : html`
+                                  <div className="training-exercise-summary">
+                                    <span>${exercise.sets} séries</span>
+                                    <span>${exercise.reps} reps</span>
+                                    <span>${exercise.restSeconds}s descanso</span>
+                                    <span>${formatTrainingLoad(exercise.suggestedLoadKg)}</span>
+                                  </div>
+                                `}
+                          </article>
+                        `;
+                      })}
+                    </div>
+                  `
                 : html`
-                  <div className="rounded-xl border border-dashed border-outline-variant p-6 text-center space-y-2">
-                    <p className="text-sm text-on-surface-variant">Nenhum exercício cadastrado ainda. Toque em <strong className="text-jet-black">Adicionar exercício</strong> para montar este treino.</p>
-                  </div>
-                `}
+                    <div className="training-empty-editor">
+                      <h3>Nenhum exercício cadastrado</h3>
+                      <p>Adicione o primeiro exercício para montar este treino.</p>
+                      <button type="button" onClick=${addTrainingExercise}>Adicionar exercício</button>
+                    </div>
+                  `}
             </section>
 
-            <button className=${getPrimaryActionClass(!isDraftDirty("training-edit"))} type="submit" disabled=${!isDraftDirty("training-edit")}>
-              Salvar treino
-            </button>
+            <div className="training-edit-savebar">
+              <button type="submit" disabled=${!hasTrainingChanges}>
+                ${hasTrainingChanges ? "Salvar treino" : "Sem alterações"}
+              </button>
+            </div>
           </form>
         </main>
       </div>
@@ -5902,8 +5773,6 @@ function App() {
   }
 
   function renderSupplements() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const groupedSupplements = state.supplements.reduce((groups, supplement) => {
       const category = supplement.category || "Geral";
       if (!groups[category]) groups[category] = [];
@@ -5912,99 +5781,122 @@ function App() {
     }, {});
     const sortedCategories = Object.keys(groupedSupplements).sort((left, right) => left.localeCompare(right));
     const currentMinutes = getCurrentMinutes();
+    const timedSupplements = state.supplements
+      .map((supplement) => ({ ...supplement, minutes: parseMealTimeValue(supplement.time) }))
+      .filter((supplement) => supplement.minutes != null)
+      .sort((left, right) => left.minutes - right.minutes);
+    const nextSupplement = timedSupplements.find((supplement) => supplement.minutes >= currentMinutes) || timedSupplements[0] || state.supplements[0] || null;
+    const completedSupplements = timedSupplements.filter((supplement) => supplement.minutes < currentMinutes).length;
+    const progressTotal = Math.max(state.supplements.length, 0);
     return html`
       <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("supplements")} onRight=${openNotifications} />
-        <main className="pt-24 px-6 max-w-md mx-auto space-y-8 pb-64">
+        <main className="plan-page-shell pt-20 px-6 max-w-md mx-auto space-y-6 pb-64">
           <${renderPlanModeHeader}
             activeMode="supplements"
-            headline="Seu plano, organizado pra você"
-            nowHour=${nowHour}
-            profileName=${profileName}
+            headline="Suplementação"
+            support="Doses, horários e progresso do dia."
           />
-          <div className="space-y-6">
-            <section className="space-y-1">
-              <h2 className="text-xl font-bold text-[#0F172A]">Suplementação</h2>
-              <p className="text-[0.95rem] text-[#526070]">Horários, doses e ações em um só lugar.</p>
-            </section>
-            ${sortedCategories.map((category) => html`
-              <section className="space-y-3">
-                <div className="space-y-1">
-                  <span className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[#64748B]">${category}</span>
-                </div>
-                <div className="space-y-3">
-                  ${groupedSupplements[category].map((supplement) => {
-                    const status = getSupplementMomentStatus(supplement.time, currentMinutes);
-                    const timeLabel = formatMealTimeLabel(supplement.time);
-                    const instructionLabel = timeLabel
-                      ? `Tomar hoje às ${timeLabel}`
-                      : supplement.instruction;
-                    return html`
-                      <div className="supplement-inline-card">
-                        <div className="p-5 space-y-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="space-y-3 min-w-0">
-                              <div className="space-y-1">
-                                <h3 className="text-[1.15rem] font-bold text-[#0F172A]">${supplement.name}</h3>
-                                <p className="text-[0.92rem] text-[#475569]">${instructionLabel}</p>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-3 text-[0.82rem] text-[#475569]">
-                                <span>${supplement.dosage}</span>
-                                <span>${timeLabel || "Sem horário"}</span>
-                                <span className=${`supplement-status supplement-status--${status.tone}`}>${status.label}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="supplement-inline-details">
-                            <p className="text-[0.92rem] leading-relaxed text-[#475569]">${supplement.instruction}</p>
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              <button
-                                className="supplement-action-button"
-                                onClick=${() => {
-                                  setSelectedSupplementId(supplement.id);
-                                  setModal("edit-supplement");
-                                }}
-                              >
-                                Editar
-                              </button>
-                              <button
-                                className="supplement-action-button supplement-action-button--danger"
-                                onClick=${() => askDeleteConfirm({
-                                  title: "Apagar suplemento",
-                                  message: "Tem certeza que deseja apagar este item?",
-                                  onConfirm: async () => {
-                                    if (authConfigured) {
-                                      const user = await getAuthenticatedUser();
-                                      if (!user) {
-                                        showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
-                                        return;
-                                      }
-                                      const result = await deleteSupplementEntry(user.id, supplement.id);
-                                      if (!result.ok) {
-                                        showAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
-                                        return;
-                                      }
-                                    }
-                                    mutate((draft) => {
-                                      draft.supplements = draft.supplements.filter((item) => item.id !== supplement.id);
-                                    });
-                                    setSelectedSupplementId(null);
-                                  },
-                                })}
-                              >
-                                Apagar
-                              </button>
-                            </div>
-                          </div>
+
+          <section className="supplement-summary-grid">
+            <article className="supplement-summary-card">
+              <span>Próxima dose</span>
+              <strong>${nextSupplement ? formatMealTimeLabel(nextSupplement.time) || "Livre" : "--"}</strong>
+              <p>${nextSupplement ? nextSupplement.name : "Nenhum suplemento"}</p>
+            </article>
+            <article className="supplement-summary-card">
+              <span>Progresso dia</span>
+              <strong>${progressTotal ? `${Math.min(completedSupplements, progressTotal)}/${progressTotal}` : "0/0"}</strong>
+              <p>${progressTotal ? "Doses previstas hoje" : "Sem protocolo ativo"}</p>
+            </article>
+          </section>
+
+          <section className="supplement-list" aria-label="Lista de suplementos">
+            ${state.supplements.length
+              ? state.supplements.map((supplement) => {
+                  const status = getSupplementMomentStatus(supplement.time, currentMinutes);
+                  const timeLabel = formatMealTimeLabel(supplement.time);
+                  return html`
+                    <article className="supplement-list-card">
+                      <div className="supplement-list-card-head">
+                        <div>
+                          <span>${supplement.category || "Geral"}</span>
+                          <h2>${supplement.name}</h2>
                         </div>
+                        <strong className=${`supplement-status supplement-status--${status.tone}`}>${status.label}</strong>
                       </div>
-                    `;
-                  })}
-                </div>
-              </section>
-            `)}
-          </div>
-          <button className="w-full py-5 bg-[#EF5F37] text-white rounded-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-[0_18px_34px_rgba(239,95,55,0.24)]" onClick=${() => setScreen("register-supplement")}>
+                      <dl className="supplement-dose-grid">
+                        <div>
+                          <dt>Dosagem</dt>
+                          <dd>${supplement.dosage || "Sem dosagem"}</dd>
+                        </div>
+                        <div>
+                          <dt>Horário</dt>
+                          <dd>${timeLabel || "Sem horário"}</dd>
+                        </div>
+                      </dl>
+                      <p>${supplement.instruction || "Sem instruções adicionais."}</p>
+                      <div className="supplement-card-actions">
+                        <button
+                          type="button"
+                          onClick=${() => {
+                            setSelectedSupplementId(supplement.id);
+                            setModal("edit-supplement");
+                          }}
+                          className="mos-icon-action"
+                          title="Editar suplemento"
+                          aria-label="Editar suplemento"
+                        >
+                          <${Icon} name="edit" />
+                        </button>
+                        <button
+                          type="button"
+                          className="mos-icon-action mos-icon-action--danger"
+                          title="Apagar suplemento"
+                          aria-label="Apagar suplemento"
+                          onClick=${() => askDeleteConfirm({
+                            title: "Apagar suplemento",
+                            message: "Tem certeza que deseja apagar este item?",
+                            onConfirm: async () => {
+                              if (authConfigured) {
+                                const user = await getAuthenticatedUser();
+                                if (!user) {
+                                  showAuthNotice("Sua sessão não foi encontrada. Entre novamente para apagar o suplemento.");
+                                  return;
+                                }
+                                const result = await deleteSupplementEntry(user.id, supplement.id);
+                                if (!result.ok) {
+                                  showAuthNotice(result.error?.message || "Não foi possível apagar o suplemento agora.");
+                                  return;
+                                }
+                              }
+                              mutate((draft) => {
+                                draft.supplements = draft.supplements.filter((item) => item.id !== supplement.id);
+                              });
+                              setSelectedSupplementId(null);
+                            },
+                          })}
+                        >
+                          <${Icon} name="delete" />
+                        </button>
+                      </div>
+                    </article>
+                  `;
+                })
+              : html`
+                  <article className="supplement-list-card supplement-list-card--empty">
+                    <div className="supplement-list-card-head">
+                      <div>
+                        <span>Sem protocolo</span>
+                        <h2>Nenhum suplemento cadastrado</h2>
+                      </div>
+                    </div>
+                    <p>Adicione suplementos para visualizar próxima dose, progresso do dia e horários.</p>
+                  </article>
+                `}
+          </section>
+
+          <button className="plan-wire-action" onClick=${() => setScreen("register-supplement")}>
             <${Icon} name="add_circle" />
             Novo suplemento
           </button>
@@ -6015,8 +5907,6 @@ function App() {
   }
 
   function renderWater() {
-    const nowHour = new Date().getHours();
-    const profileName = state.profile.name ? state.profile.name.split(" ")[0] : "amigo";
     const waterProgress = Math.min(100, (water / waterGoal) * 100);
     const remainingWater = Math.max(0, waterGoal - water);
     const quickWaterOptions = [200, 300, 500];
@@ -6033,9 +5923,8 @@ function App() {
     return html`
       <div className="${getSectionBackground("water")} text-on-surface min-h-screen pb-32">
         <${TopBar} onLeft=${() => setDrawerOpen(true)} onSearch=${() => openSearch("water")} onRight=${openNotifications} />
-        <main className="pt-24 px-6 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-6 max-w-md mx-auto space-y-6">
           <section className="space-y-3">
-            <p className="text-[0.95rem] font-semibold text-[#0F172A]">Boa ${nowHour < 12 ? "manhã" : nowHour < 18 ? "tarde" : "noite"}, ${profileName}!</p>
             <h1 className="font-black text-[#0F172A]" style=${{ fontSize: "clamp(2rem, 6.5vw, 3rem)", lineHeight: "1.06" }}>
               Água hoje
             </h1>
@@ -6191,12 +6080,12 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="measures-page pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="mos-info-card mos-info-card--hero space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <span className="text-sm text-[#4558C8]">Dados atuais</span>
-                <h1 className="text-[1.9rem] font-bold text-jet-black leading-tight">Seu corpo em foco</h1>
+                <h1 className="text-[1.72rem] font-bold text-jet-black leading-tight">Seu corpo em foco</h1>
                 <p className="text-sm text-on-surface-variant">Atualizado em ${latestDateLabel}</p>
               </div>
               <div className="w-12 h-12 rounded-[10px] bg-[#eef2ff] flex items-center justify-center shrink-0">
@@ -6204,73 +6093,81 @@ function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="mos-info-tile mos-info-tile--metric block">
-                <span className="text-sm text-on-surface-variant block mb-2">Peso atual</span>
-                <strong className="text-[2rem] font-bold leading-none text-jet-black">${latestMeasure.weight}</strong>
-                <span className="text-sm text-on-surface-variant ml-1">kg</span>
-                <p className="text-sm text-on-surface-variant mt-3">${formatMetricDelta(latestMeasure.weight, previousMeasure.weight, " kg")}</p>
+            <div className="measures-metric-grid">
+              <div className="mos-info-tile mos-info-tile--metric measures-metric-card">
+                <span className="measures-metric-label">Peso</span>
+                <div className="measures-metric-value">
+                  <strong>${latestMeasure.weight}</strong>
+                  <span>kg</span>
+                </div>
+                <p>${formatMetricDelta(latestMeasure.weight, previousMeasure.weight, " kg")}</p>
               </div>
-              <div className="mos-info-tile mos-info-tile--metric block">
-                <span className="text-sm text-[#4558C8] block mb-2">IMC</span>
-                <strong className="text-[2rem] font-bold leading-none text-jet-black">${latestBmi}</strong>
-                <p className="text-sm text-on-surface-variant mt-3">${formatMetricDelta(latestBmi, previousBmi)}</p>
+              <div className="mos-info-tile mos-info-tile--metric measures-metric-card">
+                <span className="measures-metric-label">IMC</span>
+                <div className="measures-metric-value">
+                  <strong>${latestBmi}</strong>
+                </div>
+                <p>${formatMetricDelta(latestBmi, previousBmi)}</p>
               </div>
-              <div className="mos-info-tile mos-info-tile--metric block">
-                <span className="text-sm text-on-surface-variant block mb-2">Gordura corporal</span>
-                <strong className="text-[1.75rem] font-bold leading-none text-jet-black">${latestMeasure.bodyFat}</strong>
-                <span className="text-sm text-on-surface-variant ml-1">%</span>
-                <p className="text-sm text-[#EF5F37] mt-3">${formatMetricDelta(latestMeasure.bodyFat, previousMeasure.bodyFat, "%")}</p>
+              <div className="mos-info-tile mos-info-tile--metric measures-metric-card">
+                <span className="measures-metric-label">Gordura</span>
+                <div className="measures-metric-value">
+                  <strong>${latestMeasure.bodyFat}</strong>
+                  <span>%</span>
+                </div>
+                <p>${formatMetricDelta(latestMeasure.bodyFat, previousMeasure.bodyFat, "%")}</p>
               </div>
-              <div className="mos-info-tile mos-info-tile--metric block">
-                <span className="text-sm text-on-surface-variant block mb-2">Massa muscular</span>
-                <strong className="text-[1.75rem] font-bold leading-none text-jet-black">${latestMeasure.muscleMass}</strong>
-                <span className="text-sm text-on-surface-variant ml-1">kg</span>
-                <p className="text-sm text-[#4558C8] mt-3">${formatMetricDelta(latestMeasure.muscleMass, previousMeasure.muscleMass, " kg")}</p>
+              <div className="mos-info-tile mos-info-tile--metric measures-metric-card">
+                <span className="measures-metric-label">Massa</span>
+                <div className="measures-metric-value">
+                  <strong>${latestMeasure.muscleMass}</strong>
+                  <span>kg</span>
+                </div>
+                <p>${formatMetricDelta(latestMeasure.muscleMass, previousMeasure.muscleMass, " kg")}</p>
               </div>
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3">
-            <div className="mos-info-tile block space-y-4">
-              <div className="flex items-center justify-between">
+          <section className="measures-chart-list">
+            <div className="mos-info-tile measures-chart-card">
+              <div className="measures-chart-head">
                 <h2 className="text-base font-bold text-jet-black">Peso</h2>
                 <span className="text-sm text-on-surface-variant">${latestMeasure.weight} kg</span>
               </div>
               <svg viewBox="0 0 220 72" className="w-full h-20 overflow-visible">
                 <defs>
                   <linearGradient id="measuresWeightGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#6d7dfa" />
-                    <stop offset="100%" stop-color="#4558C8" />
+                    <stop offset="0%" stop-color="#000000" />
+                    <stop offset="100%" stop-color="#555555" />
                   </linearGradient>
                   <linearGradient id="measuresWeightGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="rgba(109,125,250,0.18)" />
-                    <stop offset="100%" stop-color="rgba(109,125,250,0)" />
+                    <stop offset="0%" stop-color="rgba(0,0,0,0.08)" />
+                    <stop offset="100%" stop-color="rgba(0,0,0,0)" />
                   </linearGradient>
                 </defs>
-                <path d="M 0 66 H 220" fill="none" stroke="#eef2ff" strokeWidth="1.5" />
+                <path d="M 0 66 H 220" fill="none" stroke="#ececec" strokeWidth="1.5" />
                 <path d=${`${weightPath} L 220 72 L 0 72 Z`} fill="url(#measuresWeightGlow)" />
                 <path d=${weightPath} fill="none" stroke="url(#measuresWeightGradient)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <p className="text-sm text-on-surface-variant">Evolução entre as últimas atualizações.</p>
             </div>
-            <div className="mos-info-tile block space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="mos-info-tile measures-chart-card">
+              <div className="measures-chart-head">
                 <h2 className="text-base font-bold text-jet-black">Gordura</h2>
                 <span className="text-sm text-on-surface-variant">${latestMeasure.bodyFat}%</span>
               </div>
               <svg viewBox="0 0 220 72" className="w-full h-20 overflow-visible">
                 <defs>
                   <linearGradient id="measuresFatGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#ff8a62" />
-                    <stop offset="100%" stop-color="#EF5F37" />
+                    <stop offset="0%" stop-color="#000000" />
+                    <stop offset="100%" stop-color="#555555" />
                   </linearGradient>
                   <linearGradient id="measuresFatGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="rgba(239,95,55,0.16)" />
-                    <stop offset="100%" stop-color="rgba(239,95,55,0)" />
+                    <stop offset="0%" stop-color="rgba(0,0,0,0.08)" />
+                    <stop offset="100%" stop-color="rgba(0,0,0,0)" />
                   </linearGradient>
                 </defs>
-                <path d="M 0 66 H 220" fill="none" stroke="#fff0ea" strokeWidth="1.5" />
+                <path d="M 0 66 H 220" fill="none" stroke="#ececec" strokeWidth="1.5" />
                 <path d=${`${fatPath} L 220 72 L 0 72 Z`} fill="url(#measuresFatGlow)" />
                 <path d=${fatPath} fill="none" stroke="url(#measuresFatGradient)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -6314,8 +6211,8 @@ function App() {
             </div>
           </section>
 
-          <button className="w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => setModal("measures")}>
-            Editar meus dados
+          <button className="mos-wide-icon-button w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" title="Editar meus dados" aria-label="Editar meus dados" onClick=${() => setModal("measures")}>
+            <${Icon} name="edit" />
           </button>
         </main>
         <${BottomNav} active=${null} onChange=${setScreen} />
@@ -6347,7 +6244,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="mos-info-card space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
@@ -6377,8 +6274,8 @@ function App() {
             )}
           </section>
 
-          <button className="w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" onClick=${() => setModal("profile")}>
-            Editar
+          <button className="mos-wide-icon-button w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold text-base active:scale-95 transition-transform" title="Editar perfil" aria-label="Editar perfil" onClick=${() => setModal("profile")}>
+            <${Icon} name="edit" />
           </button>
         </main>
         <${BottomNav} active=${null} onChange=${setScreen} />
@@ -6409,7 +6306,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="mos-info-card space-y-4">
             <span className="text-sm text-[#4558C8]">Bem-vinda ao MOS!</span>
             <h1 className="text-[1.85rem] font-bold text-jet-black leading-tight">Um guia rápido para usar o app com clareza e leveza</h1>
@@ -6488,7 +6385,7 @@ function App() {
     return html`
       <div className="${getSectionBackground("plan")} text-on-surface min-h-screen pb-32">
         <${TopBar} title="Histórico" leftIcon="arrow_back" centerBold=${false} onLeft=${() => setScreen("plan-config")} onSearch=${() => openSearch("history")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto">
+        <main className="pt-20 px-4 max-w-md mx-auto">
           <section className="mb-5">
             <${ContextNav}
               items=${[
@@ -6530,7 +6427,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <section className="mos-info-card space-y-3">
             <span className="text-sm font-bold text-[#0F172A]/60">Admin MOS!</span>
             <h1 className="text-[1.9rem] font-black text-[#0F172A] leading-tight">Enviar aviso aos usuários</h1>
@@ -6617,7 +6514,7 @@ function App() {
           onSearch=${() => openSearch("home")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-5">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="bg-white rounded-xl p-6 border border-surface-container-high space-y-2">
             <span className="text-sm text-[#4558C8]">Changelog</span>
             <h1 className="text-[1.8rem] font-bold text-jet-black leading-tight">Registro de atualizações do MOS!</h1>
@@ -6665,7 +6562,7 @@ function App() {
           onSearch=${() => null}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-5">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-5">
           <section className="rounded-xl p-4 flex items-center gap-3 shadow-[0_10px_30px_rgba(41,43,45,0.06)] border border-white/60" style=${{ background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(236,240,255,0.92) 100%)" }}>
             <div className="w-10 h-10 rounded-full bg-[#D9B8F3] flex items-center justify-center shrink-0">
               <${Icon} name="search" className="text-[#292B2D]" />
@@ -6772,7 +6669,7 @@ function App() {
     return html`
       <div className="${ingredientBg} text-on-surface min-h-screen pb-24">
         <${TopBar} title=${selectedFood.name} leftIcon="arrow_back" centerBold=${false} onLeft=${() => setScreen(selectedFood.back || "food-detail")} onSearch=${() => openSearch("ingredient-detail")} onRight=${openNotifications} />
-        <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+        <main className="pt-20 px-4 max-w-md mx-auto space-y-6">
           <${ContextNav}
             items=${[
               { label: "Voltar à refeição", onClick: () => setScreen(selectedFood.back || "food-detail"), primary: true },
@@ -6821,7 +6718,7 @@ function App() {
           onSearch=${() => openSearch("register-supplement")}
           onRight=${openNotifications}
         />
-        <main className="pt-24 px-4 max-w-md mx-auto">
+        <main className="pt-20 px-4 max-w-md mx-auto">
           <section className="bg-white rounded-xl p-8 flex flex-col gap-6">
             <${ContextNav}
               items=${[
@@ -6881,30 +6778,31 @@ function App() {
     <div>
       <style>
         body {
-          background: #ebf5f2;
+          background: #ffffff;
         }
-        .text-jet-black { color: #0F172A; }
-        .text-on-surface { color: #0F172A; }
-        .text-on-surface-variant { color: #334155; }
-        .text-outline { color: #475569; }
+        .text-jet-black { color: #000000; }
+        .text-on-surface { color: #000000; }
+        .text-on-surface-variant { color: #4d4d4d; }
+        .text-outline { color: #666666; }
         section.bg-white:not([class*="shadow"]),
         div.bg-white:not([class*="shadow"]) {
-          border: 1px solid #e2e8f0;
+          border: 1px solid #d9d9d9;
           box-shadow: none;
-          border-radius: 20px;
+          border-radius: 12px;
         }
         nav.fixed.bottom-0 {
           background: transparent;
           box-shadow: none;
         }
         nav.fixed.bottom-0 button.bottom-nav-inactive {
-          color: #4B5563;
+          color: #000000;
         }
         nav.fixed.bottom-0 button.bottom-nav-active {
           color: #ffffff;
+          background: #000000;
         }
         nav.fixed.bottom-0 button.bottom-nav-inactive .material-symbols-outlined {
-          color: #6B7280;
+          color: #000000;
         }
         nav.fixed.bottom-0 button.bottom-nav-active .material-symbols-outlined {
           color: #ffffff;
@@ -6942,54 +6840,9 @@ function App() {
       authReady &&
       isSignedIn &&
       html`
-        ${desktopAccountMenuOpen ? html`<button className="mos-desktop-menu-backdrop" onClick=${() => setDesktopAccountMenuOpen(false)} aria-label="Fechar menu da conta"></button>` : null}
-        <div className="mos-desktop-shell">
-          <${DesktopSidebar}
-            active=${screen}
-            onChange=${setScreen}
-            onOpenProfile=${() => setScreen("profile")}
-            onOpenMeasures=${() => setScreen("measures")}
-            onOpenSettings=${openDesktopSettings}
-            onOpenAbout=${() => setScreen("about-app")}
-            onOpenAdminNotifications=${() => setScreen("admin-notifications")}
-            onSignOut=${() => openMenuItem("Sair")}
-            isAdmin=${isAdminUser}
-          />
-          <${DesktopRightRail}
-            onSearch=${openDesktopSearch}
-            onOpenNotifications=${openNotifications}
-            notificationCount=${notifications.length}
-            avatarLabel=${profileInitial}
-            accountMenuOpen=${desktopAccountMenuOpen}
-            onToggleAccountMenu=${() => setDesktopAccountMenuOpen((current) => !current)}
-            onCloseAccountMenu=${() => setDesktopAccountMenuOpen(false)}
-            onOpenProfile=${() => setScreen("profile")}
-            onOpenMeasures=${() => setScreen("measures")}
-            onOpenSettings=${openDesktopSettings}
-            onSignOut=${() => openMenuItem("Sair")}
-            caloriesConsumed=${summary.calories}
-            calorieTarget=${state.profile.calorieTarget}
-            waterConsumedMl=${state.water[todayKey] ?? 0}
-            waterTargetMl=${Number(state.profile.waterTargetMl) || 3000}
-            trainingDone=${trainingDoneToday}
-            onOpenFood=${() => setScreen("food")}
-            onOpenWater=${() => setScreen("water")}
-            onOpenTraining=${() => setScreen("training")}
-          />
-          <div className="mos-desktop-main">
-            ${renderSignedInScreen()}
-          </div>
+        <div className="mos-mobile-stage">
+          ${renderSignedInScreen()}
         </div>
-        ${desktopSearchOpen ? html`<button className="mos-desktop-search-backdrop" onClick=${closeDesktopSearch} aria-label="Fechar busca"></button>` : null}
-        ${desktopSearchOpen
-          ? html`<${DesktopSearchPanel}
-              query=${searchQuery}
-              results=${normalizedSearch ? searchResults : searchableItems.slice(0, 8)}
-              onQueryChange=${setSearchQuery}
-              onClose=${closeDesktopSearch}
-              onPick=${handleDesktopSearchPick}
-            />`
-          : null}
       `}
 
       ${appRoute === "app" && authReady && isSignedIn && drawerOpen && html`<${MenuDrawer} onClose=${() => setDrawerOpen(false)} onSelect=${openMenuItem} isAdmin=${isAdminUser} />`}
@@ -6997,6 +6850,7 @@ function App() {
       ${
         authReady &&
         isSignedIn &&
+        !LOCAL_DEMO_MODE &&
         authNotice &&
         html`
           <div className="fixed top-20 left-0 w-full px-4 z-[70] pointer-events-none">
@@ -7112,8 +6966,7 @@ function App() {
           <${Modal}
             title="Registrar Comida"
             onClose=${() => confirmDiscard(() => {
-              clearDraft("modal-food");
-              setModal(null);
+              resetFoodRegisterForm();
             }, "Deseja cancelar a edição? As alterações desta refeição não foram salvas.")}
           >
             <form
@@ -7129,25 +6982,34 @@ function App() {
                 <label className="text-[0.6875rem] font-medium text-jet-black">Nome da Refeição</label>
                 <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg focus:ring-2 focus:ring-royal-blue placeholder:text-outline/50 text-jet-black font-medium transition-all" name="mealName" placeholder="Ex: Almoço de Domingo" required />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[0.6875rem] font-medium text-jet-black">Descrição / Detalhes</label>
-                <textarea className="w-full p-6 bg-surface-container-low border-0 rounded-lg focus:ring-2 focus:ring-royal-blue placeholder:text-outline/50 text-jet-black font-medium transition-all resize-none" name="description" rows="4" placeholder="O que você comeu hoje?"></textarea>
+              <div className="food-register-block">
+                <div>
+                  <h3>O que você comeu?</h3>
+                  <p>Coloque abaixo o alimento e a quantidade. O cérebro MOS calcula os valores depois.</p>
+                </div>
+                <div className="food-register-grid food-register-grid--head">
+                  <span>Nome do alimento</span>
+                  <span>Quantidade</span>
+                </div>
+                ${Array.from({ length: foodRegisterRows }, (_, itemIndex) => itemIndex + 1).map((index) => html`
+                  <div className=${`food-register-grid ${index > 1 ? "food-register-grid--optional" : ""}`}>
+                    <input name=${`foodName${index}`} placeholder=${index === 1 ? "Ex: Peito de frango" : "Adicionar alimento"} required=${index === 1} onInput=${maybeGrowFoodRegisterRows} />
+                    <input name=${`foodQuantity${index}`} placeholder=${index === 1 ? "Ex: 200g" : "Quantidade"} required=${index === 1} onInput=${maybeGrowFoodRegisterRows} />
+                  </div>
+                `)}
+                <button type="button" className="food-register-add-row" onClick=${addFoodRegisterRow} title="Adicionar alimento" aria-label="Adicionar alimento">
+                  <${Icon} name="add" />
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-old-flax/20 p-4 rounded-lg flex items-center gap-3">
-                  <${Icon} name="restaurant" className="text-jet-black" />
-                  <div className="flex flex-col">
-                    <span className="text-[0.6875rem] font-bold text-jet-black/60">Categoria</span>
-                    <span className="text-sm font-bold text-jet-black">Proteína Alta</span>
-                  </div>
-                </div>
-                <div className="bg-royal-blue/10 p-4 rounded-lg flex items-center gap-3">
-                  <${Icon} name="schedule" className="text-royal-blue" />
-                  <div className="flex flex-col">
-                    <span className="text-[0.6875rem] font-bold text-royal-blue/60">Horário</span>
-                    <span className="text-sm font-bold text-jet-black">12:30 PM</span>
-                  </div>
-                </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[0.6875rem] font-medium text-jet-black">Horário da refeição</label>
+                <input
+                  className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg focus:ring-2 focus:ring-royal-blue placeholder:text-outline/50 text-jet-black font-medium transition-all"
+                  name="mealTime"
+                  type="time"
+                  defaultValue=${getCurrentTimeValue()}
+                  required
+                />
               </div>
               <button
                 className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base hover:opacity-90 transition-all flex items-center justify-center gap-2 ${
@@ -7198,7 +7060,178 @@ function App() {
                 type="submit"
                 disabled=${!isDraftDirty("modal-plan")}
               >
-                Registrar
+                Criar refeição
+              </button>
+            </form>
+          </${Modal}>
+        `
+      }
+
+      ${
+        modal === "supplement-register" &&
+        html`
+          <${Modal}
+            title="Novo suplemento"
+            onClose=${() => confirmDiscard(() => {
+              clearDraft("register-supplement");
+              setModal(null);
+            }, "Deseja cancelar a edição? As alterações deste suplemento não foram salvas.")}
+          >
+            <form
+              className="flex flex-col gap-4"
+              onInput=${() => markDraftDirty("register-supplement")}
+              onChange=${() => markDraftDirty("register-supplement")}
+              onSubmit=${(e) => {
+                e.preventDefault();
+                createSupplement(new FormData(e.currentTarget));
+              }}
+            >
+              <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="name" placeholder="Nome do suplemento" required />
+              <div className="grid grid-cols-2 gap-3">
+                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="dosage" placeholder="Dose" required />
+                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="time" type="time" required />
+              </div>
+              <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="category" placeholder="Categoria" />
+              <textarea className="w-full p-6 bg-surface-container-low border-0 rounded-lg resize-none" name="instruction" rows="4" placeholder="Instruções"></textarea>
+              <button className=${getPrimaryActionClass(!isDraftDirty("register-supplement"))} type="submit" disabled=${!isDraftDirty("register-supplement")}>Registrar suplemento</button>
+            </form>
+          </${Modal}>
+        `
+      }
+
+      ${
+        modal === "feedback" &&
+        html`
+          <${Modal}
+            title="Enviar feedback"
+            onClose=${() => confirmDiscard(() => {
+              clearDraft("modal-feedback");
+              setModal(null);
+            }, "Deseja cancelar? O feedback ainda não foi enviado.")}
+          >
+            <form
+              className="flex flex-col gap-5"
+              onInput=${() => markDraftDirty("modal-feedback")}
+              onChange=${() => markDraftDirty("modal-feedback")}
+              onSubmit=${async (e) => {
+                e.preventDefault();
+                const sent = await saveFeedback(new FormData(e.currentTarget));
+                if (sent !== false) clearDraft("modal-feedback");
+              }}
+            >
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-jet-black">Área do app</label>
+                <select className="w-full h-14 px-5 bg-surface-container-low border-0 rounded-lg text-jet-black" name="section" defaultValue=${screen}>
+                  ${["Início", "Comida", "Água", "Treino", "Plano", "Perfil", "Minhas medidas", "Notificações", "Geral"].map((section) => html`<option value=${section}>${section}</option>`)}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-jet-black">O que você quer contar?</label>
+                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte o que não ficou claro, o que falhou ou o que podemos melhorar." required></textarea>
+              </div>
+              <p className="text-xs leading-relaxed text-on-surface-variant">
+                Não precisa abrir e-mail nem copiar nada. A mensagem é registrada assim que você envia.
+              </p>
+              <button
+                className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
+                  isDraftDirty("modal-feedback") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
+                }`}
+                type="submit"
+                disabled=${!isDraftDirty("modal-feedback")}
+              >
+                Enviar feedback
+              </button>
+            </form>
+          </${Modal}>
+        `
+      }
+
+      ${
+        substituteFood &&
+        html`
+          <${Modal} title=${`Substituir ${substituteFood.name}`} onClose=${() => setSubstituteFood(null)}>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm leading-relaxed text-on-surface-variant">Estas opções servem como equivalentes para o dia. Elas aparecem só como sugestão e não trocam automaticamente o ingrediente do plano.</p>
+              <div className="bg-white rounded-xl divide-y divide-surface-container-high border border-surface-container-high">
+                ${getEquivalentFoods(substituteFood).map(
+                  (option) => {
+                    const accent = getFoodAccent(option);
+                    return html`
+                      <div className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
+                          <${Icon} name=${accent.icon} className="text-jet-black" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-jet-black">${option}</p>
+                          <p className="text-sm text-on-surface-variant">Pode substituir ${substituteFood.name} mantendo o plano mais flexível.</p>
+                        </div>
+                      </div>
+                    `;
+                  },
+                )}
+              </div>
+            </div>
+          </${Modal}>
+        `
+      }
+
+      ${
+        confirmAction &&
+        html`
+          <${Modal} title=${confirmAction.title || "Confirmar"} onClose=${() => setConfirmAction(null)}>
+            <div className="flex flex-col gap-5">
+              <p className="text-sm leading-relaxed text-on-surface-variant">${confirmAction.message || "Tem certeza que deseja apagar este item?"}</p>
+              <button type="button" className="mos-confirm-button w-full h-14 rounded-[10px] font-bold" onClick=${handleConfirmAction}>
+                ${confirmAction.confirmLabel || "Confirmar"}
+              </button>
+            </div>
+          </${Modal}>
+        `
+      }
+
+      ${
+        editor &&
+        html`
+          <${Modal}
+            title=${editor.food ? "Editar alimento" : "Adicionar alimento"}
+            onClose=${() => confirmDiscard(() => {
+              clearDraft("editor-food");
+              setEditor(null);
+            }, "Deseja cancelar a edição? As alterações deste alimento não foram salvas.")}
+          >
+            <form
+              className="flex flex-col gap-4"
+              onInput=${() => markDraftDirty("editor-food")}
+              onChange=${() => markDraftDirty("editor-food")}
+              onSubmit=${(e) => {
+                e.preventDefault();
+                saveFood(new FormData(e.currentTarget));
+              }}
+            >
+              <label className="food-field">
+                <span>Nome do alimento</span>
+                <input name="name" placeholder="Ex: Pão integral" defaultValue=${editor.food?.name || ""} required />
+              </label>
+              <label className="food-field">
+                <span>Quantidade</span>
+                <input name="quantity" placeholder="Ex: 2 fatias, 150g, 200ml" defaultValue=${editor.food?.quantity || ""} required />
+              </label>
+              <div className="food-brain-note">
+                <strong>Cérebro MOS</strong>
+                <span>Calorias e macros são recalculados automaticamente depois de salvar.</span>
+              </div>
+              <label className="food-field">
+                <span>Observação</span>
+                <textarea name="benefit" rows="4" placeholder="Ex: boa fonte de energia para o dia">${editor.food?.benefit || ""}</textarea>
+              </label>
+              <button
+                className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
+                  isDraftDirty("editor-food") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
+                }`}
+                type="submit"
+                disabled=${!isDraftDirty("editor-food")}
+              >
+                Salvar alimento
               </button>
             </form>
           </${Modal}>
@@ -7236,7 +7269,7 @@ function App() {
                 type="submit"
                 disabled=${!isDraftDirty("modal-water")}
               >
-                Registrar
+                Registrar água
               </button>
             </form>
           </${Modal}>
@@ -7425,148 +7458,6 @@ function App() {
         `
       }
 
-      ${
-        modal === "feedback" &&
-        html`
-          <${Modal}
-            title="Enviar feedback"
-            onClose=${() => confirmDiscard(() => {
-              clearDraft("modal-feedback");
-              setModal(null);
-            }, "Deseja cancelar a edição? O seu feedback ainda não foi enviado.")}
-          >
-            <form
-              className="flex flex-col gap-6"
-              onInput=${() => markDraftDirty("modal-feedback")}
-              onChange=${() => markDraftDirty("modal-feedback")}
-              onSubmit=${(e) => {
-                e.preventDefault();
-                saveFeedback(new FormData(e.currentTarget));
-              }}
-            >
-              <div className="rounded-[18px] bg-[#F2F8EE] border border-[#dfe9df] p-4 space-y-1">
-                <p className="text-sm font-bold text-jet-black">Envio rápido</p>
-                <p className="text-sm leading-relaxed text-on-surface-variant">Escreva, envie e pronto. O feedback fica salvo no MOS! para revisão.</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-jet-black">Área do app</label>
-                <select className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg text-jet-black" name="section" defaultValue="Geral">
-                  <option>Geral</option>
-                  <option>Início</option>
-                  <option>Comida</option>
-                  <option>Plano</option>
-                  <option>Água</option>
-                  <option>Minhas medidas</option>
-                  <option>Suplementos</option>
-                  <option>Busca</option>
-                  <option>Notificações</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-jet-black">O que você quer contar?</label>
-                <textarea className="w-full min-h-36 px-6 py-5 bg-surface-container-low border-0 rounded-lg resize-none text-jet-black" name="message" placeholder="Conte o que não ficou claro, o que falhou ou o que podemos melhorar." required></textarea>
-              </div>
-              <p className="text-xs leading-relaxed text-on-surface-variant">
-                Não precisa abrir e-mail nem copiar nada. A mensagem é registrada assim que você envia.
-              </p>
-              <button
-                className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
-                  isDraftDirty("modal-feedback") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
-                }`}
-                type="submit"
-                disabled=${!isDraftDirty("modal-feedback")}
-              >
-                Enviar feedback
-              </button>
-            </form>
-          </${Modal}>
-        `
-      }
-
-      ${
-        substituteFood &&
-        html`
-          <${Modal} title=${`Substituir ${substituteFood.name}`} onClose=${() => setSubstituteFood(null)}>
-            <div className="flex flex-col gap-4">
-              <p className="text-sm leading-relaxed text-on-surface-variant">Estas opções servem como equivalentes para o dia. Elas aparecem só como sugestão e não trocam automaticamente o ingrediente do plano.</p>
-              <div className="bg-white rounded-xl divide-y divide-surface-container-high border border-surface-container-high">
-                ${getEquivalentFoods(substituteFood).map(
-                  (option) => {
-                    const accent = getFoodAccent(option);
-                    return html`
-                      <div className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style=${{ backgroundColor: accent.soft }}>
-                          <${Icon} name=${accent.icon} className="text-jet-black" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-jet-black">${option}</p>
-                          <p className="text-sm text-on-surface-variant">Pode substituir ${substituteFood.name} mantendo o plano mais flexível.</p>
-                        </div>
-                      </div>
-                    `;
-                  },
-                )}
-              </div>
-            </div>
-          </${Modal}>
-        `
-      }
-
-      ${
-        confirmAction &&
-        html`
-          <${Modal} title=${confirmAction.title || "Confirmar"} onClose=${() => setConfirmAction(null)}>
-            <div className="flex flex-col gap-5">
-              <p className="text-sm leading-relaxed text-on-surface-variant">${confirmAction.message || "Tem certeza que deseja apagar este item?"}</p>
-              <button type="button" className="w-full h-14 bg-[#EF5F37] text-white rounded-[10px] font-bold" onClick=${handleConfirmAction}>
-                ${confirmAction.confirmLabel || "Confirmar"}
-              </button>
-            </div>
-          </${Modal}>
-        `
-      }
-
-      ${
-        editor &&
-        html`
-          <${Modal}
-            title=${editor.food ? "Editar alimento" : "Adicionar alimento"}
-            onClose=${() => confirmDiscard(() => {
-              clearDraft("editor-food");
-              setEditor(null);
-            }, "Deseja cancelar a edição? As alterações deste alimento não foram salvas.")}
-          >
-            <form
-              className="flex flex-col gap-4"
-              onInput=${() => markDraftDirty("editor-food")}
-              onChange=${() => markDraftDirty("editor-food")}
-              onSubmit=${(e) => {
-                e.preventDefault();
-                saveFood(new FormData(e.currentTarget));
-              }}
-            >
-              <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="name" placeholder="Nome" defaultValue=${editor.food?.name || ""} required />
-              <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="quantity" placeholder="Quantidade" defaultValue=${editor.food?.quantity || ""} required />
-              <div className="grid grid-cols-2 gap-3">
-                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="calories" type="number" placeholder="Kcal" defaultValue=${editor.food?.calories || ""} required />
-                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="protein" type="number" placeholder="Proteína" defaultValue=${editor.food?.protein || ""} required />
-                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="carbs" type="number" placeholder="Carbo" defaultValue=${editor.food?.carbs || ""} required />
-                <input className="w-full h-14 px-6 bg-surface-container-low border-0 rounded-lg" name="fat" type="number" placeholder="Gordura" defaultValue=${editor.food?.fat || ""} required />
-              </div>
-              <textarea className="w-full p-6 bg-surface-container-low border-0 rounded-lg resize-none" name="benefit" rows="4" placeholder="Benefício">${editor.food?.benefit || ""}</textarea>
-              <button
-                className=${`w-full h-16 bg-salmon-orange text-white rounded-lg font-bold text-base transition-all ${
-                  isDraftDirty("editor-food") ? "active:scale-[0.98]" : "opacity-45 cursor-not-allowed"
-                }`}
-                type="submit"
-                disabled=${!isDraftDirty("editor-food")}
-              >
-                Registrar
-              </button>
-            </form>
-          </${Modal}>
-        `
-      }
     </div>
   `;
 }
