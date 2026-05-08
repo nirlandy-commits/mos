@@ -4063,9 +4063,11 @@ function App() {
   }
 
   function renderLanding() {
+    const designSystemHref = `${buildMosPath("landing").replace(/\/$/, "")}/designsystem/`;
+
     return html`
       <main className="min-h-screen bg-white text-black flex items-center justify-center px-6">
-        <nav className="flex items-center gap-4" aria-label="Escolher versão do MOS!">
+        <nav className="flex flex-wrap items-center justify-center gap-4" aria-label="Escolher versão do MOS!">
           <a
             className="inline-flex h-12 min-w-28 items-center justify-center rounded-none border border-black bg-black px-8 text-sm font-bold uppercase tracking-normal text-white transition-colors hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4 focus-visible:ring-offset-white"
             href=${buildMosPath("app")}
@@ -4078,6 +4080,13 @@ function App() {
             href=${buildMosPath("demo")}
           >
             DEMO
+          </a>
+          <span className="text-sm font-bold text-black" aria-hidden="true">|</span>
+          <a
+            className="inline-flex h-12 min-w-28 items-center justify-center rounded-none border border-black bg-white px-8 text-sm font-bold uppercase tracking-normal text-black transition-colors hover:bg-black hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4 focus-visible:ring-offset-white"
+            href=${designSystemHref}
+          >
+            DESIGN SYSTEM
           </a>
         </nav>
       </main>
